@@ -1,9 +1,9 @@
-import { Equals, Hashable, HashUtils, ImmutableMap } from "./ImmutableMap";
+import { Map, ValueObject, hash } from "immutable";
 
 export class Source {
-  private constructor(public readonly terms: ImmutableMap<TermId, TermData>) {}
+  private constructor(public readonly terms: Map<TermId, TermData>) {}
   static empty() {
-    return new Source(ImmutableMap.empty());
+    return new Source(Map());
   }
   setTerm(termId: TermId, termData: TermData) {
     return new Source(this.terms.set(termId, termData));
@@ -15,42 +15,40 @@ export class Source {
     return [newSource, termId] as const;
   }
   removeTerm(termId: TermId) {
-    return new Source(this.terms.rem(termId));
+    return new Source(this.terms.remove(termId));
   }
   renameTerm(termId: TermId, label: string) {
     return new Source(
-      this.terms.set(termId, this.terms.get(termId).setLabel(label))
+      this.terms.update(termId, TermData.empty(), (termData) =>
+        termData.setLabel(label)
+      )
     );
   }
   addParameter(functionTermId: TermId, parameterTermId: TermId) {
     return new Source(
-      this.terms.set(
-        functionTermId,
-        this.terms.get(functionTermId).addParameter(parameterTermId)
+      this.terms.update(functionTermId, TermData.empty(), (termData) =>
+        termData.addParameter(parameterTermId)
       )
     );
   }
   removeParameter(functionTermId: TermId, parameterTermId: TermId) {
     return new Source(
-      this.terms.set(
-        functionTermId,
-        this.terms.get(functionTermId).removeParameter(parameterTermId)
+      this.terms.update(functionTermId, TermData.empty(), (termData) =>
+        termData.removeParameter(parameterTermId)
       )
     );
   }
   setReference(termId: TermId, referenceTermId: TermId | null) {
     return new Source(
-      this.terms.set(
-        termId,
-        this.terms.get(termId).setReference(referenceTermId)
+      this.terms.update(termId, TermData.empty(), (termData) =>
+        termData.setReference(referenceTermId)
       )
     );
   }
   setBinding(termId: TermId, keyTermId: TermId, valueTermId: TermId | null) {
     return new Source(
-      this.terms.set(
-        termId,
-        this.terms.get(termId).setBinding(keyTermId, valueTermId)
+      this.terms.update(termId, TermData.empty(), (termData) =>
+        termData.setBinding(keyTermId, valueTermId)
       )
     );
   }
@@ -114,7 +112,7 @@ export class Source {
     return source;
   }
 }
-export class TermId implements Equals, Hashable {
+export class TermId implements ValueObject {
   private constructor(public readonly id: string) {}
   static create() {
     return new TermId((Math.random() * 100000000000000000).toString(16));
@@ -125,19 +123,19 @@ export class TermId implements Equals, Hashable {
   equals(other: this): boolean {
     return this.id === other.id;
   }
-  hash(): number {
-    return HashUtils.hashString(this.id);
+  hashCode(): number {
+    return hash(this.id);
   }
 }
-class TermData {
+export class TermData {
   private constructor(
     readonly label: string,
-    readonly parameters: ImmutableMap<TermId, null>,
+    readonly parameters: Map<TermId, null>,
     readonly reference: TermId | null,
-    readonly bindings: ImmutableMap<TermId, TermId>
+    readonly bindings: Map<TermId, TermId>
   ) {}
   static empty() {
-    return new TermData("", ImmutableMap.empty(), null, ImmutableMap.empty());
+    return new TermData("", Map(), null, Map());
   }
   setLabel(label: string) {
     return new TermData(label, this.parameters, this.reference, this.bindings);
@@ -153,7 +151,7 @@ class TermData {
   removeParameter(termId: TermId) {
     return new TermData(
       this.label,
-      this.parameters.rem(termId),
+      this.parameters.remove(termId),
       this.reference,
       this.bindings
     );
@@ -168,7 +166,7 @@ class TermData {
       this.reference,
       valueTermId
         ? this.bindings.set(keyTermId, valueTermId)
-        : this.bindings.rem(keyTermId)
+        : this.bindings.remove(keyTermId)
     );
   }
 }

@@ -1,6 +1,7 @@
 import React from "react";
 import { css } from "styled-components/macro";
-import { Source, TermId } from "./components/Source";
+import { Formatter } from "./components/Formatter";
+import { Source, TermData, TermId } from "./components/Source";
 
 export default function App() {
   const [state, setState] = React.useState(EditorState.empty());
@@ -106,17 +107,9 @@ export default function App() {
           set reference
         </button>
         <button
-          disabled={
-            !state.firstSelectedTerm ||
-            !state.secondSelectedTerm ||
-            !state.thirdSelectedTerm
-          }
+          disabled={!state.firstSelectedTerm || !state.secondSelectedTerm}
           onClick={() => {
-            if (
-              state.firstSelectedTerm &&
-              state.secondSelectedTerm &&
-              state.thirdSelectedTerm
-            ) {
+            if (state.firstSelectedTerm && state.secondSelectedTerm) {
               setState(
                 state.setSource(
                   state.source.setBinding(
@@ -145,62 +138,17 @@ export default function App() {
           }
         }}
       >
-        {Array.from(state.source.terms.entries(), ([key, value]) => {
+        {[...state.formatter.roots.keys()].map((key) => {
+          const value = state.source.terms.get(key, TermData.empty());
           return (
             <React.Fragment key={key.id}>
               <TermView termId={key} state={state} onStateChange={setState} />
-              {(value.reference !== null || value.parameters.size > 0) && (
+              {(value.reference !== null ||
+                value.parameters.size > 0 ||
+                value.bindings.size > 0) && (
                 <React.Fragment> = </React.Fragment>
               )}
-              {value.parameters.size > 0 && (
-                <React.Fragment>
-                  (
-                  {Array.from(value.parameters.entries(), ([key], index) => {
-                    return (
-                      <React.Fragment key={key.id}>
-                        <TermView
-                          termId={key}
-                          state={state}
-                          onStateChange={setState}
-                        />
-                        {index < value.parameters.size - 1 && ", "}
-                      </React.Fragment>
-                    );
-                  })}
-                  ){" => "}
-                </React.Fragment>
-              )}
-              {value.reference && (
-                <TermView
-                  termId={value.reference}
-                  state={state}
-                  onStateChange={setState}
-                />
-              )}
-              {value.bindings.size > 0 && (
-                <React.Fragment>
-                  (
-                  {Array.from(value.bindings.entries(), ([key, val], index) => {
-                    return (
-                      <React.Fragment key={key.id}>
-                        <TermView
-                          termId={key}
-                          state={state}
-                          onStateChange={setState}
-                        />
-                        {" = "}
-                        <TermView
-                          termId={val}
-                          state={state}
-                          onStateChange={setState}
-                        />
-                        {index < value.bindings.size - 1 && ", "}
-                      </React.Fragment>
-                    );
-                  })}
-                  )
-                </React.Fragment>
-              )}{" "}
+              <ValueView termId={key} state={state} onStateChange={setState} />
               <br />
             </React.Fragment>
           );
@@ -225,7 +173,7 @@ function TermView({
   state: EditorState;
   onStateChange(state: EditorState): void;
 }) {
-  const { label } = state.source.terms.get(termId);
+  const { label } = state.source.terms.get(termId, TermData.empty());
   return (
     <span
       onClick={(event) => {
@@ -248,8 +196,81 @@ function TermView({
           : ""};
       `}
     >
-      {label}
+      {label || `<${termId.id}>`}
     </span>
+  );
+}
+
+function ValueView({
+  termId,
+  state,
+  onStateChange,
+}: {
+  termId: TermId;
+  state: EditorState;
+  onStateChange(state: EditorState): void;
+}) {
+  const value = state.source.terms.get(termId, TermData.empty());
+  return (
+    <React.Fragment>
+      {value.parameters.size > 0 && (
+        <React.Fragment>
+          (
+          {Array.from(value.parameters.entries(), ([key], index) => {
+            return (
+              <React.Fragment key={key.id}>
+                <TermView
+                  termId={key}
+                  state={state}
+                  onStateChange={onStateChange}
+                />
+                {index < value.parameters.size - 1 && ", "}
+              </React.Fragment>
+            );
+          })}
+          ){" => "}
+        </React.Fragment>
+      )}
+      {value.reference && (
+        <TermView
+          termId={value.reference}
+          state={state}
+          onStateChange={onStateChange}
+        />
+      )}
+      {value.bindings.size > 0 && (
+        <React.Fragment>
+          (
+          {Array.from(value.bindings.entries(), ([key, val], index) => {
+            return (
+              <React.Fragment key={key.id}>
+                <TermView
+                  termId={key}
+                  state={state}
+                  onStateChange={onStateChange}
+                />
+                {" = "}
+                {state.formatter.roots.has(val) ? (
+                  <TermView
+                    termId={val}
+                    state={state}
+                    onStateChange={onStateChange}
+                  />
+                ) : (
+                  <ValueView
+                    termId={val}
+                    state={state}
+                    onStateChange={onStateChange}
+                  />
+                )}
+                {index < value.bindings.size - 1 && ", "}
+              </React.Fragment>
+            );
+          })}
+          )
+        </React.Fragment>
+      )}
+    </React.Fragment>
   );
 }
 
@@ -261,6 +282,7 @@ class EditorState {
     public readonly secondSelectedTerm: TermId | null,
     public readonly thirdSelectedTerm: TermId | null
   ) {}
+  readonly formatter = new Formatter(this.source);
   static empty() {
     return new EditorState(Source.empty(), "", null, null, null);
   }

@@ -1,4 +1,10 @@
 {
+  "fdda1713c7ad28": {
+    "label": "y",
+    "parameters": {},
+    "reference": null,
+    "bindings": {}
+  },
   "d2e2b5104958d8": {
     "label": "not",
     "parameters": {
@@ -18,6 +24,15 @@
     },
     "reference": "8895fe0a5910a8",
     "bindings": {}
+  },
+  "f2c7fea4f64be0": {
+    "label": "and_branch",
+    "parameters": {},
+    "reference": "fdda1713c7ad28",
+    "bindings": {
+      "39900ababaad82": "f86ef7b0715ee0",
+      "8895fe0a5910a8": "829ce172f81280"
+    }
   },
   "39900ababaad82": {
     "label": "onFalse",
@@ -45,5 +60,17 @@
     "parameters": {},
     "reference": null,
     "bindings": {}
+  },
+  "10a95aca2d40180": {
+    "label": "and",
+    "parameters": {
+      "fdda1713c7ad28": null,
+      "2e4acab89a06a8": null
+    },
+    "reference": "2e4acab89a06a8",
+    "bindings": {
+      "39900ababaad82": "f86ef7b0715ee0",
+      "8895fe0a5910a8": "f2c7fea4f64be0"
+    }
   }
 }
