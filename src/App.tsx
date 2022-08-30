@@ -87,12 +87,42 @@ export default function App() {
         >
           remove parameter
         </button>
+        <button
+          disabled={!state.firstSelectedTerm}
+          onClick={() => {
+            if (state.firstSelectedTerm) {
+              setState(
+                state.setSource(
+                  state.source.setReference(
+                    state.firstSelectedTerm,
+                    state.secondSelectedTerm ?? null
+                  )
+                )
+              );
+            }
+          }}
+        >
+          set reference
+        </button>
       </div>
-      <div>
+      <div
+        onClick={(event) => {
+          if (event.currentTarget === event.target) {
+            if (event.ctrlKey) {
+              setState(state.setSecondSelectedTerm(null));
+            } else {
+              setState(state.setFirstSelectedTerm(null));
+            }
+          }
+        }}
+      >
         {Array.from(state.source.terms.entries(), ([key, value]) => {
           return (
-            <div key={key.id}>
+            <React.Fragment key={key.id}>
               <TermView termId={key} state={state} onStateChange={setState} />
+              {(value.reference !== null || value.parameters.size > 0) && (
+                <React.Fragment> = </React.Fragment>
+              )}
               {value.parameters.size > 0 && (
                 <React.Fragment>
                   (
@@ -111,7 +141,18 @@ export default function App() {
                   )
                 </React.Fragment>
               )}
-            </div>
+              {value.reference && (
+                <React.Fragment>
+                  {" => "}
+                  <TermView
+                    termId={value.reference}
+                    state={state}
+                    onStateChange={setState}
+                  />
+                </React.Fragment>
+              )}
+              <br />
+            </React.Fragment>
           );
         })}
       </div>
@@ -240,6 +281,14 @@ class Source {
       )
     );
   }
+  setReference(termId: TermId, referenceTermId: TermId | null) {
+    return new Source(
+      this.terms.set(
+        termId,
+        this.terms.get(termId).setReference(referenceTermId)
+      )
+    );
+  }
   toJSON(): string {
     const terms = this.terms;
     return JSON.stringify(
@@ -257,6 +306,7 @@ class Source {
                     }
                   })()
                 ),
+                reference: value.reference?.id ?? null,
               },
             ];
           }
@@ -269,12 +319,12 @@ class Source {
   static fromJSON(json: string) {
     const parsed = JSON.parse(json);
     const source = Object.entries(parsed).reduce(
-      (source, [termId, { label, parameters }]: any) =>
+      (source, [termId, { label, parameters, reference }]: any) =>
         source.setTerm(
           TermId.fromString(termId),
           Object.entries(parameters).reduce(
             (termData, [key]) => termData.addParameter(TermId.fromString(key)),
-            TermData.empty().setLabel(label)
+            TermData.empty().setLabel(label).setReference(reference)
           )
         ),
       Source.empty()
@@ -380,19 +430,31 @@ class TermId implements Equals, Hashable {
 class TermData {
   private constructor(
     readonly label: string,
-    readonly parameters: ImmutableMap<TermId, null>
+    readonly parameters: ImmutableMap<TermId, null>,
+    readonly reference: TermId | null
   ) {}
   static empty() {
-    return new TermData("", ImmutableMap.empty());
+    return new TermData("", ImmutableMap.empty(), null);
   }
   setLabel(label: string) {
-    return new TermData(label, this.parameters);
+    return new TermData(label, this.parameters, this.reference);
+  }
+  setReference(reference: TermId | null) {
+    return new TermData(this.label, this.parameters, reference);
   }
   addParameter(termId: TermId) {
-    return new TermData(this.label, this.parameters.set(termId, null));
+    return new TermData(
+      this.label,
+      this.parameters.set(termId, null),
+      this.reference
+    );
   }
   removeParameter(termId: TermId) {
-    return new TermData(this.label, this.parameters.rem(termId));
+    return new TermData(
+      this.label,
+      this.parameters.rem(termId),
+      this.reference
+    );
   }
 }
 
