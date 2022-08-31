@@ -2,164 +2,180 @@ import React from "react";
 import { css } from "styled-components/macro";
 import { Formatter } from "./components/Formatter";
 import { Source, TermData, TermId } from "./components/Source";
+import { VersionControlUI } from "./components/vcs";
 
 export default function App() {
   const [state, setState] = React.useState(EditorState.empty());
   return (
-    <div>
+    <div
+      css={css`
+        display: flex;
+      `}
+    >
+      <VersionControlUI source={state.source} />
       <div>
-        <input
-          value={state.text}
-          onChange={(event) =>
-            setState(state.setText(event.currentTarget.value))
-          }
-        />
-        <button
-          onClick={() => {
-            const [newSource, newTermId] = state.source.createTerm(state.text);
-            setState(
-              state
-                .setSource(newSource)
-                .setText("")
-                .setFirstSelectedTerm(newTermId)
-            );
-          }}
-        >
-          create term
-        </button>
-        <button
-          disabled={!state.firstSelectedTerm}
-          onClick={() => {
-            if (state.firstSelectedTerm) {
+        <div>
+          <input
+            value={state.text}
+            onChange={(event) =>
+              setState(state.setText(event.currentTarget.value))
+            }
+          />
+          <button
+            onClick={() => {
+              const [newSource, newTermId] = state.source.createTerm(
+                state.text
+              );
               setState(
                 state
-                  .setSource(state.source.removeTerm(state.firstSelectedTerm))
-                  .setFirstSelectedTerm(null)
+                  .setSource(newSource)
+                  .setText("")
+                  .setFirstSelectedTerm(newTermId)
               );
-            }
-          }}
-        >
-          remove term
-        </button>
-        <button
-          disabled={!state.firstSelectedTerm}
-          onClick={() => {
-            if (state.firstSelectedTerm) {
-              setState(
-                state.setSource(
-                  state.source.renameTerm(state.firstSelectedTerm, state.text)
-                )
-              );
-            }
-          }}
-        >
-          rename term
-        </button>
-        <button
-          disabled={!state.firstSelectedTerm || !state.secondSelectedTerm}
-          onClick={() => {
-            if (state.firstSelectedTerm && state.secondSelectedTerm) {
-              setState(
-                state.setSource(
-                  state.source.addParameter(
-                    state.firstSelectedTerm,
-                    state.secondSelectedTerm
+            }}
+          >
+            create term
+          </button>
+          <button
+            disabled={!state.firstSelectedTerm}
+            onClick={() => {
+              if (state.firstSelectedTerm) {
+                setState(
+                  state
+                    .setSource(state.source.removeTerm(state.firstSelectedTerm))
+                    .setFirstSelectedTerm(null)
+                );
+              }
+            }}
+          >
+            remove term
+          </button>
+          <button
+            disabled={!state.firstSelectedTerm}
+            onClick={() => {
+              if (state.firstSelectedTerm) {
+                setState(
+                  state.setSource(
+                    state.source.renameTerm(state.firstSelectedTerm, state.text)
                   )
-                )
-              );
-            }
-          }}
-        >
-          add parameter
-        </button>
-        <button
-          disabled={!state.firstSelectedTerm || !state.secondSelectedTerm}
-          onClick={() => {
-            if (state.firstSelectedTerm && state.secondSelectedTerm) {
-              setState(
-                state.setSource(
-                  state.source.removeParameter(
-                    state.firstSelectedTerm,
-                    state.secondSelectedTerm
+                );
+              }
+            }}
+          >
+            rename term
+          </button>
+          <button
+            disabled={!state.firstSelectedTerm || !state.secondSelectedTerm}
+            onClick={() => {
+              if (state.firstSelectedTerm && state.secondSelectedTerm) {
+                setState(
+                  state.setSource(
+                    state.source.addParameter(
+                      state.firstSelectedTerm,
+                      state.secondSelectedTerm
+                    )
                   )
-                )
-              );
-            }
-          }}
-        >
-          remove parameter
-        </button>
-        <button
-          disabled={!state.firstSelectedTerm}
-          onClick={() => {
-            if (state.firstSelectedTerm) {
-              setState(
-                state.setSource(
-                  state.source.setReference(
-                    state.firstSelectedTerm,
-                    state.secondSelectedTerm ?? null
+                );
+              }
+            }}
+          >
+            add parameter
+          </button>
+          <button
+            disabled={!state.firstSelectedTerm || !state.secondSelectedTerm}
+            onClick={() => {
+              if (state.firstSelectedTerm && state.secondSelectedTerm) {
+                setState(
+                  state.setSource(
+                    state.source.removeParameter(
+                      state.firstSelectedTerm,
+                      state.secondSelectedTerm
+                    )
                   )
-                )
-              );
-            }
-          }}
-        >
-          set reference
-        </button>
-        <button
-          disabled={!state.firstSelectedTerm || !state.secondSelectedTerm}
-          onClick={() => {
-            if (state.firstSelectedTerm && state.secondSelectedTerm) {
-              setState(
-                state.setSource(
-                  state.source.setBinding(
-                    state.firstSelectedTerm,
-                    state.secondSelectedTerm,
-                    state.thirdSelectedTerm
+                );
+              }
+            }}
+          >
+            remove parameter
+          </button>
+          <button
+            disabled={!state.firstSelectedTerm}
+            onClick={() => {
+              if (state.firstSelectedTerm) {
+                setState(
+                  state.setSource(
+                    state.source.setReference(
+                      state.firstSelectedTerm,
+                      state.secondSelectedTerm ?? null
+                    )
                   )
-                )
-              );
+                );
+              }
+            }}
+          >
+            set reference
+          </button>
+          <button
+            disabled={!state.firstSelectedTerm || !state.secondSelectedTerm}
+            onClick={() => {
+              if (state.firstSelectedTerm && state.secondSelectedTerm) {
+                setState(
+                  state.setSource(
+                    state.source.setBinding(
+                      state.firstSelectedTerm,
+                      state.secondSelectedTerm,
+                      state.thirdSelectedTerm
+                    )
+                  )
+                );
+              }
+            }}
+          >
+            set binding
+          </button>
+        </div>
+        <div
+          onClick={(event) => {
+            if (event.currentTarget === event.target) {
+              if (event.altKey) {
+                setState(state.setThirdSelectedTerm(null));
+              } else if (event.ctrlKey) {
+                setState(state.setSecondSelectedTerm(null));
+              } else {
+                setState(state.setFirstSelectedTerm(null));
+              }
             }
           }}
         >
-          set binding
-        </button>
-      </div>
-      <div
-        onClick={(event) => {
-          if (event.currentTarget === event.target) {
-            if (event.altKey) {
-              setState(state.setThirdSelectedTerm(null));
-            } else if (event.ctrlKey) {
-              setState(state.setSecondSelectedTerm(null));
-            } else {
-              setState(state.setFirstSelectedTerm(null));
-            }
+          {[...state.formatter.roots.keys()].map((key) => {
+            const value = state.source.terms.get(key, TermData.empty());
+            return (
+              <React.Fragment key={key.id}>
+                <TermView termId={key} state={state} onStateChange={setState} />
+                {(value.reference !== null ||
+                  value.parameters.size > 0 ||
+                  value.bindings.size > 0) && (
+                  <React.Fragment> = </React.Fragment>
+                )}
+                <ValueView
+                  termId={key}
+                  state={state}
+                  onStateChange={setState}
+                />
+                <br />
+              </React.Fragment>
+            );
+          })}
+        </div>
+        <textarea
+          value={state.source.toJSON()}
+          onChange={(event) =>
+            setState(
+              state.setSource(Source.fromJSON(event.currentTarget.value))
+            )
           }
-        }}
-      >
-        {[...state.formatter.roots.keys()].map((key) => {
-          const value = state.source.terms.get(key, TermData.empty());
-          return (
-            <React.Fragment key={key.id}>
-              <TermView termId={key} state={state} onStateChange={setState} />
-              {(value.reference !== null ||
-                value.parameters.size > 0 ||
-                value.bindings.size > 0) && (
-                <React.Fragment> = </React.Fragment>
-              )}
-              <ValueView termId={key} state={state} onStateChange={setState} />
-              <br />
-            </React.Fragment>
-          );
-        })}
+        ></textarea>
       </div>
-      <textarea
-        value={state.source.toJSON()}
-        onChange={(event) =>
-          setState(state.setSource(Source.fromJSON(event.currentTarget.value)))
-        }
-      ></textarea>
     </div>
   );
 }
