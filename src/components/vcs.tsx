@@ -8,6 +8,7 @@ type Repository<CommitId extends string, Source> = {
     source: Source;
     previous: Set<CommitId>;
     date: Date;
+    author: string;
     description: string;
   }): Repository<CommitId, Source>;
   getCommit(params: { commitId: CommitId }):
@@ -112,12 +113,11 @@ function plotGraph<CommitId extends string, Source>(
   repository: Repository<CommitId, Source>
 ) {
   let coordinates = Immutable.Map<CommitId, { x: number; y: number }>();
-  repository
-    .getCommitsByDate()
-    .forEach(
-      (commitId, index) =>
-        (coordinates = coordinates.set(commitId, { x: 0, y: index + 1 }))
-    );
+  const commitsByDate = repository.getCommitsByDate();
+  for (let i = 0; i < commitsByDate.length; i++) {
+    const commitId = commitsByDate[i];
+    coordinates = coordinates.set(commitId, { x: 0, y: i + 1 });
+  }
   let x = 0;
   const loop = (commitId: CommitId) => {
     const coord = coordinates.get(commitId) as { x: number; y: number };
@@ -134,27 +134,27 @@ function plotGraph<CommitId extends string, Source>(
     x++;
     loop(rootCommitId);
   }
-  return [coordinates, x] as const;
+  return { coordinates, width: x, height: commitsByDate.length };
 }
 
 function VersionControlGraph<CommitId extends string, Source>({
   repository,
   selected,
   onSelect,
+  width = 400,
 }: {
   repository: Repository<CommitId, Source>;
-  selected: CommitId | null;
-  onSelect(commitId: CommitId): void;
+  selected: Set<CommitId>;
+  onSelect(commitIds: Set<CommitId>): void;
+  width?: number;
 }) {
   const verticalGap = 20;
   const horizontalGap = 20;
   const color = "white";
-  const width = 400;
-  const height = 600;
-  const [coordinates, graphWidth] = plotGraph(repository);
+  const graph = plotGraph(repository);
   return (
-    <svg width={width} height={height}>
-      {Array.from(coordinates.entries(), ([commitId, { x, y }]) => {
+    <svg width={width} height={graph.height * verticalGap}>
+      {Array.from(graph.coordinates.entries(), ([commitId, { x, y }]) => {
         const commit = repository.getCommit({ commitId });
         return (
           <g key={commitId}>
@@ -165,7 +165,7 @@ function VersionControlGraph<CommitId extends string, Source>({
               fill={color}
             />
             <text
-              x={graphWidth * horizontalGap}
+              x={graph.width * horizontalGap}
               y={y * verticalGap - verticalGap / 2}
               fill={color}
               dominantBaseline="middle"
@@ -174,7 +174,7 @@ function VersionControlGraph<CommitId extends string, Source>({
             </text>
             {[...repository.getPreviousCommits(commitId)].map(
               (previousCommitId) => {
-                const prev = coordinates.get(previousCommitId) as {
+                const prev = graph.coordinates.get(previousCommitId) as {
                   x: number;
                   y: number;
                 };
@@ -191,11 +191,15 @@ function VersionControlGraph<CommitId extends string, Source>({
                   d = `
                     M ${from.x} ${from.y}
                     L ${to.x + (from.x - to.x)} ${to.y - verticalGap}
-                    Q ${to.x + (from.x - to.x)} ${to.y} ${to.x} ${to.y}`;
+                    Q ${to.x + (from.x - to.x)} ${to.y} ${
+                    to.x + (from.x - to.x) - horizontalGap
+                  } ${to.y}
+                    L ${to.x} ${to.y}`;
                 }
                 if (from.x < to.x) {
                   d = `
                     M ${from.x} ${from.y}
+                    L ${from.x + (to.x - from.x) - horizontalGap} ${from.y}
                     Q ${from.x + (to.x - from.x)} ${from.y} ${
                     from.x + (to.x - from.x)
                   } ${from.y + verticalGap}
@@ -218,14 +222,20 @@ function VersionControlGraph<CommitId extends string, Source>({
               width={width}
               height={verticalGap}
               css={css`
-                opacity: ${commitId === selected ? "0.5" : "0"};
+                opacity: ${selected.has(commitId) ? "0.5" : "0"};
                 fill: ${color};
                 :hover {
                   fill: ${color};
                   opacity: 0.2;
                 }
               `}
-              onClick={() => onSelect(commitId)}
+              onClick={(event) => {
+                if (event.ctrlKey) {
+                  onSelect(new Set([...selected, commitId]));
+                } else {
+                  onSelect(new Set([commitId]));
+                }
+              }}
             />
           </g>
         );
@@ -243,37 +253,9 @@ export function VersionControlUI<CommitId extends string, Source>({
   const [repository, setRepository] = React.useState(
     naiveRepository<CommitId, Source>()
   );
-  const [currentCommitId, setCurrentCommitId] = React.useState<CommitId | null>(
-    null
-  );
+  const [selected, setSelected] = React.useState<Set<CommitId>>(new Set());
+  const [author, setAuthor] = React.useState("");
   const [description, setDescription] = React.useState("");
-  React.useEffect(() => {
-    setCurrentCommitId("3" as any);
-    setRepository((repository) =>
-      repository
-        .addCommit({
-          commitId: "1" as CommitId,
-          date: new Date("2001"),
-          description: "first",
-          source: null as any,
-          previous: new Set([]),
-        })
-        .addCommit({
-          commitId: "2" as CommitId,
-          date: new Date("2002"),
-          description: "second",
-          source: null as any,
-          previous: new Set(["1" as CommitId]),
-        })
-        .addCommit({
-          commitId: "3" as CommitId,
-          date: new Date("2003"),
-          description: "third",
-          source: null as any,
-          previous: new Set(["1" as CommitId]),
-        })
-    );
-  }, []);
   return (
     <div
       css={css`
@@ -285,6 +267,18 @@ export function VersionControlUI<CommitId extends string, Source>({
           width: ${width};
         `}
       >
+        <label>author</label>:
+        <input
+          value={author}
+          onChange={(event) => setAuthor(event.currentTarget.value)}
+        />
+      </div>
+      <div
+        css={css`
+          width: ${width};
+        `}
+      >
+        <label>description</label>:
         <textarea
           value={description}
           onChange={(event) => setDescription(event.currentTarget.value)}
@@ -294,20 +288,27 @@ export function VersionControlUI<CommitId extends string, Source>({
           `}
         />
       </div>
+      <div>
+        <div>previous({selected.size}):</div>
+        {[...selected].map((commitId) => {
+          return <div key={commitId}>{commitId}</div>;
+        })}
+      </div>
       <button
         onClick={() => {
           const commitId = Math.random().toString() as CommitId;
           setRepository(
             repository.addCommit({
               commitId,
-              date: new Date(),
-              previous: new Set(currentCommitId ? [currentCommitId] : []),
               source,
+              previous: new Set(selected.size > 0 ? [...selected] : []),
+              date: new Date(),
+              author,
               description,
             })
           );
           setDescription("");
-          setCurrentCommitId(commitId);
+          setSelected(new Set([commitId]));
         }}
         css={css`
           width: ${width};
@@ -315,11 +316,22 @@ export function VersionControlUI<CommitId extends string, Source>({
       >
         commit
       </button>
-      <VersionControlGraph<CommitId, Source>
-        repository={repository}
-        selected={currentCommitId}
-        onSelect={setCurrentCommitId}
-      />
+      <p>the new commit will be based on selected commits</p>
+      <p>click - select commit</p>
+      <p>ctrl + click - select more commits</p>
+      <div
+        css={css`
+          width: 400px;
+          height: 400px;
+          overflow: scroll;
+        `}
+      >
+        <VersionControlGraph<CommitId, Source>
+          repository={repository}
+          selected={selected}
+          onSelect={setSelected}
+        />
+      </div>
     </div>
   );
 }
