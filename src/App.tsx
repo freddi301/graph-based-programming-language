@@ -55,7 +55,7 @@ function AppLayout({
           "top top top"
           "left center right"
           "left bottom right";
-        grid-template-columns: 400px 1fr 400px;
+        grid-template-columns: 400px 1fr 0px;
         grid-template-rows: 20px 1fr 400px;
       `}
     >
@@ -152,7 +152,6 @@ function RenderValue({
             );
           })}
           {editorState.type === "parameters" &&
-            editorState.termId === termId &&
             editorState.termId === termId && (
               <RenderContextualActions
                 source={source}
@@ -194,11 +193,17 @@ function RenderValue({
                   termId={key}
                   source={source}
                   onClick={() => {
-                    // TODO
+                    onEditorStateChange({
+                      type: "binding",
+                      termId,
+                      keyTermId: key,
+                      text: (val && source.terms.get(val)?.label) ?? "",
+                    });
                   }}
                 />
                 {" = "}
                 {editorState.type === "binding" &&
+                  editorState.termId === termId &&
                   editorState.keyTermId === key && (
                     <RenderContextualActions
                       source={source}
@@ -228,7 +233,8 @@ function RenderValue({
                   )
                 ) : null}
                 {(index < value.bindings.size - 1 ||
-                  editorState.type === "bindings") &&
+                  (editorState.type === "bindings" &&
+                    editorState.termId === termId)) &&
                   ", "}
               </React.Fragment>
             );
@@ -291,6 +297,8 @@ export function RenderRoot({
               value.parameters.size > 0 ||
               value.bindings.size > 0 ||
               (editorState.type === "reference" &&
+                editorState.termId === key) ||
+              (editorState.type === "parameters" &&
                 editorState.termId === key)) && (
               <React.Fragment> = </React.Fragment>
             )}

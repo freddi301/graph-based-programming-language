@@ -254,6 +254,16 @@ function deriveContextualActions(
     });
   }
 
+  if (editorState.type === "term") {
+    contextualActions.push({
+      display: <React.Fragment>delete</React.Fragment>,
+      updated: {
+        source: Source.removeTerm(source, editorState.termId),
+        editorState: { type: "root", text: "" },
+      },
+    });
+  }
+
   if (editorState.type === "bindings") {
     const [sourceWithNewTerm, newTermId] = Source.createTerm(
       source,
@@ -375,6 +385,43 @@ function deriveContextualActions(
     }
   }
 
+  if (editorState.type === "binding" && editorState.text) {
+    for (const [existingTermId, { label }] of source.terms.entries()) {
+      if (label.includes(editorState.text)) {
+        const [sourceWithNewTerm, newTermId] = Source.createTerm(source, "");
+        const sourceWithAddedBindingValue = Source.setBinding(
+          sourceWithNewTerm,
+          editorState.termId,
+          editorState.keyTermId,
+          newTermId
+        );
+        const sourceWithSetReference = Source.setReference(
+          sourceWithAddedBindingValue,
+          newTermId,
+          existingTermId
+        );
+        contextualActions.push({
+          display: (
+            <React.Fragment>
+              add new anonymous variable as binding value
+              <br />
+              with reference as existing variable{" "}
+              <strong>{editorState.text}</strong>
+            </React.Fragment>
+          ),
+          updated: {
+            source: sourceWithSetReference,
+            editorState: {
+              type: "bindings",
+              termId: newTermId,
+              text: "",
+            },
+          },
+        });
+      }
+    }
+  }
+
   if (editorState.type !== "root") {
     contextualActions.push({
       display: <React.Fragment>Escape</React.Fragment>,
@@ -456,7 +503,9 @@ export function RenderContextualActions({
             font-family: inherit;
             font-size: inherit;
             color: inherit;
-            width: ${editorState.text.length || 1}ch;
+            width: ${editorState.text.length
+              ? `${editorState.text.length}ch`
+              : "1px"};
           `}
         />
       )}
@@ -465,7 +514,7 @@ export function RenderContextualActions({
           left: 0px;
           top: 100%;
           position: absolute;
-          width: 400px;
+          width: 600px;
           height: 400px;
           overflow-y: scroll;
           background-color: var(--background-color);
@@ -482,10 +531,11 @@ export function RenderContextualActions({
                 background-color: ${index === selectedActionIndex
                   ? "var(--action-hover-background-color)"
                   : ""};
+                :hover {
+                  background-color: var(--action-hover-background-color);
+                }
+                padding: 0 1em;
               `}
-              onMouseOver={() => {
-                setSelectedActionIndex(index);
-              }}
               onClick={() => {
                 onSourceChange(action.updated.source);
                 onEditorStateChange(action.updated.editorState);
