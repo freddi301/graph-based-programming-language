@@ -1,4 +1,4 @@
-import { Map, ValueObject, hash } from "immutable";
+import { Map } from "immutable";
 import { Brand } from "./Brand";
 
 export type Source = {
@@ -69,7 +69,7 @@ export const Source = {
       })),
     };
   },
-  addBinding(
+  setBinding(
     source: Source,
     termId: TermId,
     keyTermId: TermId,

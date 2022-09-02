@@ -1,329 +1,318 @@
 import React from "react";
 import { css } from "styled-components/macro";
-import { EditorState } from "./components/Editor";
+import { EditorState, RenderContextualActions } from "./components/Editor";
 import { Formatter } from "./components/Formatter";
 import { Source, TermData, TermId } from "./components/Source";
+import { GlobalStyle } from "./components/theme";
 import { VersionControlUI } from "./components/vcs";
 
 export default function App() {
   const [source, setSource] = React.useState(Source.empty);
   const [editorState, setEditorState] = React.useState(EditorState.empty);
-  const formatter = Formatter(editorState.source);
+  const formatter = Formatter(source);
+  return (
+    <React.Fragment>
+      <GlobalStyle />
+      <AppLayout
+        top={null}
+        left={<VersionControlUI source={source} />}
+        center={
+          <RenderRoot
+            source={source}
+            onSourceChange={setSource}
+            editorState={editorState}
+            onEditorStateChange={setEditorState}
+            formatter={formatter}
+          />
+        }
+        bottom={null}
+        right={null}
+      />
+    </React.Fragment>
+  );
+}
+
+function AppLayout({
+  top,
+  left,
+  center,
+  bottom,
+  right,
+}: {
+  top: React.ReactNode;
+  left: React.ReactNode;
+  center: React.ReactNode;
+  bottom: React.ReactNode;
+  right: React.ReactNode;
+}) {
   return (
     <div
       css={css`
-        display: flex;
+        display: grid;
+        width: 100vw;
+        height: 100vh;
+        grid-template-areas:
+          "top top top"
+          "left center right"
+          "left bottom right";
+        grid-template-columns: 400px 1fr 400px;
+        grid-template-rows: 20px 1fr 400px;
       `}
     >
-      <VersionControlUI source={editorState.source} />
-      <div>
-        <div>
-          <input
-            value={editorState.text}
-            onChange={(event) => {
-              setEditorState((editorState) => ({
-                ...editorState,
-                text: event.currentTarget.value,
-              }));
-            }}
-          />
-          <button
-            onClick={() => {
-              const [newSource, newTermId] = Source.createTerm(
-                editorState.source,
-                editorState.text
-              );
-              setSource(newSource);
-              setEditorState((editorState) => ({
-                ...editorState,
-                text: "",
-                firstSelectedTerm: newTermId,
-              }));
-            }}
-          >
-            create term
-          </button>
-          <button
-            disabled={!editorState.firstSelectedTerm}
-            onClick={() => {
-              if (editorState.firstSelectedTerm) {
-                setSource(
-                  Source.removeTerm(source, editorState.firstSelectedTerm)
-                );
-                setEditorState((editorState) => ({
-                  ...editorState,
-                  firstSelectedTerm: null,
-                }));
-              }
-            }}
-          >
-            remove term
-          </button>
-          <button
-            disabled={!editorState.firstSelectedTerm}
-            onClick={() => {
-              if (editorState.firstSelectedTerm) {
-                setSource(
-                  Source.renameTerm(
-                    source,
-                    editorState.firstSelectedTerm,
-                    editorState.text
-                  )
-                );
-              }
-            }}
-          >
-            rename term
-          </button>
-          <button
-            disabled={
-              !editorState.firstSelectedTerm || !editorState.secondSelectedTerm
-            }
-            onClick={() => {
-              if (
-                editorState.firstSelectedTerm &&
-                editorState.secondSelectedTerm
-              ) {
-                setSource(
-                  Source.addParameter(
-                    source,
-                    editorState.firstSelectedTerm,
-                    editorState.secondSelectedTerm
-                  )
-                );
-              }
-            }}
-          >
-            add parameter
-          </button>
-          <button
-            disabled={
-              !editorState.firstSelectedTerm || !editorState.secondSelectedTerm
-            }
-            onClick={() => {
-              if (
-                editorState.firstSelectedTerm &&
-                editorState.secondSelectedTerm
-              ) {
-                setSource(
-                  Source.removeParameter(
-                    source,
-                    editorState.firstSelectedTerm,
-                    editorState.secondSelectedTerm
-                  )
-                );
-              }
-            }}
-          >
-            remove parameter
-          </button>
-          <button
-            disabled={!editorState.firstSelectedTerm}
-            onClick={() => {
-              if (editorState.firstSelectedTerm) {
-                setSource(
-                  Source.setReference(
-                    source,
-                    editorState.firstSelectedTerm,
-                    editorState.secondSelectedTerm
-                  )
-                );
-              }
-            }}
-          >
-            set reference
-          </button>
-          <button
-            disabled={
-              !editorState.firstSelectedTerm || !editorState.secondSelectedTerm
-            }
-            onClick={() => {
-              if (
-                editorState.firstSelectedTerm &&
-                editorState.secondSelectedTerm
-              ) {
-                setSource(
-                  Source.addBinding(
-                    source,
-                    editorState.firstSelectedTerm,
-                    editorState.secondSelectedTerm,
-                    editorState.thirdSelectedTerm
-                  )
-                );
-              }
-            }}
-          >
-            set binding
-          </button>
-        </div>
-        <div
-          onClick={(event) => {
-            if (event.currentTarget === event.target) {
-              if (event.altKey) {
-                setEditorState((editorState) => ({
-                  ...editorState,
-                  thirdSelectedTerm: null,
-                }));
-              } else if (event.ctrlKey) {
-                setEditorState((editorState) => ({
-                  ...editorState,
-                  secondSelectedTerm: null,
-                }));
-              } else {
-                setEditorState((editorState) => ({
-                  ...editorState,
-                  firstSelectedTerm: null,
-                }));
-              }
-            }
-          }}
-        >
-          {[...formatter.roots.keys()].map((key) => {
-            const value = editorState.source.terms.get(key, TermData.empty);
-            return (
-              <React.Fragment key={key}>
-                <TermView
-                  termId={key}
-                  state={editorState}
-                  onStateChange={setEditorState}
-                />
-                {(value.reference !== null ||
-                  value.parameters.size > 0 ||
-                  value.bindings.size > 0) && (
-                  <React.Fragment> = </React.Fragment>
-                )}
-                <ValueView
-                  termId={key}
-                  state={editorState}
-                  onStateChange={setEditorState}
-                  formatter={formatter}
-                />
-                <br />
-              </React.Fragment>
-            );
-          })}
-        </div>
-        <textarea
-          value={Source.toJSON(editorState.source)}
-          onChange={(event) => {
-            setSource(Source.fromJSON(event.currentTarget.value));
-          }}
-        ></textarea>
+      <div
+        css={css`
+          grid-area: top;
+        `}
+      >
+        {top}
+      </div>
+      <div
+        css={css`
+          grid-area: left;
+        `}
+      >
+        {left}
+      </div>
+      <div
+        css={css`
+          grid-area: center;
+        `}
+      >
+        {center}
+      </div>
+      <div
+        css={css`
+          grid-area: bottom;
+        `}
+      >
+        {bottom}
+      </div>
+      <div
+        css={css`
+          grid-area: right;
+        `}
+      >
+        {right}
       </div>
     </div>
   );
 }
 
-function TermView({
+function RenderTerm({
+  source,
   termId,
-  state,
-  onStateChange,
+  onClick,
 }: {
   termId: TermId;
-  state: EditorState;
-  onStateChange(state: EditorState): void;
+  source: Source;
+  onClick(): void;
 }) {
-  const { label } = state.source.terms.get(termId, TermData.empty);
-  return (
-    <span
-      onClick={(event) => {
-        if (event.altKey) {
-          onStateChange({ ...state, thirdSelectedTerm: termId });
-        } else if (event.ctrlKey) {
-          onStateChange({ ...state, secondSelectedTerm: termId });
-        } else {
-          onStateChange({ ...state, firstSelectedTerm: termId });
-        }
-      }}
-      css={css`
-        text-decoration: ${state.firstSelectedTerm &&
-        termId === state.firstSelectedTerm
-          ? "underline solid"
-          : state.secondSelectedTerm && termId === state.secondSelectedTerm
-          ? "underline wavy"
-          : state.thirdSelectedTerm && termId === state.thirdSelectedTerm
-          ? "underline dashed"
-          : ""};
-      `}
-    >
-      {label || `<${termId}>`}
-    </span>
-  );
+  const { label } = source.terms.get(termId, TermData.empty);
+  return <span onClick={onClick}>{label || `<${termId}>`}</span>;
 }
 
-function ValueView({
+function RenderValue({
   termId,
-  state,
-  onStateChange,
+  source,
+  onSourceChange,
   formatter,
+  editorState,
+  onEditorStateChange,
 }: {
   termId: TermId;
-  state: EditorState;
-  onStateChange(state: EditorState): void;
+  source: Source;
+  onSourceChange(source: Source): void;
   formatter: Formatter;
+  editorState: EditorState;
+  onEditorStateChange(editorState: EditorState): void;
 }) {
-  const value = state.source.terms.get(termId, TermData.empty);
+  const value = source.terms.get(termId, TermData.empty);
   return (
     <React.Fragment>
-      {value.parameters.size > 0 && (
+      {(value.parameters.size > 0 ||
+        (editorState.type === "parameters" &&
+          editorState.termId === termId)) && (
         <React.Fragment>
           (
           {Array.from(value.parameters.entries(), ([key], index) => {
             return (
               <React.Fragment key={key}>
-                <TermView
+                <RenderTerm
                   termId={key}
-                  state={state}
-                  onStateChange={onStateChange}
+                  source={source}
+                  onClick={() => {
+                    // TODO
+                  }}
                 />
-                {index < value.parameters.size - 1 && ", "}
+                {(index < value.parameters.size - 1 ||
+                  (editorState.type === "parameters" &&
+                    editorState.termId === termId)) &&
+                  ", "}
               </React.Fragment>
             );
           })}
+          {editorState.type === "parameters" &&
+            editorState.termId === termId &&
+            editorState.termId === termId && (
+              <RenderContextualActions
+                source={source}
+                onSourceChange={onSourceChange}
+                editorState={editorState}
+                onEditorStateChange={onEditorStateChange}
+              />
+            )}
           ){" => "}
         </React.Fragment>
       )}
-      {value.reference && (
-        <TermView
-          termId={value.reference}
-          state={state}
-          onStateChange={onStateChange}
+      {editorState.type === "reference" && editorState.termId === termId ? (
+        <RenderContextualActions
+          source={source}
+          onSourceChange={onSourceChange}
+          editorState={editorState}
+          onEditorStateChange={onEditorStateChange}
         />
+      ) : (
+        value.reference && (
+          <RenderTerm
+            termId={value.reference}
+            source={source}
+            onClick={() => {
+              // TODO
+            }}
+          />
+        )
       )}
-      {value.bindings.size > 0 && (
+      {(value.bindings.size > 0 ||
+        (editorState.type === "bindings" && editorState.termId === termId) ||
+        (editorState.type === "binding" && editorState.termId === termId)) && (
         <React.Fragment>
           (
           {Array.from(value.bindings.entries(), ([key, val], index) => {
             return (
               <React.Fragment key={key}>
-                <TermView
+                <RenderTerm
                   termId={key}
-                  state={state}
-                  onStateChange={onStateChange}
+                  source={source}
+                  onClick={() => {
+                    // TODO
+                  }}
                 />
                 {" = "}
+                {editorState.type === "binding" &&
+                  editorState.keyTermId === key && (
+                    <RenderContextualActions
+                      source={source}
+                      onSourceChange={onSourceChange}
+                      editorState={editorState}
+                      onEditorStateChange={onEditorStateChange}
+                    />
+                  )}
                 {val ? (
                   formatter.roots.has(val) ? (
-                    <TermView
+                    <RenderTerm
                       termId={val}
-                      state={state}
-                      onStateChange={onStateChange}
+                      source={source}
+                      onClick={() => {
+                        // TODO
+                      }}
                     />
                   ) : (
-                    <ValueView
+                    <RenderValue
                       termId={val}
-                      state={state}
-                      onStateChange={onStateChange}
+                      source={source}
+                      onSourceChange={onSourceChange}
+                      editorState={editorState}
+                      onEditorStateChange={onEditorStateChange}
                       formatter={formatter}
                     />
                   )
                 ) : null}
-                {index < value.bindings.size - 1 && ", "}
+                {(index < value.bindings.size - 1 ||
+                  editorState.type === "bindings") &&
+                  ", "}
               </React.Fragment>
             );
           })}
+          {editorState.type === "bindings" && editorState.termId === termId && (
+            <RenderContextualActions
+              source={source}
+              onSourceChange={onSourceChange}
+              editorState={editorState}
+              onEditorStateChange={onEditorStateChange}
+            />
+          )}
           )
         </React.Fragment>
+      )}
+    </React.Fragment>
+  );
+}
+
+export function RenderRoot({
+  source,
+  onSourceChange,
+  formatter,
+  editorState,
+  onEditorStateChange,
+}: {
+  source: Source;
+  onSourceChange(source: Source): void;
+  formatter: Formatter;
+  editorState: EditorState;
+  onEditorStateChange(editorState: EditorState): void;
+}) {
+  return (
+    <React.Fragment>
+      {[...formatter.roots.keys()].map((key) => {
+        const value = source.terms.get(key, TermData.empty);
+        return (
+          <React.Fragment key={key}>
+            {editorState.type === "term" && editorState.termId === key ? (
+              <RenderContextualActions
+                source={source}
+                onSourceChange={onSourceChange}
+                editorState={editorState}
+                onEditorStateChange={onEditorStateChange}
+              />
+            ) : (
+              <RenderTerm
+                termId={key}
+                source={source}
+                onClick={() =>
+                  onEditorStateChange({
+                    type: "term",
+                    termId: key,
+                    text: value.label,
+                  })
+                }
+              />
+            )}
+            {(value.reference !== null ||
+              value.parameters.size > 0 ||
+              value.bindings.size > 0 ||
+              (editorState.type === "reference" &&
+                editorState.termId === key)) && (
+              <React.Fragment> = </React.Fragment>
+            )}
+            <RenderValue
+              termId={key}
+              source={source}
+              onSourceChange={onSourceChange}
+              editorState={editorState}
+              onEditorStateChange={onEditorStateChange}
+              formatter={formatter}
+            />
+            <br />
+          </React.Fragment>
+        );
+      })}
+      {editorState.type === "root" && (
+        <RenderContextualActions
+          source={source}
+          onSourceChange={onSourceChange}
+          editorState={editorState}
+          onEditorStateChange={onEditorStateChange}
+        />
       )}
     </React.Fragment>
   );
