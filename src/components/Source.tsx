@@ -1,79 +1,116 @@
 import { Map, ValueObject, hash } from "immutable";
+import { Brand } from "./Brand";
 
-export class Source {
-  private constructor(public readonly terms: Map<TermId, TermData>) {}
-  static empty() {
-    return new Source(Map());
-  }
-  setTerm(termId: TermId, termData: TermData) {
-    return new Source(this.terms.set(termId, termData));
-  }
-  createTerm(label: string) {
+export type Source = {
+  terms: Map<TermId, TermData>;
+};
+export const Source = {
+  empty: { terms: Map() } as Source,
+  setTerm(source: Source, termId: TermId, termData: TermData): Source {
+    return { terms: source.terms.set(termId, termData) };
+  },
+  createTerm(source: Source, label: string): [Source, TermId] {
     const termId = TermId.create();
-    const termData = TermData.empty().setLabel(label);
-    const newSource = new Source(this.terms.set(termId, termData));
-    return [newSource, termId] as const;
-  }
-  removeTerm(termId: TermId) {
-    return new Source(this.terms.remove(termId));
-  }
-  renameTerm(termId: TermId, label: string) {
-    return new Source(
-      this.terms.update(termId, TermData.empty(), (termData) =>
-        termData.setLabel(label)
-      )
-    );
-  }
-  addParameter(functionTermId: TermId, parameterTermId: TermId) {
-    return new Source(
-      this.terms.update(functionTermId, TermData.empty(), (termData) =>
-        termData.addParameter(parameterTermId)
-      )
-    );
-  }
-  removeParameter(functionTermId: TermId, parameterTermId: TermId) {
-    return new Source(
-      this.terms.update(functionTermId, TermData.empty(), (termData) =>
-        termData.removeParameter(parameterTermId)
-      )
-    );
-  }
-  setReference(termId: TermId, referenceTermId: TermId | null) {
-    return new Source(
-      this.terms.update(termId, TermData.empty(), (termData) =>
-        termData.setReference(referenceTermId)
-      )
-    );
-  }
-  setBinding(termId: TermId, keyTermId: TermId, valueTermId: TermId | null) {
-    return new Source(
-      this.terms.update(termId, TermData.empty(), (termData) =>
-        termData.setBinding(keyTermId, valueTermId)
-      )
-    );
-  }
-  toJSON(): string {
-    const terms = this.terms;
+    return [
+      { terms: source.terms.set(termId, { ...TermData.empty, label }) },
+      termId,
+    ];
+  },
+  removeTerm(source: Source, termId: TermId): Source {
+    return { terms: source.terms.delete(termId) };
+  },
+  renameTerm(source: Source, termId: TermId, label: string): Source {
+    return {
+      terms: source.terms.update(termId, (termData = TermData.empty) => ({
+        ...termData,
+        label,
+      })),
+    };
+  },
+  addParameter(
+    source: Source,
+    functionTermId: TermId,
+    parameterTermId: TermId
+  ): Source {
+    return {
+      terms: source.terms.update(
+        functionTermId,
+        (termData = TermData.empty) => ({
+          ...termData,
+          parameters: termData.parameters.set(parameterTermId, null),
+        })
+      ),
+    };
+  },
+  removeParameter(
+    source: Source,
+    functionTermId: TermId,
+    parameterTermId: TermId
+  ): Source {
+    return {
+      terms: source.terms.update(
+        functionTermId,
+        (termData = TermData.empty) => ({
+          ...termData,
+          parameters: termData.parameters.delete(parameterTermId),
+        })
+      ),
+    };
+  },
+  setReference(
+    source: Source,
+    termId: TermId,
+    referenceTermId: TermId | null
+  ): Source {
+    return {
+      terms: source.terms.update(termId, (termData = TermData.empty) => ({
+        ...termData,
+        reference: referenceTermId,
+      })),
+    };
+  },
+  addBinding(
+    source: Source,
+    termId: TermId,
+    keyTermId: TermId,
+    valueTermId: TermId | null
+  ): Source {
+    return {
+      terms: source.terms.update(termId, (termData = TermData.empty) => ({
+        ...termData,
+        bindings: termData.bindings.set(keyTermId, valueTermId),
+      })),
+    };
+  },
+  removeBinding(source: Source, termId: TermId, keyTermId: TermId): Source {
+    return {
+      terms: source.terms.update(termId, (termData = TermData.empty) => ({
+        ...termData,
+        bindings: termData.bindings.delete(keyTermId),
+      })),
+    };
+  },
+  toJSON(source: Source): string {
     return JSON.stringify(
       Object.fromEntries(
         (function* () {
-          for (const [key, value] of terms.entries()) {
+          for (const [key, value] of source.terms.entries()) {
             yield [
-              key.id,
+              key,
               {
                 label: value.label,
                 parameters: Object.fromEntries(
                   (function* () {
                     for (const [key] of value.parameters.entries()) {
-                      yield [key.id, null];
+                      yield [key, null];
                     }
                   })()
                 ),
-                reference: value.reference?.id ?? null,
+                reference: value.reference,
                 bindings: Object.fromEntries(
                   (function* () {
                     for (const [key, val] of value.bindings.entries()) {
-                      yield [key.id, val.id];
+                      yield [key, val];
                     }
                   })()
                 ),
@@ -85,88 +122,54 @@ export class Source {
       null,
       2
     );
-  }
-  static fromJSON(json: string) {
+  },
+  fromJSON(json: string) {
     const parsed = JSON.parse(json);
     const source = Object.entries(parsed).reduce(
       (source, [termId, { label, parameters, reference, bindings }]: any) =>
-        source.setTerm(
-          TermId.fromString(termId),
+        Source.setTerm(
+          source,
+          termId,
           Object.entries(bindings).reduce(
-            (termData, [key, value]: any) =>
-              termData.setBinding(
-                TermId.fromString(key),
-                TermId.fromString(value)
-              ),
+            (termData, [key, value]: any) => ({
+              ...termData,
+              bindings: termData.bindings.set(key, value),
+            }),
             Object.entries(parameters).reduce(
-              (termData, [key]) =>
-                termData.addParameter(TermId.fromString(key)),
-              TermData.empty()
-                .setLabel(label)
-                .setReference(reference ? TermId.fromString(reference) : null)
+              (termData, [key]) => ({
+                ...termData,
+                parameters: termData.parameters.set(key as TermId, null),
+              }),
+              { ...TermData.empty, label, reference }
             )
           )
         ),
-      Source.empty()
+      Source.empty
     );
     return source;
-  }
-}
-export class TermId implements ValueObject {
-  private constructor(public readonly id: string) {}
-  static create() {
-    return new TermId((Math.random() * 100000000000000000).toString(16));
-  }
-  static fromString(string: string) {
-    return new TermId(string);
-  }
-  equals(other: this): boolean {
-    return this.id === other.id;
-  }
-  hashCode(): number {
-    return hash(this.id);
-  }
-}
-export class TermData {
-  private constructor(
-    readonly label: string,
-    readonly parameters: Map<TermId, null>,
-    readonly reference: TermId | null,
-    readonly bindings: Map<TermId, TermId>
-  ) {}
-  static empty() {
-    return new TermData("", Map(), null, Map());
-  }
-  setLabel(label: string) {
-    return new TermData(label, this.parameters, this.reference, this.bindings);
-  }
-  addParameter(termId: TermId) {
-    return new TermData(
-      this.label,
-      this.parameters.set(termId, null),
-      this.reference,
-      this.bindings
-    );
-  }
-  removeParameter(termId: TermId) {
-    return new TermData(
-      this.label,
-      this.parameters.remove(termId),
-      this.reference,
-      this.bindings
-    );
-  }
-  setReference(reference: TermId | null) {
-    return new TermData(this.label, this.parameters, reference, this.bindings);
-  }
-  setBinding(keyTermId: TermId, valueTermId: TermId | null) {
-    return new TermData(
-      this.label,
-      this.parameters,
-      this.reference,
-      valueTermId
-        ? this.bindings.set(keyTermId, valueTermId)
-        : this.bindings.remove(keyTermId)
-    );
-  }
-}
+  },
+};
+
+export type TermId = Brand<string, "TermId">;
+export const TermId = {
+  create(): TermId {
+    return Array.from(crypto.getRandomValues(new Uint8Array(32)))
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("") as TermId;
+  },
+};
+
+export type TermData = {
+  label: string;
+  parameters: Map<TermId, null>;
+  reference: TermId | null;
+  bindings: Map<TermId, TermId | null>;
+};
+export const TermData = {
+  empty: {
+    label: "",
+    parameters: Map(),
+    reference: null,
+    bindings: Map(),
+  } as TermData,
+};

@@ -1,62 +1,73 @@
 import React from "react";
 import { css } from "styled-components/macro";
+import { EditorState } from "./components/Editor";
 import { Formatter } from "./components/Formatter";
 import { Source, TermData, TermId } from "./components/Source";
 import { VersionControlUI } from "./components/vcs";
 
 export default function App() {
-  const [state, setState] = React.useState(EditorState.empty());
+  const [source, setSource] = React.useState(Source.empty);
+  const [editorState, setEditorState] = React.useState(EditorState.empty);
+  const formatter = Formatter(editorState.source);
   return (
     <div
       css={css`
         display: flex;
       `}
     >
-      <VersionControlUI source={state.source} />
+      <VersionControlUI source={editorState.source} />
       <div>
         <div>
           <input
-            value={state.text}
-            onChange={(event) =>
-              setState(state.setText(event.currentTarget.value))
-            }
+            value={editorState.text}
+            onChange={(event) => {
+              setEditorState((editorState) => ({
+                ...editorState,
+                text: event.currentTarget.value,
+              }));
+            }}
           />
           <button
             onClick={() => {
-              const [newSource, newTermId] = state.source.createTerm(
-                state.text
+              const [newSource, newTermId] = Source.createTerm(
+                editorState.source,
+                editorState.text
               );
-              setState(
-                state
-                  .setSource(newSource)
-                  .setText("")
-                  .setFirstSelectedTerm(newTermId)
-              );
+              setSource(newSource);
+              setEditorState((editorState) => ({
+                ...editorState,
+                text: "",
+                firstSelectedTerm: newTermId,
+              }));
             }}
           >
             create term
           </button>
           <button
-            disabled={!state.firstSelectedTerm}
+            disabled={!editorState.firstSelectedTerm}
             onClick={() => {
-              if (state.firstSelectedTerm) {
-                setState(
-                  state
-                    .setSource(state.source.removeTerm(state.firstSelectedTerm))
-                    .setFirstSelectedTerm(null)
+              if (editorState.firstSelectedTerm) {
+                setSource(
+                  Source.removeTerm(source, editorState.firstSelectedTerm)
                 );
+                setEditorState((editorState) => ({
+                  ...editorState,
+                  firstSelectedTerm: null,
+                }));
               }
             }}
           >
             remove term
           </button>
           <button
-            disabled={!state.firstSelectedTerm}
+            disabled={!editorState.firstSelectedTerm}
             onClick={() => {
-              if (state.firstSelectedTerm) {
-                setState(
-                  state.setSource(
-                    state.source.renameTerm(state.firstSelectedTerm, state.text)
+              if (editorState.firstSelectedTerm) {
+                setSource(
+                  Source.renameTerm(
+                    source,
+                    editorState.firstSelectedTerm,
+                    editorState.text
                   )
                 );
               }
@@ -65,15 +76,19 @@ export default function App() {
             rename term
           </button>
           <button
-            disabled={!state.firstSelectedTerm || !state.secondSelectedTerm}
+            disabled={
+              !editorState.firstSelectedTerm || !editorState.secondSelectedTerm
+            }
             onClick={() => {
-              if (state.firstSelectedTerm && state.secondSelectedTerm) {
-                setState(
-                  state.setSource(
-                    state.source.addParameter(
-                      state.firstSelectedTerm,
-                      state.secondSelectedTerm
-                    )
+              if (
+                editorState.firstSelectedTerm &&
+                editorState.secondSelectedTerm
+              ) {
+                setSource(
+                  Source.addParameter(
+                    source,
+                    editorState.firstSelectedTerm,
+                    editorState.secondSelectedTerm
                   )
                 );
               }
@@ -82,15 +97,19 @@ export default function App() {
             add parameter
           </button>
           <button
-            disabled={!state.firstSelectedTerm || !state.secondSelectedTerm}
+            disabled={
+              !editorState.firstSelectedTerm || !editorState.secondSelectedTerm
+            }
             onClick={() => {
-              if (state.firstSelectedTerm && state.secondSelectedTerm) {
-                setState(
-                  state.setSource(
-                    state.source.removeParameter(
-                      state.firstSelectedTerm,
-                      state.secondSelectedTerm
-                    )
+              if (
+                editorState.firstSelectedTerm &&
+                editorState.secondSelectedTerm
+              ) {
+                setSource(
+                  Source.removeParameter(
+                    source,
+                    editorState.firstSelectedTerm,
+                    editorState.secondSelectedTerm
                   )
                 );
               }
@@ -99,15 +118,14 @@ export default function App() {
             remove parameter
           </button>
           <button
-            disabled={!state.firstSelectedTerm}
+            disabled={!editorState.firstSelectedTerm}
             onClick={() => {
-              if (state.firstSelectedTerm) {
-                setState(
-                  state.setSource(
-                    state.source.setReference(
-                      state.firstSelectedTerm,
-                      state.secondSelectedTerm ?? null
-                    )
+              if (editorState.firstSelectedTerm) {
+                setSource(
+                  Source.setReference(
+                    source,
+                    editorState.firstSelectedTerm,
+                    editorState.secondSelectedTerm
                   )
                 );
               }
@@ -116,16 +134,20 @@ export default function App() {
             set reference
           </button>
           <button
-            disabled={!state.firstSelectedTerm || !state.secondSelectedTerm}
+            disabled={
+              !editorState.firstSelectedTerm || !editorState.secondSelectedTerm
+            }
             onClick={() => {
-              if (state.firstSelectedTerm && state.secondSelectedTerm) {
-                setState(
-                  state.setSource(
-                    state.source.setBinding(
-                      state.firstSelectedTerm,
-                      state.secondSelectedTerm,
-                      state.thirdSelectedTerm
-                    )
+              if (
+                editorState.firstSelectedTerm &&
+                editorState.secondSelectedTerm
+              ) {
+                setSource(
+                  Source.addBinding(
+                    source,
+                    editorState.firstSelectedTerm,
+                    editorState.secondSelectedTerm,
+                    editorState.thirdSelectedTerm
                   )
                 );
               }
@@ -138,20 +160,33 @@ export default function App() {
           onClick={(event) => {
             if (event.currentTarget === event.target) {
               if (event.altKey) {
-                setState(state.setThirdSelectedTerm(null));
+                setEditorState((editorState) => ({
+                  ...editorState,
+                  thirdSelectedTerm: null,
+                }));
               } else if (event.ctrlKey) {
-                setState(state.setSecondSelectedTerm(null));
+                setEditorState((editorState) => ({
+                  ...editorState,
+                  secondSelectedTerm: null,
+                }));
               } else {
-                setState(state.setFirstSelectedTerm(null));
+                setEditorState((editorState) => ({
+                  ...editorState,
+                  firstSelectedTerm: null,
+                }));
               }
             }
           }}
         >
-          {[...state.formatter.roots.keys()].map((key) => {
-            const value = state.source.terms.get(key, TermData.empty());
+          {[...formatter.roots.keys()].map((key) => {
+            const value = editorState.source.terms.get(key, TermData.empty);
             return (
-              <React.Fragment key={key.id}>
-                <TermView termId={key} state={state} onStateChange={setState} />
+              <React.Fragment key={key}>
+                <TermView
+                  termId={key}
+                  state={editorState}
+                  onStateChange={setEditorState}
+                />
                 {(value.reference !== null ||
                   value.parameters.size > 0 ||
                   value.bindings.size > 0) && (
@@ -159,8 +194,9 @@ export default function App() {
                 )}
                 <ValueView
                   termId={key}
-                  state={state}
-                  onStateChange={setState}
+                  state={editorState}
+                  onStateChange={setEditorState}
+                  formatter={formatter}
                 />
                 <br />
               </React.Fragment>
@@ -168,12 +204,10 @@ export default function App() {
           })}
         </div>
         <textarea
-          value={state.source.toJSON()}
-          onChange={(event) =>
-            setState(
-              state.setSource(Source.fromJSON(event.currentTarget.value))
-            )
-          }
+          value={Source.toJSON(editorState.source)}
+          onChange={(event) => {
+            setSource(Source.fromJSON(event.currentTarget.value));
+          }}
         ></textarea>
       </div>
     </div>
@@ -189,30 +223,30 @@ function TermView({
   state: EditorState;
   onStateChange(state: EditorState): void;
 }) {
-  const { label } = state.source.terms.get(termId, TermData.empty());
+  const { label } = state.source.terms.get(termId, TermData.empty);
   return (
     <span
       onClick={(event) => {
         if (event.altKey) {
-          onStateChange(state.setThirdSelectedTerm(termId));
+          onStateChange({ ...state, thirdSelectedTerm: termId });
         } else if (event.ctrlKey) {
-          onStateChange(state.setSecondSelectedTerm(termId));
+          onStateChange({ ...state, secondSelectedTerm: termId });
         } else {
-          onStateChange(state.setFirstSelectedTerm(termId).setText(label));
+          onStateChange({ ...state, firstSelectedTerm: termId });
         }
       }}
       css={css`
         text-decoration: ${state.firstSelectedTerm &&
-        termId.equals(state.firstSelectedTerm)
+        termId === state.firstSelectedTerm
           ? "underline solid"
-          : state.secondSelectedTerm && termId.equals(state.secondSelectedTerm)
+          : state.secondSelectedTerm && termId === state.secondSelectedTerm
           ? "underline wavy"
-          : state.thirdSelectedTerm && termId.equals(state.thirdSelectedTerm)
+          : state.thirdSelectedTerm && termId === state.thirdSelectedTerm
           ? "underline dashed"
           : ""};
       `}
     >
-      {label || `<${termId.id}>`}
+      {label || `<${termId}>`}
     </span>
   );
 }
@@ -221,12 +255,14 @@ function ValueView({
   termId,
   state,
   onStateChange,
+  formatter,
 }: {
   termId: TermId;
   state: EditorState;
   onStateChange(state: EditorState): void;
+  formatter: Formatter;
 }) {
-  const value = state.source.terms.get(termId, TermData.empty());
+  const value = state.source.terms.get(termId, TermData.empty);
   return (
     <React.Fragment>
       {value.parameters.size > 0 && (
@@ -234,7 +270,7 @@ function ValueView({
           (
           {Array.from(value.parameters.entries(), ([key], index) => {
             return (
-              <React.Fragment key={key.id}>
+              <React.Fragment key={key}>
                 <TermView
                   termId={key}
                   state={state}
@@ -259,26 +295,29 @@ function ValueView({
           (
           {Array.from(value.bindings.entries(), ([key, val], index) => {
             return (
-              <React.Fragment key={key.id}>
+              <React.Fragment key={key}>
                 <TermView
                   termId={key}
                   state={state}
                   onStateChange={onStateChange}
                 />
                 {" = "}
-                {state.formatter.roots.has(val) ? (
-                  <TermView
-                    termId={val}
-                    state={state}
-                    onStateChange={onStateChange}
-                  />
-                ) : (
-                  <ValueView
-                    termId={val}
-                    state={state}
-                    onStateChange={onStateChange}
-                  />
-                )}
+                {val ? (
+                  formatter.roots.has(val) ? (
+                    <TermView
+                      termId={val}
+                      state={state}
+                      onStateChange={onStateChange}
+                    />
+                  ) : (
+                    <ValueView
+                      termId={val}
+                      state={state}
+                      onStateChange={onStateChange}
+                      formatter={formatter}
+                    />
+                  )
+                ) : null}
                 {index < value.bindings.size - 1 && ", "}
               </React.Fragment>
             );
@@ -288,63 +327,4 @@ function ValueView({
       )}
     </React.Fragment>
   );
-}
-
-class EditorState {
-  private constructor(
-    public readonly source: Source,
-    public readonly text: string,
-    public readonly firstSelectedTerm: TermId | null,
-    public readonly secondSelectedTerm: TermId | null,
-    public readonly thirdSelectedTerm: TermId | null
-  ) {}
-  readonly formatter = new Formatter(this.source);
-  static empty() {
-    return new EditorState(Source.empty(), "", null, null, null);
-  }
-  setSource(source: Source) {
-    return new EditorState(
-      source,
-      this.text,
-      this.firstSelectedTerm,
-      this.secondSelectedTerm,
-      this.thirdSelectedTerm
-    );
-  }
-  setText(text: string) {
-    return new EditorState(
-      this.source,
-      text,
-      this.firstSelectedTerm,
-      this.secondSelectedTerm,
-      this.thirdSelectedTerm
-    );
-  }
-  setFirstSelectedTerm(termId: TermId | null) {
-    return new EditorState(
-      this.source,
-      this.text,
-      termId,
-      this.secondSelectedTerm,
-      this.thirdSelectedTerm
-    );
-  }
-  setSecondSelectedTerm(termId: TermId | null) {
-    return new EditorState(
-      this.source,
-      this.text,
-      this.firstSelectedTerm,
-      termId,
-      this.thirdSelectedTerm
-    );
-  }
-  setThirdSelectedTerm(termId: TermId | null) {
-    return new EditorState(
-      this.source,
-      this.text,
-      this.firstSelectedTerm,
-      this.secondSelectedTerm,
-      termId
-    );
-  }
 }
