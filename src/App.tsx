@@ -137,13 +137,36 @@ function RenderValue({
           {Array.from(value.parameters.entries(), ([key], index) => {
             return (
               <React.Fragment key={key}>
-                <RenderTerm
-                  termId={key}
-                  source={source}
-                  onClick={() => {
-                    // TODO
-                  }}
-                />
+                {editorState.type === "parameter" &&
+                editorState.termId === termId &&
+                editorState.parameterTermId === key ? (
+                  <RenderContextualActions
+                    source={source}
+                    onSourceChange={onSourceChange}
+                    editorState={editorState}
+                    onEditorStateChange={onEditorStateChange}
+                  >
+                    <RenderTerm
+                      termId={key}
+                      source={source}
+                      onClick={() => {}}
+                    />
+                  </RenderContextualActions>
+                ) : (
+                  <RenderTerm
+                    termId={key}
+                    source={source}
+                    onClick={() => {
+                      onEditorStateChange({
+                        type: "parameter",
+                        termId,
+                        parameterTermId: key,
+                        text: source.terms.get(key)?.label ?? "",
+                      });
+                    }}
+                  />
+                )}
+
                 {(index < value.parameters.size - 1 ||
                   (editorState.type === "parameters" &&
                     editorState.termId === termId)) &&
@@ -176,7 +199,14 @@ function RenderValue({
             termId={value.reference}
             source={source}
             onClick={() => {
-              // TODO
+              onEditorStateChange({
+                type: "reference",
+                termId: termId,
+                text:
+                  (value.reference &&
+                    source.terms.get(value.reference)?.label) ??
+                  "",
+              });
             }}
           />
         )
@@ -197,7 +227,7 @@ function RenderValue({
                       type: "binding",
                       termId,
                       keyTermId: key,
-                      text: (val && source.terms.get(val)?.label) ?? "",
+                      text: source.terms.get(key)?.label ?? "",
                     });
                   }}
                 />
@@ -218,7 +248,12 @@ function RenderValue({
                       termId={val}
                       source={source}
                       onClick={() => {
-                        // TODO
+                        onEditorStateChange({
+                          type: "binding",
+                          termId: termId,
+                          keyTermId: key,
+                          text: source.terms.get(key)?.label ?? "",
+                        });
                       }}
                     />
                   ) : (

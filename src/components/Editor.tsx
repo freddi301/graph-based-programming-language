@@ -17,6 +17,12 @@ export type EditorState =
       termId: TermId;
       text: string;
     }
+  | {
+      type: "parameter";
+      termId: TermId;
+      parameterTermId: TermId;
+      text: string;
+    }
   | { type: "reference"; termId: TermId; text: string }
   | { type: "bindings"; termId: TermId; text: string }
   | { type: "binding"; termId: TermId; keyTermId: TermId; text: string };
@@ -181,6 +187,25 @@ function deriveContextualActions(
           type: "reference",
           termId: editorState.termId,
           text: referenceTermData?.label ?? "",
+        },
+      },
+    });
+  }
+
+  if (editorState.type === "parameter") {
+    const termData = source.terms.get(editorState.parameterTermId);
+    contextualActions.push({
+      display: (
+        <React.Fragment>
+          remove <strong>{termData?.label}</strong> from parameters
+        </React.Fragment>
+      ),
+      updated: {
+        source: source,
+        editorState: {
+          type: "parameters",
+          termId: editorState.termId,
+          text: "",
         },
       },
     });
@@ -503,6 +528,7 @@ export function RenderContextualActions({
             font-family: inherit;
             font-size: inherit;
             color: inherit;
+            padding: 0;
             width: ${editorState.text.length
               ? `${editorState.text.length}ch`
               : "1px"};
