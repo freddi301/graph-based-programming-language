@@ -4,18 +4,35 @@ import { EditorState, RenderContextualActions } from "./components/Editor";
 import { Formatter } from "./components/Formatter";
 import { Source, TermData, TermId } from "./components/Source";
 import { GlobalStyle } from "./components/theme";
-import { VersionControlUI } from "./components/vcs";
+import { naiveRepository, VersionControlUI } from "./components/VersionControl";
 
 export default function App() {
   const [source, setSource] = React.useState(Source.empty);
   const [editorState, setEditorState] = React.useState(EditorState.empty);
   const formatter = Formatter(source);
+  const [repository, setRepository] = useLocalStorageState(
+    "repository",
+    naiveRepository<string, Source>(),
+    React.useCallback((repository) => repository.toJSON(Source.toJSON), []),
+    React.useCallback(
+      (serialized) =>
+        naiveRepository<string, Source>().fromJSON(serialized, Source.fromJSON),
+      []
+    )
+  );
   return (
     <React.Fragment>
       <GlobalStyle />
       <AppLayout
         top={null}
-        left={<VersionControlUI source={source} />}
+        left={
+          <VersionControlUI
+            source={source}
+            onSource={setSource}
+            repository={repository}
+            onRepositoryChange={setRepository}
+          />
+        }
         center={
           <RenderRoot
             source={source}
@@ -55,13 +72,15 @@ function AppLayout({
           "top top top"
           "left center right"
           "left bottom right";
-        grid-template-columns: 400px 1fr 0px;
+        grid-template-columns: 400px 1fr 10px;
         grid-template-rows: 20px 1fr 400px;
       `}
     >
       <div
         css={css`
           grid-area: top;
+          border-bottom: 1px solid var(--border-color);
+          box-sizing: border-box;
         `}
       >
         {top}
@@ -69,6 +88,8 @@ function AppLayout({
       <div
         css={css`
           grid-area: left;
+          border-right: 1px solid var(--border-color);
+          box-sizing: border-box;
         `}
       >
         {left}
@@ -76,6 +97,7 @@ function AppLayout({
       <div
         css={css`
           grid-area: center;
+          box-sizing: border-box;
         `}
       >
         {center}
@@ -83,6 +105,8 @@ function AppLayout({
       <div
         css={css`
           grid-area: bottom;
+          border-top: 1px solid var(--border-color);
+          box-sizing: border-box;
         `}
       >
         {bottom}
@@ -90,6 +114,8 @@ function AppLayout({
       <div
         css={css`
           grid-area: right;
+          border-left: 1px solid var(--border-color);
+          box-sizing: border-box;
         `}
       >
         {right}
@@ -303,7 +329,17 @@ export function RenderRoot({
   onEditorStateChange(editorState: EditorState): void;
 }) {
   return (
-    <React.Fragment>
+    <div
+      css={css`
+        padding: 1em;
+        min-height: 100%;
+      `}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) {
+          onEditorStateChange({ type: "root", text: "" });
+        }
+      }}
+    >
       {[...formatter.roots.keys()].map((key) => {
         const value = source.terms.get(key, TermData.empty);
         return (
@@ -357,6 +393,27 @@ export function RenderRoot({
           onEditorStateChange={onEditorStateChange}
         />
       )}
-    </React.Fragment>
+    </div>
   );
+}
+
+function useLocalStorageState<State>(
+  key: string,
+  initial: State,
+  serialize: (state: State) => string,
+  deserialize: (serialized: string) => State
+) {
+  const [state, setState] = React.useState<State>(initial);
+  React.useEffect(() => {
+    const saved = window.localStorage.getItem(key);
+    if (saved) setState(deserialize(saved));
+  }, [deserialize, key]);
+  const onStateChange = React.useCallback(
+    (state: State) => {
+      setState(state);
+      window.localStorage.setItem(key, serialize(state));
+    },
+    [key, serialize]
+  );
+  return [state, onStateChange] as const;
 }

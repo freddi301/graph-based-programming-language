@@ -11,7 +11,6 @@ function getRoots(source: Source) {
   const referenceCounts = getReferenceCounts(source);
   return referenceCounts.filter((count, key) => {
     const { label } = source.terms.get(key, TermData.empty);
-    console.log(label, count);
     if (count.asReference + count.asBinding === 0) {
       if (count.asParameter > 0) return false;
       return true;

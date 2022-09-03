@@ -2,8 +2,9 @@ import { createGlobalStyle, css } from "styled-components/macro";
 
 const darkTheme = css`
   :root {
-    --background-color: #282c34;
-    --action-hover-background-color: gray;
+    --background-color: #23272e;
+    --background-color-secondary: #1e2227;
+    --hover-background-color: #2c313a;
     --text-color: #abb2bf;
     --border-color: black;
   }
@@ -17,5 +18,22 @@ export const GlobalStyle = createGlobalStyle`
     background-color: var(--background-color);
     color: var(--text-color);
     font-family: "JetBrains Mono", monospace;
+  }
+  ::-webkit-scrollbar {
+    background: transparent;
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 4px;
+  }
+  *:hover {
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255, 0.05);
+    }
   }
 `;

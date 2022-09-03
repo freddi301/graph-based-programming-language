@@ -541,9 +541,9 @@ export function RenderContextualActions({
           top: 100%;
           position: absolute;
           width: 600px;
-          height: 400px;
+          max-height: 400px;
           overflow-y: scroll;
-          background-color: var(--background-color);
+          background-color: var(--background-color-secondary);
           border: 1px solid var(--border-color);
         `}
       >
@@ -553,12 +553,11 @@ export function RenderContextualActions({
               key={index}
               css={css`
                 user-select: none;
-                border-bottom: 1px solid var(--border-color);
                 background-color: ${index === selectedActionIndex
-                  ? "var(--action-hover-background-color)"
+                  ? "var(--hover-background-color)"
                   : ""};
                 :hover {
-                  background-color: var(--action-hover-background-color);
+                  background-color: var(--hover-background-color);
                 }
                 padding: 0 1em;
               `}
