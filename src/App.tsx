@@ -155,6 +155,29 @@ function RenderValue({
   const value = source.terms.get(termId, TermData.empty);
   return (
     <React.Fragment>
+      {editorState.type === "term" &&
+        editorState.termId === termId &&
+        !formatter.roots.has(termId) && (
+          <strong
+            css={css`
+              color: var(--text-color-blue);
+            `}
+          >
+            (
+          </strong>
+        )}
+      {editorState.type === "term" &&
+        editorState.termId === termId &&
+        !formatter.roots.has(termId) && (
+          <React.Fragment>
+            <RenderContextualActions
+              source={source}
+              onSourceChange={onSourceChange}
+              editorState={editorState}
+              onEditorStateChange={onEditorStateChange}
+            />{" "}
+          </React.Fragment>
+        )}
       {(value.parameters.size > 0 ||
         (editorState.type === "parameters" &&
           editorState.termId === termId)) && (
@@ -253,7 +276,7 @@ function RenderValue({
                       type: "binding",
                       termId,
                       keyTermId: key,
-                      text: source.terms.get(key)?.label ?? "",
+                      text: (val && source.terms.get(val)?.label) ?? "",
                     });
                   }}
                 />
@@ -278,7 +301,7 @@ function RenderValue({
                           type: "binding",
                           termId: termId,
                           keyTermId: key,
-                          text: source.terms.get(key)?.label ?? "",
+                          text: source.terms.get(val)?.label ?? "",
                         });
                       }}
                     />
@@ -311,6 +334,17 @@ function RenderValue({
           )
         </React.Fragment>
       )}
+      {editorState.type === "term" &&
+        editorState.termId === termId &&
+        !formatter.roots.has(termId) && (
+          <strong
+            css={css`
+              color: var(--text-color-blue);
+            `}
+          >
+            )
+          </strong>
+        )}
     </React.Fragment>
   );
 }
@@ -370,6 +404,8 @@ export function RenderRoot({
               (editorState.type === "reference" &&
                 editorState.termId === key) ||
               (editorState.type === "parameters" &&
+                editorState.termId === key) ||
+              (editorState.type === "bindings" &&
                 editorState.termId === key)) && (
               <React.Fragment> = </React.Fragment>
             )}

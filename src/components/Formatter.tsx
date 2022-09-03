@@ -11,14 +11,9 @@ function getRoots(source: Source) {
   const referenceCounts = getReferenceCounts(source);
   return referenceCounts.filter((count, key) => {
     const { label } = source.terms.get(key, TermData.empty);
-    if (count.asReference + count.asBinding === 0) {
-      if (count.asParameter > 0) return false;
-      return true;
-    }
-    if (count.asReference + count.asBinding === 1) {
-      if (label) return true;
-      return false;
-    }
+    if (label) return true;
+    if (count.asReference + count.asBinding === 0) return true;
+    if (count.asReference + count.asBinding === 1) return false;
     if (count.asReference + count.asBinding > 1) return true;
     throw new Error("booo");
   });

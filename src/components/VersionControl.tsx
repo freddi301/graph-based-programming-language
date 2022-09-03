@@ -239,6 +239,7 @@ function VersionControlGraph<CommitId extends string, Source>({
                 y={y * verticalGap - verticalGap / 2}
                 css={css`
                   fill: var(--text-color);
+                  user-select: none;
                 `}
                 dominantBaseline="middle"
               >
@@ -322,68 +323,62 @@ export function VersionControlUI<CommitId extends string, Source>({
       `}
     >
       <CollapsibleSection title="CREATE COMMIT">
-        <div
-          css={css`
-            padding: 1em;
-          `}
-        >
-          <div>
-            <label>author</label>:
-            <input
-              value={author}
-              onChange={(event) => setAuthor(event.currentTarget.value)}
-              css={css`
-                ${inputCss}
-              `}
-            />
-          </div>
-          <div>
-            <label>description</label>:
-            <textarea
-              value={description}
-              onChange={(event) => setDescription(event.currentTarget.value)}
-              css={css`
-                width: 100%;
-                height: 200px;
-                box-sizing: border-box;
-                ${inputCss}
-              `}
-            />
-          </div>
-          <button
-            onClick={() => {
-              if (!author.trim() || !description.trim()) {
-                alert("provide an author and a description for the commit");
-                return;
-              }
-              const commitId = Math.random().toString() as CommitId;
-              onRepositoryChange(
-                repository.addCommit({
-                  commitId,
-                  source,
-                  previous: new Set(selected.size > 0 ? [...selected] : []),
-                  date: new Date(),
-                  author,
-                  description,
-                })
-              );
-              setDescription("");
-              setSelected(new Set([commitId]));
-            }}
-            css={css``}
-          >
-            commit
-          </button>
-          <div>
-            <div>previous({selected.size}):</div>
-            {[...selected].map((commitId) => {
-              return <div key={commitId}>{commitId}</div>;
-            })}
-          </div>
-          <p>the new commit will be based on selected commits</p>
-          <p>click - select commit</p>
-          <p>ctrl + click - select more commits</p>
+        <div>
+          <label>author</label>:
+          <input
+            value={author}
+            onChange={(event) => setAuthor(event.currentTarget.value)}
+            css={css`
+              ${inputCss}
+            `}
+          />
         </div>
+        <div>
+          <label>description</label>:
+          <textarea
+            value={description}
+            onChange={(event) => setDescription(event.currentTarget.value)}
+            css={css`
+              width: 100%;
+              height: 200px;
+              box-sizing: border-box;
+              ${inputCss}
+            `}
+          />
+        </div>
+        <button
+          onClick={() => {
+            if (!author.trim() || !description.trim()) {
+              alert("provide an author and a description for the commit");
+              return;
+            }
+            const commitId = Math.random().toString() as CommitId;
+            onRepositoryChange(
+              repository.addCommit({
+                commitId,
+                source,
+                previous: new Set(selected.size > 0 ? [...selected] : []),
+                date: new Date(),
+                author,
+                description,
+              })
+            );
+            setDescription("");
+            setSelected(new Set([commitId]));
+          }}
+          css={css``}
+        >
+          commit
+        </button>
+        <div>
+          <div>previous({selected.size}):</div>
+          {[...selected].map((commitId) => {
+            return <div key={commitId}>{commitId}</div>;
+          })}
+        </div>
+        <p>the new commit will be based on selected commits</p>
+        <p>click - select commit</p>
+        <p>ctrl + click - select more commits</p>
       </CollapsibleSection>
       <CollapsibleSection title="COMMIT GRAPH">
         <VersionControlGraph<CommitId, Source>
@@ -440,6 +435,8 @@ function CollapsibleSection({
               width: 100%;
               height: 100%;
               overflow: auto;
+              padding: 0.5em 1em;
+              box-sizing: border-box;
             `}
           >
             {children}

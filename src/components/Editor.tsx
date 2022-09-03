@@ -34,6 +34,7 @@ export const EditorState = {
 };
 
 type ContextualAction = {
+  shortcut?: { key: string; ctrl?: true; shift?: true; alt?: true };
   display: React.ReactNode;
   updated: { source: Source; editorState: EditorState };
 };
@@ -47,10 +48,22 @@ function deriveContextualActions(
   if (editorState.type === "root") {
     const [newSource, newTermId] = Source.createTerm(source, editorState.text);
     contextualActions.push({
+      shortcut: { key: "i", ctrl: true },
       display: (
-        <React.Fragment>
-          create new variable <strong>{editorState.text}</strong>
-        </React.Fragment>
+        <span
+          css={css`
+            color: var(--text-color-secondary);
+          `}
+        >
+          create new variable{" "}
+          <strong
+            css={css`
+              color: var(--text-color);
+            `}
+          >
+            {editorState.text}
+          </strong>
+        </span>
       ),
       updated: {
         source: newSource,
@@ -67,10 +80,22 @@ function deriveContextualActions(
     for (const [existingTermId, { label }] of source.terms.entries()) {
       if (label.includes(editorState.text)) {
         contextualActions.push({
+          shortcut: { key: "g", ctrl: true },
           display: (
-            <React.Fragment>
-              goto existing variable <strong>{label}</strong>
-            </React.Fragment>
+            <span
+              css={css`
+                color: var(--text-color-secondary);
+              `}
+            >
+              goto existing variable{" "}
+              <strong
+                css={css`
+                  color: var(--text-color);
+                `}
+              >
+                {label}
+              </strong>
+            </span>
           ),
           updated: {
             source,
@@ -86,10 +111,28 @@ function deriveContextualActions(
     if (termData && editorState.text !== termData.label) {
       contextualActions.push({
         display: (
-          <React.Fragment>
-            rename <strong>{termData.label}</strong> to{" "}
-            <strong>{editorState.text}</strong>{" "}
-          </React.Fragment>
+          <span
+            css={css`
+              color: var(--text-color-secondary);
+            `}
+          >
+            rename{" "}
+            <strong
+              css={css`
+                color: var(--text-color);
+              `}
+            >
+              {termData.label}
+            </strong>{" "}
+            to{" "}
+            <strong
+              css={css`
+                color: var(--text-color);
+              `}
+            >
+              {editorState.text}
+            </strong>{" "}
+          </span>
         ),
         updated: {
           source: Source.renameTerm(
@@ -107,9 +150,49 @@ function deriveContextualActions(
     }
   }
 
-  if (editorState.type === "term" || editorState.type === "reference") {
+  if (
+    editorState.type === "parameters" ||
+    editorState.type === "reference" ||
+    editorState.type === "bindings"
+  ) {
     contextualActions.push({
-      display: <React.Fragment>parameters</React.Fragment>,
+      shortcut: { key: "h", ctrl: true },
+      display: (
+        <span
+          css={css`
+            color: var(--text-color-secondary);
+          `}
+        >
+          term
+        </span>
+      ),
+      updated: {
+        source,
+        editorState: {
+          type: "term",
+          termId: editorState.termId,
+          text: source.terms.get(editorState.termId)?.label ?? "",
+        },
+      },
+    });
+  }
+
+  if (
+    editorState.type === "term" ||
+    editorState.type === "reference" ||
+    editorState.type === "bindings"
+  ) {
+    contextualActions.push({
+      shortcut: { key: "j", ctrl: true },
+      display: (
+        <span
+          css={css`
+            color: var(--text-color-secondary);
+          `}
+        >
+          parameters
+        </span>
+      ),
       updated: {
         source,
         editorState: {
@@ -132,10 +215,23 @@ function deriveContextualActions(
       newTermId
     );
     contextualActions.push({
+      shortcut: { key: "i", ctrl: true },
       display: (
-        <React.Fragment>
-          add new variable <strong>{editorState.text}</strong> as parameter
-        </React.Fragment>
+        <span
+          css={css`
+            color: var(--text-color-secondary);
+          `}
+        >
+          add new variable{" "}
+          <strong
+            css={css`
+              color: var(--text-color);
+            `}
+          >
+            {editorState.text}
+          </strong>{" "}
+          as parameter
+        </span>
       ),
       updated: {
         source: sourceWithAddedParameter,
@@ -157,10 +253,23 @@ function deriveContextualActions(
           existingTermId
         );
         contextualActions.push({
+          shortcut: { key: "u", ctrl: true },
           display: (
-            <React.Fragment>
-              add existing variable <strong>{label}</strong> as parameter
-            </React.Fragment>
+            <span
+              css={css`
+                color: var(--text-color-secondary);
+              `}
+            >
+              use existing variable{" "}
+              <strong
+                css={css`
+                  color: var(--text-color);
+                `}
+              >
+                {label}
+              </strong>{" "}
+              as parameter
+            </span>
           ),
           updated: {
             source: sourceWithAddedParameter,
@@ -175,12 +284,25 @@ function deriveContextualActions(
     }
   }
 
-  if (editorState.type === "parameters" || editorState.type === "term") {
+  if (
+    editorState.type === "parameters" ||
+    editorState.type === "term" ||
+    editorState.type === "bindings"
+  ) {
     const termData = source.terms.get(editorState.termId);
     const referenceTermData =
       termData?.reference && source.terms.get(termData.reference);
     contextualActions.push({
-      display: "reference",
+      shortcut: { key: "k", ctrl: true },
+      display: (
+        <span
+          css={css`
+            color: var(--text-color-secondary);
+          `}
+        >
+          reference
+        </span>
+      ),
       updated: {
         source,
         editorState: {
@@ -196,9 +318,21 @@ function deriveContextualActions(
     const termData = source.terms.get(editorState.parameterTermId);
     contextualActions.push({
       display: (
-        <React.Fragment>
-          remove <strong>{termData?.label}</strong> from parameters
-        </React.Fragment>
+        <span
+          css={css`
+            color: var(--text-color-secondary);
+          `}
+        >
+          remove{" "}
+          <strong
+            css={css`
+              color: var(--text-color);
+            `}
+          >
+            {termData?.label}
+          </strong>{" "}
+          from parameters
+        </span>
       ),
       updated: {
         source: source,
@@ -222,10 +356,23 @@ function deriveContextualActions(
       newTermId
     );
     contextualActions.push({
+      shortcut: { key: "i", ctrl: true },
       display: (
-        <React.Fragment>
-          add new variable <strong>{editorState.text}</strong> as reference
-        </React.Fragment>
+        <span
+          css={css`
+            color: var(--text-color-secondary);
+          `}
+        >
+          add new variable{" "}
+          <strong
+            css={css`
+              color: var(--text-color);
+            `}
+          >
+            {editorState.text}
+          </strong>{" "}
+          as reference
+        </span>
       ),
       updated: {
         source: sourceWithAddedReference,
@@ -247,10 +394,23 @@ function deriveContextualActions(
           existingTermId
         );
         contextualActions.push({
+          shortcut: { key: "u", ctrl: true },
           display: (
-            <React.Fragment>
-              set existing variable <strong>{label}</strong> as reference
-            </React.Fragment>
+            <span
+              css={css`
+                color: var(--text-color-secondary);
+              `}
+            >
+              use existing variable{" "}
+              <strong
+                css={css`
+                  color: var(--text-color);
+                `}
+              >
+                {label}
+              </strong>{" "}
+              as reference
+            </span>
           ),
           updated: {
             source: sourceWithSetReference,
@@ -271,7 +431,16 @@ function deriveContextualActions(
     editorState.type === "parameters"
   ) {
     contextualActions.push({
-      display: <React.Fragment>bindings</React.Fragment>,
+      shortcut: { key: "l", ctrl: true },
+      display: (
+        <span
+          css={css`
+            color: var(--text-color-secondary);
+          `}
+        >
+          bindings
+        </span>
+      ),
       updated: {
         source,
         editorState: { type: "bindings", termId: editorState.termId, text: "" },
@@ -281,7 +450,16 @@ function deriveContextualActions(
 
   if (editorState.type === "term") {
     contextualActions.push({
-      display: <React.Fragment>delete</React.Fragment>,
+      shortcut: { key: "d", ctrl: true },
+      display: (
+        <span
+          css={css`
+            color: var(--text-color-secondary);
+          `}
+        >
+          delete
+        </span>
+      ),
       updated: {
         source: Source.removeTerm(source, editorState.termId),
         editorState: { type: "root", text: "" },
@@ -301,10 +479,23 @@ function deriveContextualActions(
       null
     );
     contextualActions.push({
+      shortcut: { key: "i", ctrl: true },
       display: (
-        <React.Fragment>
-          add new variable <strong>{editorState.text}</strong> as binding key
-        </React.Fragment>
+        <span
+          css={css`
+            color: var(--text-color-secondary);
+          `}
+        >
+          add new variable{" "}
+          <strong
+            css={css`
+              color: var(--text-color);
+            `}
+          >
+            {editorState.text}
+          </strong>{" "}
+          as binding key
+        </span>
       ),
       updated: {
         source: sourceWithAddedBindingKey,
@@ -335,10 +526,23 @@ function deriveContextualActions(
           existingBindigValue
         );
         contextualActions.push({
+          shortcut: { key: "u", ctrl: true },
           display: (
-            <React.Fragment>
-              set existing variable <strong>{label}</strong> as binding key
-            </React.Fragment>
+            <span
+              css={css`
+                color: var(--text-color-secondary);
+              `}
+            >
+              use existing variable{" "}
+              <strong
+                css={css`
+                  color: var(--text-color);
+                `}
+              >
+                {label}
+              </strong>{" "}
+              as binding key
+            </span>
           ),
           updated: {
             source: sourceWithSetBindingKey,
@@ -366,10 +570,23 @@ function deriveContextualActions(
       newTermId
     );
     contextualActions.push({
+      shortcut: { key: "i", ctrl: true },
       display: (
-        <React.Fragment>
-          add new variable <strong>{editorState.text}</strong> as binding value
-        </React.Fragment>
+        <span
+          css={css`
+            color: var(--text-color-secondary);
+          `}
+        >
+          add new variable{" "}
+          <strong
+            css={css`
+              color: var(--text-color);
+            `}
+          >
+            {editorState.text}
+          </strong>{" "}
+          as binding value
+        </span>
       ),
       updated: {
         source: sourceWithAddedBindingValue,
@@ -392,10 +609,23 @@ function deriveContextualActions(
           existingTermId
         );
         contextualActions.push({
+          shortcut: { key: "u", ctrl: true },
           display: (
-            <React.Fragment>
-              set existing variable <strong>{label}</strong> as binding value
-            </React.Fragment>
+            <span
+              css={css`
+                color: var(--text-color-secondary);
+              `}
+            >
+              use existing variable{" "}
+              <strong
+                css={css`
+                  color: var(--text-color);
+                `}
+              >
+                {label}
+              </strong>{" "}
+              as binding value
+            </span>
           ),
           updated: {
             source: sourceWithSetBindingValue,
@@ -426,13 +656,24 @@ function deriveContextualActions(
           existingTermId
         );
         contextualActions.push({
+          shortcut: { key: "o", ctrl: true },
           display: (
-            <React.Fragment>
+            <span
+              css={css`
+                color: var(--text-color-secondary);
+              `}
+            >
               add new anonymous variable as binding value
               <br />
               with reference as existing variable{" "}
-              <strong>{editorState.text}</strong>
-            </React.Fragment>
+              <strong
+                css={css`
+                  color: var(--text-color);
+                `}
+              >
+                {label}
+              </strong>
+            </span>
           ),
           updated: {
             source: sourceWithSetReference,
@@ -449,7 +690,16 @@ function deriveContextualActions(
 
   if (editorState.type !== "root") {
     contextualActions.push({
-      display: <React.Fragment>Escape</React.Fragment>,
+      shortcut: { key: "Escape" },
+      display: (
+        <span
+          css={css`
+            color: var(--text-color-secondary);
+          `}
+        >
+          escape
+        </span>
+      ),
       updated: {
         source,
         editorState: { type: "root", text: "" },
@@ -477,7 +727,11 @@ export function RenderContextualActions({
   const [selectedActionIndex, setSelectedActionIndex] = React.useState(NaN);
   React.useLayoutEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Enter" && actions[selectedActionIndex]) {
+      if (
+        event.key === "Enter" &&
+        !isNaN(selectedActionIndex) &&
+        actions[selectedActionIndex]
+      ) {
         event.preventDefault();
         const action = actions[selectedActionIndex];
         onSourceChange(action.updated.source);
@@ -499,6 +753,20 @@ export function RenderContextualActions({
           if (index >= actions.length) return 0;
           return index + 1;
         });
+      }
+      const shortcutAction = actions.find(
+        (action) =>
+          action.shortcut &&
+          action.shortcut.key === event.key &&
+          (action.shortcut.ctrl || false) === event.ctrlKey &&
+          (action.shortcut.shift || false) === event.shiftKey &&
+          (action.shortcut.alt || false) === event.altKey
+      );
+      if (shortcutAction) {
+        event.preventDefault();
+        onSourceChange(shortcutAction.updated.source);
+        onEditorStateChange(shortcutAction.updated.editorState);
+        setSelectedActionIndex(NaN);
       }
     };
     document.addEventListener("keydown", onKeyDown);
@@ -527,7 +795,7 @@ export function RenderContextualActions({
             border: none;
             font-family: inherit;
             font-size: inherit;
-            color: inherit;
+            color: var(--text-color-secondary);
             padding: 0;
             width: ${editorState.text.length
               ? `${editorState.text.length}ch`
@@ -545,29 +813,50 @@ export function RenderContextualActions({
           overflow-y: scroll;
           background-color: var(--background-color-secondary);
           border: 1px solid var(--border-color);
+          display: grid;
+          grid-template-columns: max-content 1fr;
         `}
       >
         {actions.map((action, index) => {
           return (
-            <div
-              key={index}
-              css={css`
-                user-select: none;
-                background-color: ${index === selectedActionIndex
-                  ? "var(--hover-background-color)"
-                  : ""};
-                :hover {
-                  background-color: var(--hover-background-color);
-                }
-                padding: 0 1em;
-              `}
-              onClick={() => {
-                onSourceChange(action.updated.source);
-                onEditorStateChange(action.updated.editorState);
-              }}
-            >
-              {action.display}
-            </div>
+            <React.Fragment key={index}>
+              <div
+                css={css`
+                  grid-column: 1;
+                  padding: 0 1em;
+                  background-color: ${index === selectedActionIndex
+                    ? "var(--hover-background-color)"
+                    : ""};
+                `}
+              >
+                {action.shortcut && (
+                  <React.Fragment>
+                    {action.shortcut.ctrl && "ctrl + "}
+                    {action.shortcut.shift && "shift + "}
+                    {action.shortcut.alt && "alt + "}
+                    {action.shortcut.key}
+                  </React.Fragment>
+                )}
+              </div>
+              <div
+                onClick={() => {
+                  onSourceChange(action.updated.source);
+                  onEditorStateChange(action.updated.editorState);
+                }}
+                css={css`
+                  grid-column: 2;
+                  user-select: none;
+                  background-color: ${index === selectedActionIndex
+                    ? "var(--hover-background-color)"
+                    : ""};
+                  :hover {
+                    background-color: var(--hover-background-color);
+                  }
+                `}
+              >
+                {action.display}
+              </div>
+            </React.Fragment>
           );
         })}
       </div>

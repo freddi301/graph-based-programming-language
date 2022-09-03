@@ -6,6 +6,8 @@ const darkTheme = css`
     --background-color-secondary: #1e2227;
     --hover-background-color: #2c313a;
     --text-color: #abb2bf;
+    --text-color-secondary: #7f848e;
+    --text-color-blue: #61afef;
     --border-color: black;
   }
 `;
