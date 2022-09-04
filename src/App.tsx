@@ -152,7 +152,7 @@ function RenderValue({
   editorState: EditorState;
   onEditorStateChange(editorState: EditorState): void;
 }) {
-  const value = source.terms.get(termId, TermData.empty);
+  const termData = source.terms.get(termId, TermData.empty);
   return (
     <React.Fragment>
       {editorState.type === "term" &&
@@ -178,51 +178,54 @@ function RenderValue({
             />{" "}
           </React.Fragment>
         )}
-      {(value.parameters.size > 0 ||
+      {(termData.parameters.size > 0 ||
         (editorState.type === "parameters" &&
           editorState.termId === termId)) && (
         <React.Fragment>
           (
-          {Array.from(value.parameters.entries(), ([key], index) => {
-            return (
-              <React.Fragment key={key}>
-                {editorState.type === "parameter" &&
-                editorState.termId === termId &&
-                editorState.parameterTermId === key ? (
-                  <RenderContextualActions
-                    source={source}
-                    onSourceChange={onSourceChange}
-                    editorState={editorState}
-                    onEditorStateChange={onEditorStateChange}
-                  >
-                    <RenderTerm
-                      termId={key}
+          {Array.from(
+            termData.parameters.entries(),
+            ([parameterTermId], index) => {
+              return (
+                <React.Fragment key={parameterTermId}>
+                  {editorState.type === "parameter" &&
+                  editorState.termId === termId &&
+                  editorState.parameterTermId === parameterTermId ? (
+                    <RenderContextualActions
                       source={source}
-                      onClick={() => {}}
+                      onSourceChange={onSourceChange}
+                      editorState={editorState}
+                      onEditorStateChange={onEditorStateChange}
+                    >
+                      <RenderTerm
+                        termId={parameterTermId}
+                        source={source}
+                        onClick={() => {}}
+                      />
+                    </RenderContextualActions>
+                  ) : (
+                    <RenderTerm
+                      termId={parameterTermId}
+                      source={source}
+                      onClick={() => {
+                        onEditorStateChange({
+                          type: "parameter",
+                          termId,
+                          parameterTermId: parameterTermId,
+                          text: source.terms.get(parameterTermId)?.label ?? "",
+                        });
+                      }}
                     />
-                  </RenderContextualActions>
-                ) : (
-                  <RenderTerm
-                    termId={key}
-                    source={source}
-                    onClick={() => {
-                      onEditorStateChange({
-                        type: "parameter",
-                        termId,
-                        parameterTermId: key,
-                        text: source.terms.get(key)?.label ?? "",
-                      });
-                    }}
-                  />
-                )}
+                  )}
 
-                {(index < value.parameters.size - 1 ||
-                  (editorState.type === "parameters" &&
-                    editorState.termId === termId)) &&
-                  ", "}
-              </React.Fragment>
-            );
-          })}
+                  {(index < termData.parameters.size - 1 ||
+                    (editorState.type === "parameters" &&
+                      editorState.termId === termId)) &&
+                    ", "}
+                </React.Fragment>
+              );
+            }
+          )}
           {editorState.type === "parameters" &&
             editorState.termId === termId && (
               <RenderContextualActions
@@ -232,7 +235,7 @@ function RenderValue({
                 onEditorStateChange={onEditorStateChange}
               />
             )}
-          ){" => "}
+          ){termData.type === "lambda" ? " => " : " -> "}
         </React.Fragment>
       )}
       {editorState.type === "reference" && editorState.termId === termId ? (
@@ -243,86 +246,93 @@ function RenderValue({
           onEditorStateChange={onEditorStateChange}
         />
       ) : (
-        value.reference && (
+        termData.reference && (
           <RenderTerm
-            termId={value.reference}
+            termId={termData.reference}
             source={source}
             onClick={() => {
               onEditorStateChange({
                 type: "reference",
                 termId: termId,
                 text:
-                  (value.reference &&
-                    source.terms.get(value.reference)?.label) ??
+                  (termData.reference &&
+                    source.terms.get(termData.reference)?.label) ??
                   "",
               });
             }}
           />
         )
       )}
-      {(value.bindings.size > 0 ||
+      {(termData.bindings.size > 0 ||
         (editorState.type === "bindings" && editorState.termId === termId) ||
         (editorState.type === "binding" && editorState.termId === termId)) && (
         <React.Fragment>
           (
-          {Array.from(value.bindings.entries(), ([key, val], index) => {
-            return (
-              <React.Fragment key={key}>
-                <RenderTerm
-                  termId={key}
-                  source={source}
-                  onClick={() => {
-                    onEditorStateChange({
-                      type: "binding",
-                      termId,
-                      keyTermId: key,
-                      text: (val && source.terms.get(val)?.label) ?? "",
-                    });
-                  }}
-                />
-                {" = "}
-                {editorState.type === "binding" &&
-                  editorState.termId === termId &&
-                  editorState.keyTermId === key && (
-                    <RenderContextualActions
-                      source={source}
-                      onSourceChange={onSourceChange}
-                      editorState={editorState}
-                      onEditorStateChange={onEditorStateChange}
-                    />
-                  )}
-                {val ? (
-                  formatter.roots.has(val) ? (
-                    <RenderTerm
-                      termId={val}
-                      source={source}
-                      onClick={() => {
-                        onEditorStateChange({
-                          type: "binding",
-                          termId: termId,
-                          keyTermId: key,
-                          text: source.terms.get(val)?.label ?? "",
-                        });
-                      }}
-                    />
-                  ) : (
-                    <RenderValue
-                      termId={val}
-                      source={source}
-                      onSourceChange={onSourceChange}
-                      editorState={editorState}
-                      onEditorStateChange={onEditorStateChange}
-                      formatter={formatter}
-                    />
-                  )
-                ) : null}
-                {(index < value.bindings.size - 1 ||
-                  (editorState.type === "bindings" &&
-                    editorState.termId === termId)) &&
-                  ", "}
-              </React.Fragment>
-            );
-          })}
+          {Array.from(
+            termData.bindings.entries(),
+            ([bindingKeyTermId, bindingValueTermId], index) => {
+              return (
+                <React.Fragment key={bindingKeyTermId}>
+                  <RenderTerm
+                    termId={bindingKeyTermId}
+                    source={source}
+                    onClick={() => {
+                      onEditorStateChange({
+                        type: "binding",
+                        termId,
+                        keyTermId: bindingKeyTermId,
+                        text:
+                          (bindingValueTermId &&
+                            source.terms.get(bindingValueTermId)?.label) ??
+                          "",
+                      });
+                    }}
+                  />
+                  {" = "}
+                  {editorState.type === "binding" &&
+                    editorState.termId === termId &&
+                    editorState.keyTermId === bindingKeyTermId && (
+                      <RenderContextualActions
+                        source={source}
+                        onSourceChange={onSourceChange}
+                        editorState={editorState}
+                        onEditorStateChange={onEditorStateChange}
+                      />
+                    )}
+                  {bindingValueTermId ? (
+                    formatter.roots.has(bindingValueTermId) ? (
+                      <RenderTerm
+                        termId={bindingValueTermId}
+                        source={source}
+                        onClick={() => {
+                          onEditorStateChange({
+                            type: "binding",
+                            termId: termId,
+                            keyTermId: bindingKeyTermId,
+                            text:
+                              source.terms.get(bindingValueTermId)?.label ?? "",
+                          });
+                        }}
+                      />
+                    ) : (
+                      <RenderValue
+                        termId={bindingValueTermId}
+                        source={source}
+                        onSourceChange={onSourceChange}
+                        editorState={editorState}
+                        onEditorStateChange={onEditorStateChange}
+                        formatter={formatter}
+                      />
+                    )
+                  ) : null}
+                  {(index < termData.bindings.size - 1 ||
+                    (editorState.type === "bindings" &&
+                      editorState.termId === termId)) &&
+                    ", "}
+                </React.Fragment>
+              );
+            }
+          )}
           {editorState.type === "bindings" && editorState.termId === termId && (
             <RenderContextualActions
               source={source}
@@ -374,11 +384,11 @@ export function RenderRoot({
         }
       }}
     >
-      {[...formatter.roots.keys()].map((key) => {
-        const value = source.terms.get(key, TermData.empty);
+      {[...formatter.roots.keys()].map((termId) => {
+        const termData = source.terms.get(termId, TermData.empty);
         return (
-          <React.Fragment key={key}>
-            {editorState.type === "term" && editorState.termId === key ? (
+          <React.Fragment key={termId}>
+            {editorState.type === "term" && editorState.termId === termId ? (
               <RenderContextualActions
                 source={source}
                 onSourceChange={onSourceChange}
@@ -387,30 +397,30 @@ export function RenderRoot({
               />
             ) : (
               <RenderTerm
-                termId={key}
+                termId={termId}
                 source={source}
                 onClick={() =>
                   onEditorStateChange({
                     type: "term",
-                    termId: key,
-                    text: value.label,
+                    termId: termId,
+                    text: termData.label,
                   })
                 }
               />
             )}
-            {(value.reference !== null ||
-              value.parameters.size > 0 ||
-              value.bindings.size > 0 ||
+            {(termData.reference !== null ||
+              termData.parameters.size > 0 ||
+              termData.bindings.size > 0 ||
               (editorState.type === "reference" &&
-                editorState.termId === key) ||
+                editorState.termId === termId) ||
               (editorState.type === "parameters" &&
-                editorState.termId === key) ||
+                editorState.termId === termId) ||
               (editorState.type === "bindings" &&
-                editorState.termId === key)) && (
+                editorState.termId === termId)) && (
               <React.Fragment> = </React.Fragment>
             )}
             <RenderValue
-              termId={key}
+              termId={termId}
               source={source}
               onSourceChange={onSourceChange}
               editorState={editorState}

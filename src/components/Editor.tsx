@@ -150,6 +150,32 @@ function deriveContextualActions(
     }
   }
 
+  if (editorState.type === "term") {
+    const termData = source.terms.get(editorState.termId);
+    if (termData) {
+      contextualActions.push({
+        shortcut: { key: "p", ctrl: true },
+        display: (
+          <span
+            css={css`
+              color: var(--text-color-secondary);
+            `}
+          >
+            change to {termData.type === "pi" ? "=>" : "->"}
+          </span>
+        ),
+        updated: {
+          source: Source.changeTermType(
+            source,
+            editorState.termId,
+            termData.type === "pi" ? "lambda" : "pi"
+          ),
+          editorState: editorState,
+        },
+      });
+    }
+  }
+
   if (
     editorState.type === "parameters" ||
     editorState.type === "reference" ||
@@ -795,7 +821,7 @@ export function RenderContextualActions({
             border: none;
             font-family: inherit;
             font-size: inherit;
-            color: var(--text-color-secondary);
+            color: inherit;
             padding: 0;
             width: ${editorState.text.length
               ? `${editorState.text.length}ch`

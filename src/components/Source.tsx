@@ -27,6 +27,18 @@ export const Source = {
       })),
     };
   },
+  changeTermType(
+    source: Source,
+    termId: TermId,
+    type: "lambda" | "pi"
+  ): Source {
+    return {
+      terms: source.terms.update(termId, (termData = TermData.empty) => ({
+        ...termData,
+        type,
+      })),
+    };
+  },
   addParameter(
     source: Source,
     functionTermId: TermId,
@@ -164,6 +176,7 @@ export type TermData = {
   parameters: Map<TermId, null>;
   reference: TermId | null;
   bindings: Map<TermId, TermId | null>;
+  type: "lambda" | "pi";
 };
 export const TermData = {
   empty: {
@@ -171,5 +184,6 @@ export const TermData = {
     parameters: Map(),
     reference: null,
     bindings: Map(),
+    type: "lambda",
   } as TermData,
 };

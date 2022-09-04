@@ -221,7 +221,8 @@ function VersionControlGraph<CommitId extends string, Source>({
                     );
                   }
                 }}
-                onDoubleClick={() => {
+                onDoubleClick={(event) => {
+                  event.preventDefault();
                   if (commit) onCheckout(commit.source);
                   onSelect(new Set([commitId]));
                 }}
