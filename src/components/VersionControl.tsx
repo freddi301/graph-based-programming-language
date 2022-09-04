@@ -31,18 +31,34 @@ type Repository<CommitId extends string, Source> = {
   ): Repository<CommitId, Source>;
 };
 
+type CommitData<CommitId extends string, Source> = {
+  commitId: CommitId;
+  source: Source;
+  previous: Set<CommitId>;
+  date: Date;
+  author: string;
+  description: string;
+};
+
+type NaiveRepositoryState<CommitId extends string, Source> = {
+  pendingCommitMap: Immutable.Map<
+    CommitId,
+    Immutable.Map<CommitId, CommitData<CommitId, Source>>
+  >;
+  commitMap: Immutable.Map<
+    CommitId,
+    { source: Source; date: Date; author: string; description: string }
+  >;
+  previousMap: Immutable.Map<CommitId, Immutable.Set<CommitId>>;
+  nextMap: Immutable.Map<CommitId, Immutable.Set<CommitId>>;
+  tips: Immutable.Set<CommitId>;
+  roots: Immutable.Set<CommitId>;
+  byDate: Immutable.List<CommitId>;
+};
+
 export function naiveRepository<CommitId extends string, Source>(
-  state: {
-    commitMap: Immutable.Map<
-      CommitId,
-      { source: Source; date: Date; author: string; description: string }
-    >;
-    previousMap: Immutable.Map<CommitId, Immutable.Set<CommitId>>;
-    nextMap: Immutable.Map<CommitId, Immutable.Set<CommitId>>;
-    tips: Immutable.Set<CommitId>;
-    roots: Immutable.Set<CommitId>;
-    byDate: Immutable.List<CommitId>;
-  } = {
+  state: NaiveRepositoryState<CommitId, Source> = {
+    pendingCommitMap: Immutable.Map(),
     commitMap: Immutable.Map(),
     previousMap: Immutable.Map(),
     nextMap: Immutable.Map(),
@@ -51,10 +67,53 @@ export function naiveRepository<CommitId extends string, Source>(
     byDate: Immutable.List(),
   }
 ): Repository<CommitId, Source> {
+  function isAncestor(childCommitId: CommitId, parentCommitId: CommitId) {
+    const previous = state.previousMap.get(childCommitId);
+    if (!previous) throw new Error();
+    if (previous.has(parentCommitId)) return true;
+    for (const parent of previous.keys()) {
+      if (isAncestor(parent, parentCommitId)) return true;
+    }
+    return false;
+  }
+  function withoutUnnecessaryParents(parents: Set<CommitId>) {
+    const without = new Set(parents);
+    if (parents.size <= 1) return without;
+    for (const youngerParent of parents) {
+      for (const olderParent of parents) {
+        if (isAncestor(youngerParent, olderParent)) without.delete(olderParent);
+      }
+    }
+    console.log(without);
+    return without;
+  }
   return {
     addCommit(params) {
-      if (state.commitMap.has(params.commitId)) return naiveRepository(state);
-      return naiveRepository({
+      if (state.commitMap.has(params.commitId)) return naiveRepository(state); // TODO remove when implemented checksum as commitId
+      if (params.previous.size > 8) throw new Error();
+      const missingPrevious = [...params.previous].find(
+        (previous) => !state.commitMap.has(previous)
+      );
+      if (missingPrevious) {
+        return naiveRepository<CommitId, Source>({
+          ...state,
+          pendingCommitMap: state.pendingCommitMap.update(
+            missingPrevious,
+            (
+              pending = Immutable.Map<CommitId, CommitData<CommitId, Source>>()
+            ) => pending.set(params.commitId, params)
+          ),
+        });
+      }
+      params = {
+        ...params,
+        previous: withoutUnnecessaryParents(params.previous),
+      };
+      const repositoryStateWithNewCommit: NaiveRepositoryState<
+        CommitId,
+        Source
+      > = {
+        pendingCommitMap: state.pendingCommitMap,
         commitMap: state.commitMap.set(params.commitId, {
           source: params.source,
           date: params.date,
@@ -63,7 +122,7 @@ export function naiveRepository<CommitId extends string, Source>(
         }),
         previousMap: state.previousMap.update(
           params.commitId,
-          (previous = Immutable.Set()) =>
+          (previous = Immutable.Set<CommitId>()) =>
             [...params.previous].reduce(
               (previous, previousCommitId) => previous.add(previousCommitId),
               previous
@@ -74,7 +133,10 @@ export function naiveRepository<CommitId extends string, Source>(
             nextMap.update(previousCommitId, (next = Immutable.Set()) =>
               next.add(params.commitId)
             ),
-          state.nextMap
+          state.nextMap.update(
+            params.commitId,
+            (next = Immutable.Set()) => next
+          )
         ),
         roots:
           params.previous.size === 0
@@ -89,7 +151,16 @@ export function naiveRepository<CommitId extends string, Source>(
         byDate: state.byDate
           .unshift(params.commitId)
           .sortBy((commitId) => state.commitMap.get(commitId)?.date),
-      });
+      };
+      const pending = state.pendingCommitMap.get(params.commitId);
+      if (!pending) return naiveRepository(repositoryStateWithNewCommit);
+      return pending.reduce(
+        (repository, commitData) => repository.addCommit(commitData),
+        naiveRepository({
+          ...repositoryStateWithNewCommit,
+          pendingCommitMap: state.pendingCommitMap.delete(params.commitId),
+        })
+      );
     },
     getCommit(params) {
       return state.commitMap.get(params.commitId);
@@ -104,14 +175,14 @@ export function naiveRepository<CommitId extends string, Source>(
       return state.byDate.reverse().toArray();
     },
     getNextCommits(commitId) {
-      return new Set(
-        state.nextMap.get(commitId, Immutable.Set<CommitId>()).toArray()
-      );
+      const next = state.nextMap.get(commitId);
+      if (!next) throw new Error();
+      return new Set(next.toArray());
     },
     getPreviousCommits(commitId) {
-      return new Set(
-        state.previousMap.get(commitId, Immutable.Set<CommitId>()).toArray()
-      );
+      const previous = state.previousMap.get(commitId);
+      if (!previous) throw new Error();
+      return new Set(previous.toArray());
     },
     toJSON(sourceToJson) {
       return JSON.stringify(
@@ -130,7 +201,6 @@ export function naiveRepository<CommitId extends string, Source>(
       );
     },
     fromJSON(json, jsonToSource) {
-      // return naiveRepository<CommitId, Source>();
       return Object.entries(JSON.parse(json)).reduce(
         (repository, [commitId, { source, previous, ...data }]: any) =>
           repository.addCommit({
