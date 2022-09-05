@@ -12,53 +12,80 @@ function getRoots(source: Source) {
   return referenceCounts.filter((count, key) => {
     const { label } = source.terms.get(key, TermData.empty);
     if (label) return true;
-    if (count.asReference + count.asBinding === 0) return true;
-    if (count.asReference + count.asBinding === 1) return false;
-    if (count.asReference + count.asBinding > 1) return true;
-    throw new Error("booo");
+    if (
+      count.asAnnotation === 1 &&
+      count.asBinding + count.asParameter + count.asReference === 0
+    )
+      return false;
+    if (
+      count.asReference + count.asBinding === 1 &&
+      count.asAnnotation + count.asParameter === 0
+    )
+      return false;
+    return true;
   });
 }
 
 function getReferenceCounts(source: Source) {
-  let countByTermId = Map<
-    TermId,
-    { asReference: number; asBinding: number; asParameter: number }
-  >();
-  const defualtCount = { asReference: 0, asBinding: 0, asParameter: 0 };
+  type Counts = {
+    asReference: number;
+    asBinding: number;
+    asParameter: number;
+    asAnnotation: number;
+  };
+  let countByTermId = Map<TermId, Counts>();
+  const defaultCount: Counts = {
+    asReference: 0,
+    asBinding: 0,
+    asParameter: 0,
+    asAnnotation: 0,
+  };
   for (const [termId] of source.terms.entries()) {
     countByTermId = countByTermId.update(
       termId,
-      (count = defualtCount) => count
+      (count = defaultCount) => count
     );
     for (const [
       ,
-      { parameters, reference, bindings },
+      { annotation, parameters, reference, bindings },
     ] of source.terms.entries()) {
+      if (annotation && annotation === termId) {
+        countByTermId = countByTermId.update(
+          termId,
+          (count = defaultCount) => ({
+            ...count,
+            asAnnotation: count.asAnnotation + 1,
+          })
+        );
+      }
+
       for (const [val] of parameters.entries()) {
         if (val === termId) {
           countByTermId = countByTermId.update(
             termId,
-            (count = defualtCount) => ({
+            (count = defaultCount) => ({
               ...count,
               asParameter: count.asParameter + 1,
             })
           );
         }
       }
+
       if (reference && reference === termId) {
         countByTermId = countByTermId.update(
           termId,
-          (count = defualtCount) => ({
+          (count = defaultCount) => ({
             ...count,
             asReference: count.asReference + 1,
           })
         );
       }
+
       for (const [, val] of bindings.entries()) {
         if (val === termId) {
           countByTermId = countByTermId.update(
             termId,
-            (count = defualtCount) => ({
+            (count = defaultCount) => ({
               ...count,
               asBinding: count.asBinding + 1,
             })

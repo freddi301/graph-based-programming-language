@@ -5,11 +5,13 @@ import { Formatter } from "./components/Formatter";
 import { Source, TermData, TermId } from "./components/Source";
 import { GlobalStyle } from "./components/theme";
 import { naiveRepository, VersionControlUI } from "./components/VersionControl";
+import { useLocalStorageState } from "./useLocalStorageState";
 
 export default function App() {
   const [source, setSource] = React.useState(Source.empty);
   const [editorState, setEditorState] = React.useState(EditorState.empty);
   const formatter = Formatter(source);
+  console.log(formatter.roots.toJS());
   const [repository, setRepository] = useLocalStorageState(
     "repository",
     naiveRepository<string, Source>(),
@@ -153,6 +155,16 @@ function RenderValue({
   onEditorStateChange(editorState: EditorState): void;
 }) {
   const termData = source.terms.get(termId, TermData.empty);
+  const actions = (children?: React.ReactNode) => (
+    <RenderContextualActions
+      source={source}
+      onSourceChange={onSourceChange}
+      editorState={editorState}
+      onEditorStateChange={onEditorStateChange}
+    >
+      {children}
+    </RenderContextualActions>
+  );
   return (
     <React.Fragment>
       {editorState.type === "term" &&
@@ -169,14 +181,7 @@ function RenderValue({
       {editorState.type === "term" &&
         editorState.termId === termId &&
         !formatter.roots.has(termId) && (
-          <React.Fragment>
-            <RenderContextualActions
-              source={source}
-              onSourceChange={onSourceChange}
-              editorState={editorState}
-              onEditorStateChange={onEditorStateChange}
-            />{" "}
-          </React.Fragment>
+          <React.Fragment>{actions()} </React.Fragment>
         )}
       {(termData.parameters.size > 0 ||
         (editorState.type === "parameters" &&
@@ -191,18 +196,13 @@ function RenderValue({
                   {editorState.type === "parameter" &&
                   editorState.termId === termId &&
                   editorState.parameterTermId === parameterTermId ? (
-                    <RenderContextualActions
-                      source={source}
-                      onSourceChange={onSourceChange}
-                      editorState={editorState}
-                      onEditorStateChange={onEditorStateChange}
-                    >
+                    actions(
                       <RenderTerm
                         termId={parameterTermId}
                         source={source}
                         onClick={() => {}}
                       />
-                    </RenderContextualActions>
+                    )
                   ) : (
                     <RenderTerm
                       termId={parameterTermId}
@@ -227,42 +227,29 @@ function RenderValue({
             }
           )}
           {editorState.type === "parameters" &&
-            editorState.termId === termId && (
-              <RenderContextualActions
-                source={source}
-                onSourceChange={onSourceChange}
-                editorState={editorState}
-                onEditorStateChange={onEditorStateChange}
-              />
-            )}
+            editorState.termId === termId &&
+            actions()}
           ){termData.type === "lambda" ? " => " : " -> "}
         </React.Fragment>
       )}
-      {editorState.type === "reference" && editorState.termId === termId ? (
-        <RenderContextualActions
-          source={source}
-          onSourceChange={onSourceChange}
-          editorState={editorState}
-          onEditorStateChange={onEditorStateChange}
-        />
-      ) : (
-        termData.reference && (
-          <RenderTerm
-            termId={termData.reference}
-            source={source}
-            onClick={() => {
-              onEditorStateChange({
-                type: "reference",
-                termId: termId,
-                text:
-                  (termData.reference &&
-                    source.terms.get(termData.reference)?.label) ??
-                  "",
-              });
-            }}
-          />
-        )
-      )}
+      {editorState.type === "reference" && editorState.termId === termId
+        ? actions()
+        : termData.reference && (
+            <RenderTerm
+              termId={termData.reference}
+              source={source}
+              onClick={() => {
+                onEditorStateChange({
+                  type: "reference",
+                  termId: termId,
+                  text:
+                    (termData.reference &&
+                      source.terms.get(termData.reference)?.label) ??
+                    "",
+                });
+              }}
+            />
+          )}
       {(termData.bindings.size > 0 ||
         (editorState.type === "bindings" && editorState.termId === termId) ||
         (editorState.type === "binding" && editorState.termId === termId)) && (
@@ -291,14 +278,8 @@ function RenderValue({
                   {" = "}
                   {editorState.type === "binding" &&
                     editorState.termId === termId &&
-                    editorState.keyTermId === bindingKeyTermId && (
-                      <RenderContextualActions
-                        source={source}
-                        onSourceChange={onSourceChange}
-                        editorState={editorState}
-                        onEditorStateChange={onEditorStateChange}
-                      />
-                    )}
+                    editorState.keyTermId === bindingKeyTermId &&
+                    actions()}
                   {bindingValueTermId ? (
                     formatter.roots.has(bindingValueTermId) ? (
                       <RenderTerm
@@ -333,14 +314,9 @@ function RenderValue({
               );
             }
           )}
-          {editorState.type === "bindings" && editorState.termId === termId && (
-            <RenderContextualActions
-              source={source}
-              onSourceChange={onSourceChange}
-              editorState={editorState}
-              onEditorStateChange={onEditorStateChange}
-            />
-          )}
+          {editorState.type === "bindings" &&
+            editorState.termId === termId &&
+            actions()}
           )
         </React.Fragment>
       )}
@@ -372,6 +348,16 @@ export function RenderRoot({
   editorState: EditorState;
   onEditorStateChange(editorState: EditorState): void;
 }) {
+  const actions = (children?: React.ReactNode) => (
+    <RenderContextualActions
+      source={source}
+      onSourceChange={onSourceChange}
+      editorState={editorState}
+      onEditorStateChange={onEditorStateChange}
+    >
+      {children}
+    </RenderContextualActions>
+  );
   return (
     <div
       css={css`
@@ -408,6 +394,36 @@ export function RenderRoot({
                 }
               />
             )}
+            {(termData.annotation ||
+              (editorState.type === "annotation" &&
+                editorState.termId === termId)) &&
+              " : "}
+            {editorState.type === "annotation" &&
+              editorState.termId === termId &&
+              actions()}
+            {termData.annotation &&
+              (formatter.roots.has(termData.annotation) ? (
+                <RenderTerm
+                  termId={termData.annotation}
+                  source={source}
+                  onClick={() =>
+                    onEditorStateChange({
+                      type: "annotation",
+                      termId: termId,
+                      text: termData.label,
+                    })
+                  }
+                />
+              ) : (
+                <RenderValue
+                  termId={termData.annotation}
+                  source={source}
+                  onSourceChange={onSourceChange}
+                  editorState={editorState}
+                  onEditorStateChange={onEditorStateChange}
+                  formatter={formatter}
+                />
+              ))}
             {(termData.reference !== null ||
               termData.parameters.size > 0 ||
               termData.bindings.size > 0 ||
@@ -416,9 +432,8 @@ export function RenderRoot({
               (editorState.type === "parameters" &&
                 editorState.termId === termId) ||
               (editorState.type === "bindings" &&
-                editorState.termId === termId)) && (
-              <React.Fragment> = </React.Fragment>
-            )}
+                editorState.termId === termId)) &&
+              " = "}
             <RenderValue
               termId={termId}
               source={source}
@@ -431,35 +446,7 @@ export function RenderRoot({
           </React.Fragment>
         );
       })}
-      {editorState.type === "root" && (
-        <RenderContextualActions
-          source={source}
-          onSourceChange={onSourceChange}
-          editorState={editorState}
-          onEditorStateChange={onEditorStateChange}
-        />
-      )}
+      {editorState.type === "root" && actions()}
     </div>
   );
-}
-
-function useLocalStorageState<State>(
-  key: string,
-  initial: State,
-  serialize: (state: State) => string,
-  deserialize: (serialized: string) => State
-) {
-  const [state, setState] = React.useState<State>(initial);
-  React.useEffect(() => {
-    const saved = window.localStorage.getItem(key);
-    if (saved) setState(deserialize(saved));
-  }, [deserialize, key]);
-  const onStateChange = React.useCallback(
-    (state: State) => {
-      setState(state);
-      window.localStorage.setItem(key, serialize(state));
-    },
-    [key, serialize]
-  );
-  return [state, onStateChange] as const;
 }

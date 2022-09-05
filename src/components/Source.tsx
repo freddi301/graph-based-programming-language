@@ -81,6 +81,18 @@ export const Source = {
       })),
     };
   },
+  setAnnotation(
+    source: Source,
+    termId: TermId,
+    annotationTermId: TermId | null
+  ): Source {
+    return {
+      terms: source.terms.update(termId, (termData = TermData.empty) => ({
+        ...termData,
+        annotation: annotationTermId,
+      })),
+    };
+  },
   setBinding(
     source: Source,
     termId: TermId,
@@ -177,6 +189,7 @@ export type TermData = {
   reference: TermId | null;
   bindings: Map<TermId, TermId | null>;
   type: "lambda" | "pi";
+  annotation: TermId | null;
 };
 export const TermData = {
   empty: {
@@ -185,5 +198,6 @@ export const TermData = {
     reference: null,
     bindings: Map(),
     type: "lambda",
+    annotation: null,
   } as TermData,
 };

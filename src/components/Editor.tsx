@@ -13,6 +13,11 @@ export type EditorState =
       text: string;
     }
   | {
+      type: "annotation";
+      termId: TermId;
+      text: string;
+    }
+  | {
       type: "parameters";
       termId: TermId;
       text: string;
@@ -144,6 +149,32 @@ function deriveContextualActions(
             type: "term",
             termId: editorState.termId,
             text: editorState.text,
+          },
+        },
+      });
+    }
+  }
+
+  if (editorState.type === "term") {
+    const termData = source.terms.get(editorState.termId);
+    if (termData) {
+      contextualActions.push({
+        shortcut: { key: ":" },
+        display: (
+          <span
+            css={css`
+              color: var(--text-color-secondary);
+            `}
+          >
+            type
+          </span>
+        ),
+        updated: {
+          source,
+          editorState: {
+            type: "annotation",
+            termId: editorState.termId,
+            text: "",
           },
         },
       });
@@ -733,6 +764,86 @@ function deriveContextualActions(
     });
   }
 
+  if (editorState.type === "annotation") {
+    const [sourceWithNewTerm, newTermId] = Source.createTerm(
+      source,
+      editorState.text
+    );
+    const sourceWithAddedAnnotation = Source.setAnnotation(
+      sourceWithNewTerm,
+      editorState.termId,
+      newTermId
+    );
+    contextualActions.push({
+      shortcut: { key: "i", ctrl: true },
+      display: (
+        <span
+          css={css`
+            color: var(--text-color-secondary);
+          `}
+        >
+          add new variable{" "}
+          <strong
+            css={css`
+              color: var(--text-color);
+            `}
+          >
+            {editorState.text}
+          </strong>{" "}
+          as annotation
+        </span>
+      ),
+      updated: {
+        source: sourceWithAddedAnnotation,
+        editorState: {
+          type: "annotation",
+          termId: editorState.termId,
+          text: editorState.text,
+        },
+      },
+    });
+  }
+
+  if (editorState.type === "annotation" && editorState.text) {
+    for (const [existingTermId, { label }] of source.terms.entries()) {
+      if (label.includes(editorState.text)) {
+        const sourceWithSetAnnotation = Source.setAnnotation(
+          source,
+          editorState.termId,
+          existingTermId
+        );
+        contextualActions.push({
+          shortcut: { key: "u", ctrl: true },
+          display: (
+            <span
+              css={css`
+                color: var(--text-color-secondary);
+              `}
+            >
+              use existing variable{" "}
+              <strong
+                css={css`
+                  color: var(--text-color);
+                `}
+              >
+                {label}
+              </strong>{" "}
+              as annotation
+            </span>
+          ),
+          updated: {
+            source: sourceWithSetAnnotation,
+            editorState: {
+              type: "annotation",
+              termId: editorState.termId,
+              text: label,
+            },
+          },
+        });
+      }
+    }
+  }
+
   return contextualActions;
 }
 
@@ -784,9 +895,15 @@ export function RenderContextualActions({
         (action) =>
           action.shortcut &&
           action.shortcut.key === event.key &&
-          (action.shortcut.ctrl || false) === event.ctrlKey &&
-          (action.shortcut.shift || false) === event.shiftKey &&
-          (action.shortcut.alt || false) === event.altKey
+          (action.shortcut.ctrl !== undefined
+            ? action.shortcut.ctrl === event.ctrlKey
+            : true) &&
+          (action.shortcut.shift !== undefined
+            ? action.shortcut.shift === event.shiftKey
+            : true) &&
+          (action.shortcut.alt !== undefined
+            ? action.shortcut.alt === event.altKey
+            : true)
       );
       if (shortcutAction) {
         event.preventDefault();
