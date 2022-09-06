@@ -5,8 +5,9 @@ import { Formatter } from "./components/Formatter";
 import { Source, TermData, TermId } from "./components/Source";
 import { GlobalStyle } from "./components/theme";
 import {
+  HistoryGraph,
   naiveRepository,
-  VersionControlGraph,
+  useHistory,
   VersionControlUI,
 } from "./components/VersionControl";
 import { useLocalStorageState } from "./components/useLocalStorageState";
@@ -31,6 +32,7 @@ export default function App() {
       []
     )
   );
+  const history = useHistory({ onSource: setSource });
   const [selectedLeftSideTab, setSelectedLeftSideTab] =
     React.useState<LeftSideTab>("version-control");
   return (
@@ -57,12 +59,23 @@ export default function App() {
                   onRepositoryChange={setRepository}
                 />
               );
+            case "history":
+              return (
+                <HistoryGraph
+                  repository={history.repository}
+                  selected={history.current}
+                  onSelect={history.goto}
+                />
+              );
           }
         })()}
         center={
           <RenderRoot
             source={source}
-            onSourceChange={setSource}
+            onSourceChange={(source) => {
+              setSource(source);
+              history.change(source);
+            }}
             editorState={editorState}
             onEditorStateChange={setEditorState}
             formatter={formatter}

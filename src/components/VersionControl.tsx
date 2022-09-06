@@ -1,6 +1,8 @@
 import React from "react";
 import Immutable from "immutable";
 import { css } from "styled-components/macro";
+import { useLocalStorageState } from "./useLocalStorageState";
+import { Source } from "./Source";
 
 type Repository<CommitId extends string, Source> = {
   addCommit(params: {
@@ -245,14 +247,16 @@ function plotGraph<CommitId extends string, Source>(
 
 export function VersionControlGraph<CommitId extends string, Source>({
   repository,
-  selected,
-  onSelect,
-  onCheckout,
+  children,
 }: {
   repository: Repository<CommitId, Source>;
-  selected: Set<CommitId>;
-  onSelect(commitIds: Set<CommitId>): void;
-  onCheckout(source: Source): void;
+  children: (coords: {
+    commitId: CommitId;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }) => React.ReactNode;
 }) {
   const verticalGap = 20;
   const horizontalGap = 20;
@@ -260,62 +264,16 @@ export function VersionControlGraph<CommitId extends string, Source>({
   return (
     <svg width={"100%"} height={graph.height * verticalGap}>
       {Array.from(graph.coordinates.entries(), ([commitId, { x, y }]) => {
-        const commit = repository.getCommit({ commitId });
         return (
           <g key={commitId}>
-            <g
+            <circle
+              cx={x * horizontalGap - horizontalGap / 2}
+              cy={y * verticalGap - verticalGap / 2}
+              r={Math.min(verticalGap, horizontalGap) / 3}
               css={css`
-                :hover rect {
-                  fill: var(--hover-background-color);
-                }
+                fill: var(--text-color);
               `}
-            >
-              <rect
-                x={0}
-                y={y * verticalGap - verticalGap}
-                width={"100%"}
-                height={verticalGap}
-                css={css`
-                  z-index: -1;
-                  fill: ${selected.has(commitId)
-                    ? "var(--background-color)"
-                    : "transparent"};
-                `}
-                onClick={(event) => {
-                  if (event.ctrlKey) {
-                    onSelect(new Set([...selected, commitId]));
-                  } else {
-                    onSelect(
-                      new Set([...selected][0] === commitId ? [] : [commitId])
-                    );
-                  }
-                }}
-                onDoubleClick={(event) => {
-                  event.preventDefault();
-                  if (commit) onCheckout(commit.source);
-                  onSelect(new Set([commitId]));
-                }}
-              />
-              <circle
-                cx={x * horizontalGap - horizontalGap / 2}
-                cy={y * verticalGap - verticalGap / 2}
-                r={Math.min(verticalGap, horizontalGap) / 3}
-                css={css`
-                  fill: var(--text-color);
-                `}
-              />
-              <text
-                x={graph.width * horizontalGap}
-                y={y * verticalGap - verticalGap / 2}
-                css={css`
-                  fill: var(--text-color);
-                  user-select: none;
-                `}
-                dominantBaseline="middle"
-              >
-                {commit?.description}
-              </text>
-            </g>
+            />
             {[...repository.getPreviousCommits(commitId)].map(
               (previousCommitId) => {
                 const prev = graph.coordinates.get(previousCommitId) as {
@@ -365,6 +323,15 @@ export function VersionControlGraph<CommitId extends string, Source>({
           </g>
         );
       })}
+      {Array.from(graph.coordinates.entries(), ([commitId, { x, y }]) =>
+        children({
+          commitId,
+          x: graph.width * horizontalGap,
+          y: y * verticalGap - verticalGap / 2,
+          width: "100%" as any as number,
+          height: verticalGap,
+        })
+      )}
     </svg>
   );
 }
@@ -451,12 +418,55 @@ export function VersionControlUI<CommitId extends string, Source>({
         <p>ctrl + click - select more commits</p>
       </CollapsibleSection>
       <CollapsibleSection title="COMMIT GRAPH">
-        <VersionControlGraph<CommitId, Source>
-          repository={repository}
-          selected={selected}
-          onSelect={setSelected}
-          onCheckout={onSource}
-        />
+        <VersionControlGraph<CommitId, Source> repository={repository}>
+          {({ commitId, x, y, width, height }) => {
+            const commit = repository.getCommit({ commitId });
+            return (
+              <React.Fragment>
+                <text
+                  x={x}
+                  y={y}
+                  css={css`
+                    fill: var(--text-color);
+                    user-select: none;
+                  `}
+                  dominantBaseline="middle"
+                >
+                  {commit?.description}
+                </text>
+                <rect
+                  x={0}
+                  y={y - height / 2}
+                  width={width}
+                  height={height}
+                  css={css`
+                    opacity: 0.5;
+                    fill: ${selected.has(commitId)
+                      ? "var(--background-color)"
+                      : "transparent"};
+                    :hover {
+                      fill: var(--hover-background-color);
+                    }
+                  `}
+                  onClick={(event) => {
+                    if (event.ctrlKey) {
+                      setSelected(new Set([...selected, commitId]));
+                    } else {
+                      setSelected(
+                        new Set([...selected][0] === commitId ? [] : [commitId])
+                      );
+                    }
+                  }}
+                  onDoubleClick={(event) => {
+                    event.preventDefault();
+                    if (commit) onSource(commit.source);
+                    setSelected(new Set([commitId]));
+                  }}
+                />
+              </React.Fragment>
+            );
+          }}
+        </VersionControlGraph>
       </CollapsibleSection>
     </div>
   );
@@ -525,3 +535,135 @@ const inputCss = css`
   font-size: inherit;
   color: inherit;
 `;
+
+export function useHistory({ onSource }: { onSource(source: Source): void }) {
+  type CommitId = string;
+  const [repository, setRepository] = useLocalStorageState(
+    "history",
+    naiveRepository<CommitId, Source>(),
+    React.useCallback((repository) => repository.toJSON(Source.toJSON), []),
+    React.useCallback(
+      (serialized) =>
+        naiveRepository<CommitId, Source>().fromJSON(
+          serialized,
+          Source.fromJSON
+        ),
+      []
+    )
+  );
+  const [current, setCurrent] = React.useState<CommitId | null>(null);
+  const undo = () => {
+    if (current) {
+      const previous = repository.getPreviousCommits(current);
+      if (previous.size === 1) {
+        const previousCommitId = [...previous][0];
+        const previousCommit = repository.getCommit({
+          commitId: previousCommitId,
+        });
+        if (previousCommit) {
+          setCurrent(previousCommitId);
+          onSource(previousCommit.source);
+        }
+      }
+    }
+  };
+  const redo = () => {
+    if (current) {
+      const next = repository.getNextCommits(current);
+      if (next.size === 1) {
+        const nextCommitId = [...next][0];
+        const nextCommit = repository.getCommit({
+          commitId: nextCommitId,
+        });
+        if (nextCommit) {
+          setCurrent(nextCommitId);
+          onSource(nextCommit.source);
+        }
+      }
+    }
+  };
+  const change = (source: Source) => {
+    const commitId = Math.random().toString() as CommitId;
+    setRepository(
+      repository.addCommit({
+        commitId,
+        source,
+        previous: new Set(current ? [current] : []),
+        date: new Date(),
+        author: "",
+        description: "",
+      })
+    );
+    setCurrent(commitId);
+  };
+  const goto = (commitId: CommitId) => {
+    const commit = repository.getCommit({ commitId });
+    if (commit) {
+      onSource(commit.source);
+      setCurrent(commitId);
+    }
+  };
+  return {
+    repository,
+    current,
+    change,
+    undo,
+    redo,
+    goto,
+  };
+}
+
+export function HistoryGraph<CommitId extends string, Source>({
+  repository,
+  selected,
+  onSelect,
+}: {
+  repository: Repository<CommitId, Source>;
+  selected: CommitId | null;
+  onSelect(commitId: CommitId): void;
+}) {
+  const dateFormatter = Intl.DateTimeFormat(undefined, {
+    timeStyle: "medium",
+    dateStyle: "medium",
+  });
+  return (
+    <VersionControlGraph<CommitId, Source> repository={repository}>
+      {({ commitId, x, y, width, height }) => {
+        const commit = repository.getCommit({ commitId });
+        return (
+          <React.Fragment>
+            <text
+              x={x}
+              y={y}
+              css={css`
+                fill: var(--text-color);
+                user-select: none;
+              `}
+              dominantBaseline="middle"
+            >
+              {dateFormatter.format(commit?.date)}
+            </text>
+            <rect
+              x={0}
+              y={y - height / 2}
+              width={width}
+              height={height}
+              css={css`
+                opacity: 0.5;
+                fill: ${selected === commitId
+                  ? "var(--background-color)"
+                  : "transparent"};
+                :hover {
+                  fill: var(--hover-background-color);
+                }
+              `}
+              onClick={(event) => {
+                onSelect(commitId);
+              }}
+            />
+          </React.Fragment>
+        );
+      }}
+    </VersionControlGraph>
+  );
+}
