@@ -11,7 +11,6 @@ export default function App() {
   const [source, setSource] = React.useState(Source.empty);
   const [editorState, setEditorState] = React.useState(EditorState.empty);
   const formatter = Formatter(source);
-  console.log(formatter.roots.toJS());
   const [repository, setRepository] = useLocalStorageState(
     "repository",
     naiveRepository<string, Source>(),
@@ -22,6 +21,7 @@ export default function App() {
       []
     )
   );
+  console.log(formatter.roots.toJS());
   return (
     <React.Fragment>
       <GlobalStyle />
@@ -126,17 +126,53 @@ function AppLayout({
   );
 }
 
-function RenderTerm({
+function RenderLabel({
   source,
   termId,
   onClick,
+  editorState,
+  onEditorStateChange,
 }: {
   termId: TermId;
   source: Source;
+  editorState: EditorState;
+  onEditorStateChange(editorState: EditorState): void;
   onClick(): void;
 }) {
   const { label } = source.terms.get(termId, TermData.empty);
-  return <span onClick={onClick}>{label || `<${termId}>`}</span>;
+  const [isTooltipOpen, seIsTooltipOpen] = React.useState(false);
+  return (
+    <span
+      onClick={onClick}
+      css={css`
+        position: relative;
+        background-color: ${termId === editorState.hoverLabel
+          ? "var(--hover-background-color)"
+          : ""};
+      `}
+      onMouseEnter={() => {
+        onEditorStateChange({ ...editorState, hoverLabel: termId });
+        seIsTooltipOpen(true);
+      }}
+      onMouseLeave={() => {
+        onEditorStateChange({ ...editorState, hoverLabel: undefined });
+        seIsTooltipOpen(false);
+      }}
+    >
+      {label || `<${termId}>`}
+      {isTooltipOpen && (
+        <div
+          css={css`
+            position: absolute;
+            background-color: var(--background-color-secondary);
+            z-index: 1;
+          `}
+        >
+          {termId}
+        </div>
+      )}
+    </span>
+  );
 }
 
 function RenderValue({
@@ -165,24 +201,83 @@ function RenderValue({
       {children}
     </RenderContextualActions>
   );
+  const showEnclosingParentheses =
+    editorState.type !== "root" && editorState.termId === termId;
   return (
     <React.Fragment>
-      {editorState.type === "term" &&
+      {showEnclosingParentheses && (
+        <strong
+          css={css`
+            color: var(--text-color-blue);
+          `}
+        >
+          {"("}
+        </strong>
+      )}
+      {editorState.type === "term" && editorState.termId === termId ? (
+        <React.Fragment>{actions()}</React.Fragment>
+      ) : (
+        termData.label && (
+          <RenderLabel
+            termId={termId}
+            source={source}
+            editorState={editorState}
+            onEditorStateChange={onEditorStateChange}
+            onClick={() => {
+              onEditorStateChange({
+                type: "term",
+                termId,
+                text: termData.label,
+              });
+            }}
+          />
+        )
+      )}
+      {editorState.type === "annotation" && editorState.termId === termId ? (
+        <React.Fragment>
+          {" : "}
+          {actions()}
+        </React.Fragment>
+      ) : (
+        termData.annotation && (
+          <React.Fragment>
+            {" : "}
+            {formatter.roots.has(termData.annotation) ? (
+              <RenderLabel
+                termId={termData.annotation}
+                source={source}
+                editorState={editorState}
+                onEditorStateChange={onEditorStateChange}
+                onClick={() => {
+                  onEditorStateChange({
+                    type: "annotation",
+                    termId,
+                    text:
+                      (termData.annotation &&
+                        source.terms.get(termData.annotation)?.label) ??
+                      "",
+                  });
+                }}
+              />
+            ) : (
+              <RenderValue
+                termId={termData.annotation}
+                source={source}
+                onSourceChange={onSourceChange}
+                editorState={editorState}
+                onEditorStateChange={onEditorStateChange}
+                formatter={formatter}
+              />
+            )}
+          </React.Fragment>
+        )
+      )}
+      {((editorState.type === "reference" &&
         editorState.termId === termId &&
-        !formatter.roots.has(termId) && (
-          <strong
-            css={css`
-              color: var(--text-color-blue);
-            `}
-          >
-            (
-          </strong>
-        )}
-      {editorState.type === "term" &&
-        editorState.termId === termId &&
-        !formatter.roots.has(termId) && (
-          <React.Fragment>{actions()} </React.Fragment>
-        )}
+        termData.label !== "") ||
+        (editorState.type === "parameter" && editorState.termId === termId) ||
+        (termData.reference && termData.label !== "")) &&
+        " = "}
       {(termData.parameters.size > 0 ||
         (editorState.type === "parameters" &&
           editorState.termId === termId)) && (
@@ -197,16 +292,20 @@ function RenderValue({
                   editorState.termId === termId &&
                   editorState.parameterTermId === parameterTermId ? (
                     actions(
-                      <RenderTerm
+                      <RenderLabel
                         termId={parameterTermId}
                         source={source}
+                        editorState={editorState}
+                        onEditorStateChange={onEditorStateChange}
                         onClick={() => {}}
                       />
                     )
                   ) : (
-                    <RenderTerm
+                    <RenderLabel
                       termId={parameterTermId}
                       source={source}
+                      editorState={editorState}
+                      onEditorStateChange={onEditorStateChange}
                       onClick={() => {
                         onEditorStateChange({
                           type: "parameter",
@@ -217,7 +316,6 @@ function RenderValue({
                       }}
                     />
                   )}
-
                   {(index < termData.parameters.size - 1 ||
                     (editorState.type === "parameters" &&
                       editorState.termId === termId)) &&
@@ -235,9 +333,11 @@ function RenderValue({
       {editorState.type === "reference" && editorState.termId === termId
         ? actions()
         : termData.reference && (
-            <RenderTerm
+            <RenderLabel
               termId={termData.reference}
               source={source}
+              editorState={editorState}
+              onEditorStateChange={onEditorStateChange}
               onClick={() => {
                 onEditorStateChange({
                   type: "reference",
@@ -260,9 +360,11 @@ function RenderValue({
             ([bindingKeyTermId, bindingValueTermId], index) => {
               return (
                 <React.Fragment key={bindingKeyTermId}>
-                  <RenderTerm
+                  <RenderLabel
                     termId={bindingKeyTermId}
                     source={source}
+                    editorState={editorState}
+                    onEditorStateChange={onEditorStateChange}
                     onClick={() => {
                       onEditorStateChange({
                         type: "binding",
@@ -282,9 +384,11 @@ function RenderValue({
                     actions()}
                   {bindingValueTermId ? (
                     formatter.roots.has(bindingValueTermId) ? (
-                      <RenderTerm
+                      <RenderLabel
                         termId={bindingValueTermId}
                         source={source}
+                        editorState={editorState}
+                        onEditorStateChange={onEditorStateChange}
                         onClick={() => {
                           onEditorStateChange({
                             type: "binding",
@@ -320,17 +424,15 @@ function RenderValue({
           )
         </React.Fragment>
       )}
-      {editorState.type === "term" &&
-        editorState.termId === termId &&
-        !formatter.roots.has(termId) && (
-          <strong
-            css={css`
-              color: var(--text-color-blue);
-            `}
-          >
-            )
-          </strong>
-        )}
+      {showEnclosingParentheses && (
+        <strong
+          css={css`
+            color: var(--text-color-blue);
+          `}
+        >
+          )
+        </strong>
+      )}
     </React.Fragment>
   );
 }
@@ -348,16 +450,6 @@ export function RenderRoot({
   editorState: EditorState;
   onEditorStateChange(editorState: EditorState): void;
 }) {
-  const actions = (children?: React.ReactNode) => (
-    <RenderContextualActions
-      source={source}
-      onSourceChange={onSourceChange}
-      editorState={editorState}
-      onEditorStateChange={onEditorStateChange}
-    >
-      {children}
-    </RenderContextualActions>
-  );
   return (
     <div
       css={css`
@@ -371,69 +463,8 @@ export function RenderRoot({
       }}
     >
       {[...formatter.roots.keys()].map((termId) => {
-        const termData = source.terms.get(termId, TermData.empty);
         return (
-          <React.Fragment key={termId}>
-            {editorState.type === "term" && editorState.termId === termId ? (
-              <RenderContextualActions
-                source={source}
-                onSourceChange={onSourceChange}
-                editorState={editorState}
-                onEditorStateChange={onEditorStateChange}
-              />
-            ) : (
-              <RenderTerm
-                termId={termId}
-                source={source}
-                onClick={() =>
-                  onEditorStateChange({
-                    type: "term",
-                    termId: termId,
-                    text: termData.label,
-                  })
-                }
-              />
-            )}
-            {(termData.annotation ||
-              (editorState.type === "annotation" &&
-                editorState.termId === termId)) &&
-              " : "}
-            {editorState.type === "annotation" &&
-              editorState.termId === termId &&
-              actions()}
-            {termData.annotation &&
-              (formatter.roots.has(termData.annotation) ? (
-                <RenderTerm
-                  termId={termData.annotation}
-                  source={source}
-                  onClick={() =>
-                    onEditorStateChange({
-                      type: "annotation",
-                      termId: termId,
-                      text: termData.label,
-                    })
-                  }
-                />
-              ) : (
-                <RenderValue
-                  termId={termData.annotation}
-                  source={source}
-                  onSourceChange={onSourceChange}
-                  editorState={editorState}
-                  onEditorStateChange={onEditorStateChange}
-                  formatter={formatter}
-                />
-              ))}
-            {(termData.reference !== null ||
-              termData.parameters.size > 0 ||
-              termData.bindings.size > 0 ||
-              (editorState.type === "reference" &&
-                editorState.termId === termId) ||
-              (editorState.type === "parameters" &&
-                editorState.termId === termId) ||
-              (editorState.type === "bindings" &&
-                editorState.termId === termId)) &&
-              " = "}
+          <div key={termId}>
             <RenderValue
               termId={termId}
               source={source}
@@ -442,11 +473,19 @@ export function RenderRoot({
               onEditorStateChange={onEditorStateChange}
               formatter={formatter}
             />
-            <br />
-          </React.Fragment>
+          </div>
         );
       })}
-      {editorState.type === "root" && actions()}
+      {editorState.type === "root" && (
+        <div>
+          <RenderContextualActions
+            source={source}
+            onSourceChange={onSourceChange}
+            editorState={editorState}
+            onEditorStateChange={onEditorStateChange}
+          />
+        </div>
+      )}
     </div>
   );
 }

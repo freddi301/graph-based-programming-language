@@ -2,7 +2,7 @@ import React from "react";
 import { css } from "styled-components/macro";
 import { Source, TermId } from "./Source";
 
-export type EditorState =
+export type EditorState = { hoverLabel?: TermId } & (
   | {
       type: "root";
       text: string;
@@ -30,7 +30,9 @@ export type EditorState =
     }
   | { type: "reference"; termId: TermId; text: string }
   | { type: "bindings"; termId: TermId; text: string }
-  | { type: "binding"; termId: TermId; keyTermId: TermId; text: string };
+  | { type: "binding"; termId: TermId; keyTermId: TermId; text: string }
+);
+
 export const EditorState = {
   empty: {
     type: "root",
@@ -174,7 +176,10 @@ function deriveContextualActions(
           editorState: {
             type: "annotation",
             termId: editorState.termId,
-            text: "",
+            text:
+              (termData.annotation &&
+                source.terms.get(termData.annotation)?.label) ??
+              "",
           },
         },
       });
@@ -344,13 +349,14 @@ function deriveContextualActions(
   if (
     editorState.type === "parameters" ||
     editorState.type === "term" ||
-    editorState.type === "bindings"
+    editorState.type === "bindings" ||
+    editorState.type === "annotation"
   ) {
     const termData = source.terms.get(editorState.termId);
     const referenceTermData =
       termData?.reference && source.terms.get(termData.reference);
     contextualActions.push({
-      shortcut: { key: "k", ctrl: true },
+      shortcut: { key: "=" },
       display: (
         <span
           css={css`
@@ -743,6 +749,37 @@ function deriveContextualActions(
         });
       }
     }
+  }
+
+  if (editorState.type === "annotation") {
+    const [sourceWithNewTerm, newTermId] = Source.createTerm(source, "");
+    const sourceWithAddedAnnotation = Source.setAnnotation(
+      sourceWithNewTerm,
+      editorState.termId,
+      newTermId
+    );
+    contextualActions.push({
+      shortcut: { key: "o", ctrl: true },
+      display: (
+        <span
+          css={css`
+            color: var(--text-color-secondary);
+          `}
+        >
+          add new anonymous variable as annotation
+          <br />
+          with reference as existing variable{" "}
+        </span>
+      ),
+      updated: {
+        source: sourceWithAddedAnnotation,
+        editorState: {
+          type: "term",
+          termId: newTermId,
+          text: "",
+        },
+      },
+    });
   }
 
   if (editorState.type !== "root") {

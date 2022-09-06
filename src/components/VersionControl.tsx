@@ -84,7 +84,6 @@ export function naiveRepository<CommitId extends string, Source>(
         if (isAncestor(youngerParent, olderParent)) without.delete(olderParent);
       }
     }
-    console.log(without);
     return without;
   }
   return {
