@@ -1,5 +1,6 @@
 import React from "react";
 import { css } from "styled-components/macro";
+import { Shortcut, ShortcutComponents } from "./Shortcut";
 import { Source, TermId } from "./Source";
 
 export type EditorState = { hoverLabel?: TermId } & (
@@ -41,7 +42,7 @@ export const EditorState = {
 };
 
 type ContextualAction = {
-  shortcut?: { key: string; ctrl?: true; shift?: true; alt?: true };
+  shortcut?: ShortcutComponents;
   display: React.ReactNode;
   updated: { source: Source; editorState: EditorState };
 };

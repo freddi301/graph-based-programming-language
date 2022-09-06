@@ -4,8 +4,18 @@ import { EditorState, RenderContextualActions } from "./components/Editor";
 import { Formatter } from "./components/Formatter";
 import { Source, TermData, TermId } from "./components/Source";
 import { GlobalStyle } from "./components/theme";
-import { naiveRepository, VersionControlUI } from "./components/VersionControl";
-import { useLocalStorageState } from "./useLocalStorageState";
+import {
+  naiveRepository,
+  VersionControlGraph,
+  VersionControlUI,
+} from "./components/VersionControl";
+import { useLocalStorageState } from "./components/useLocalStorageState";
+import { library } from "@fortawesome/fontawesome-svg-core";
+import { fas } from "@fortawesome/free-solid-svg-icons";
+import { LeftSideTab, RenderLeftSideTabMemo } from "./components/LeftSideTab";
+import { AppLayout } from "./components/AppLayout";
+
+library.add(fas);
 
 export default function App() {
   const [source, setSource] = React.useState(Source.empty);
@@ -21,20 +31,34 @@ export default function App() {
       []
     )
   );
-  console.log(formatter.roots.toJS());
+  const [selectedLeftSideTab, setSelectedLeftSideTab] =
+    React.useState<LeftSideTab>("version-control");
   return (
     <React.Fragment>
       <GlobalStyle />
       <AppLayout
         top={null}
-        left={
-          <VersionControlUI
-            source={source}
-            onSource={setSource}
-            repository={repository}
-            onRepositoryChange={setRepository}
+        leftLeft={leftSideTabs.map((tab) => (
+          <RenderLeftSideTabMemo
+            key={tab}
+            tab={tab}
+            onSelect={setSelectedLeftSideTab}
+            isSelected={tab === selectedLeftSideTab}
           />
-        }
+        ))}
+        left={(() => {
+          switch (selectedLeftSideTab) {
+            case "version-control":
+              return (
+                <VersionControlUI
+                  source={source}
+                  onSource={setSource}
+                  repository={repository}
+                  onRepositoryChange={setRepository}
+                />
+              );
+          }
+        })()}
         center={
           <RenderRoot
             source={source}
@@ -51,80 +75,7 @@ export default function App() {
   );
 }
 
-function AppLayout({
-  top,
-  left,
-  center,
-  bottom,
-  right,
-}: {
-  top: React.ReactNode;
-  left: React.ReactNode;
-  center: React.ReactNode;
-  bottom: React.ReactNode;
-  right: React.ReactNode;
-}) {
-  return (
-    <div
-      css={css`
-        display: grid;
-        width: 100vw;
-        height: 100vh;
-        grid-template-areas:
-          "top top top"
-          "left center right"
-          "left bottom right";
-        grid-template-columns: 400px 1fr 10px;
-        grid-template-rows: 20px 1fr 400px;
-      `}
-    >
-      <div
-        css={css`
-          grid-area: top;
-          border-bottom: 1px solid var(--border-color);
-          box-sizing: border-box;
-        `}
-      >
-        {top}
-      </div>
-      <div
-        css={css`
-          grid-area: left;
-          border-right: 1px solid var(--border-color);
-          box-sizing: border-box;
-        `}
-      >
-        {left}
-      </div>
-      <div
-        css={css`
-          grid-area: center;
-          box-sizing: border-box;
-        `}
-      >
-        {center}
-      </div>
-      <div
-        css={css`
-          grid-area: bottom;
-          border-top: 1px solid var(--border-color);
-          box-sizing: border-box;
-        `}
-      >
-        {bottom}
-      </div>
-      <div
-        css={css`
-          grid-area: right;
-          border-left: 1px solid var(--border-color);
-          box-sizing: border-box;
-        `}
-      >
-        {right}
-      </div>
-    </div>
-  );
-}
+const leftSideTabs: Array<LeftSideTab> = ["version-control", "history"];
 
 function RenderLabel({
   source,
@@ -454,7 +405,6 @@ export function RenderRoot({
     <div
       css={css`
         padding: 1em;
-        min-height: 100%;
       `}
       onClick={(event) => {
         if (event.target === event.currentTarget) {

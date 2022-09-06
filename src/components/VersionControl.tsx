@@ -243,7 +243,7 @@ function plotGraph<CommitId extends string, Source>(
   return { coordinates, width: x, height: commitsByDate.length };
 }
 
-function VersionControlGraph<CommitId extends string, Source>({
+export function VersionControlGraph<CommitId extends string, Source>({
   repository,
   selected,
   onSelect,
