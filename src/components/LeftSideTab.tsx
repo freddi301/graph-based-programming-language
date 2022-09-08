@@ -4,9 +4,7 @@ import { css } from "styled-components/macro";
 
 export type LeftSideTab = keyof typeof allTabs;
 
-function ensure<
-  V extends Record<string, { icon: React.ReactNode; label: React.ReactNode }>
->(value: V) {
+function ensure<V extends Record<string, { icon: React.ReactNode; label: React.ReactNode }>>(value: V) {
   return value;
 }
 
@@ -21,15 +19,7 @@ const allTabs = ensure({
   },
 });
 
-function RenderLeftSideTab({
-  tab,
-  onSelect,
-  isSelected,
-}: {
-  tab: LeftSideTab;
-  onSelect(tab: LeftSideTab): void;
-  isSelected: boolean;
-}) {
+function RenderLeftSideTab({ tab, onSelect, isSelected }: { tab: LeftSideTab; onSelect(tab: LeftSideTab): void; isSelected: boolean }) {
   const [isTooltipOpen, setIsTooltipOpen] = React.useState(false);
   return (
     <div
@@ -39,18 +29,12 @@ function RenderLeftSideTab({
         display: flex;
         align-items: center;
         justify-content: center;
-        background-color: ${isSelected
-          ? "var(--background-color-secondary)"
-          : "var(--background-color)"};
+        background-color: ${isSelected ? "var(--background-color-secondary)" : "var(--background-color)"};
         :hover {
           background-color: var(--hover-background-color);
         }
-        color: ${isSelected
-          ? "var(--text-color)"
-          : "var(--text-color-secondary)"};
-        border-right: ${isSelected
-          ? "1px solid var(--background-color-secondary)"
-          : ""};
+        color: ${isSelected ? "var(--text-color)" : "var(--text-color-secondary)"};
+        border-right: ${isSelected ? "1px solid var(--background-color-secondary)" : ""};
         position: relative;
       `}
       onClick={() => {
@@ -77,7 +61,7 @@ function RenderLeftSideTab({
             height: 100%;
             display: flex;
             align-items: center;
-            padding-right: 1em;
+            padding-right: 1ch;
           `}
         >
           {allTabs[tab].label}
