@@ -207,6 +207,7 @@ export const hexStringOf32ByteStringSerialization: SerializationInterface<HexStr
 
 export type SourceFormattingInterface<TermId, Source> = {
   isRoot(source: Source, termId: TermId): boolean;
+  getParents(source: Source, termId: TermId): Set<TermId>;
 };
 
 export function createSourceFormmattingImplementationFromSourceImplementation<TermId, Source>(
@@ -220,8 +221,9 @@ export function createSourceFormmattingImplementationFromSourceImplementation<Te
     asAnnotation: number;
   };
 
-  function getReferenceCounts(source: Source) {
+  function getReferences(source: Source) {
     const countByTermId = new Map<string, Counts>();
+    const parentsById = new Map<string, Set<TermId>>();
     for (const [termId] of sourceImplementation.all(source)) {
       const counts: Counts = {
         asReference: 0,
@@ -229,37 +231,49 @@ export function createSourceFormmattingImplementationFromSourceImplementation<Te
         asParameter: 0,
         asAnnotation: 0,
       };
-      for (const [, { annotation, parameters, reference, bindings }] of sourceImplementation.all(source)) {
+      const parents = new Set<TermId>();
+      for (const [parentTermId, { annotation, parameters, reference, bindings }] of sourceImplementation.all(source)) {
         if (annotation && annotation === termId) {
           counts.asAnnotation += 1;
+          parents.add(parentTermId);
         }
         for (const [val] of parameters.entries()) {
           if (val === termId) {
             counts.asParameter += 1;
+            parents.add(parentTermId);
           }
         }
         if (reference && reference === termId) {
           counts.asReference += 1;
+          parents.add(parentTermId);
         }
         for (const [, val] of bindings.entries()) {
           if (val === termId) {
             counts.asBinding += 1;
+            parents.add(parentTermId);
           }
         }
         countByTermId.set(termIdStringSerialization.serialize(termId), counts);
+        parentsById.set(termIdStringSerialization.serialize(termId), parents);
       }
     }
-    return countByTermId;
+    return {
+      counts: countByTermId,
+      parents: parentsById,
+    };
   }
-  return {
+  const implementation: SourceFormattingInterface<TermId, Source> = {
     isRoot(source, termId) {
-      const counts = getReferenceCounts(source).get(termIdStringSerialization.serialize(termId)) as Counts;
+      const counts = getReferences(source).counts.get(termIdStringSerialization.serialize(termId)) as Counts;
       const { label } = sourceImplementation.get(source, termId);
       if (counts.asParameter === 1 && counts.asBinding + counts.asAnnotation + counts.asReference === 0) return false;
-      if (label) return true;
       if (counts.asAnnotation === 1 && counts.asBinding + counts.asParameter + counts.asReference === 0) return false;
-      if (counts.asReference + counts.asBinding === 1 && counts.asAnnotation + counts.asParameter === 0) return false;
+      if (counts.asReference + counts.asBinding === 1 && counts.asAnnotation + counts.asParameter === 0 && !label) return false;
       return true;
     },
+    getParents(source, termId) {
+      return getReferences(source).parents.get(termIdStringSerialization.serialize(termId)) ?? new Set();
+    },
   };
+  return implementation;
 }

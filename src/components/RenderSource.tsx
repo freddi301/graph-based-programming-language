@@ -83,6 +83,7 @@ function RenderValue<TermId, Source>({
       onEditorStateChange={onEditorStateChange}
       sourceImplemetation={sourceImplementation}
       sourceFacadeImplementation={sourceFacadeImplementation}
+      sourceFormattingImplementation={sourceFormattingImplementation}
     >
       {children}
     </RenderContextualActions>
@@ -145,17 +146,18 @@ function RenderValue<TermId, Source>({
       )}
       {((editorState.type === "reference" && editorState.termId === termId && termData.label !== "") ||
         (editorState.type === "parameter" && editorState.termId === termId) ||
+        (editorState.type === "term" && editorState.termId === termId && termData.parameters.size > 0) ||
         (termData.reference && termData.label !== "")) &&
         " = "}
       {(termData.parameters.size > 0 || (editorState.type === "parameters" && editorState.termId === termId)) && (
         <React.Fragment>
-          (
+          {"("}
           {Array.from(termData.parameters.entries(), ([parameterTermId], index) => {
             return (
               <React.Fragment key={termIdStringSerialization.serialize(parameterTermId)}>
                 {editorState.type === "parameter" && editorState.termId === termId && editorState.parameterTermId === parameterTermId ? (
                   actions()
-                ) : (
+                ) : sourceFormattingImplementation.isRoot(source, parameterTermId) ? (
                   <RenderLabel
                     termId={parameterTermId}
                     onClick={() => {
@@ -168,17 +170,23 @@ function RenderValue<TermId, Source>({
                     }}
                     {...baseProps}
                   />
+                ) : (
+                  <RenderValue termId={parameterTermId} {...baseProps} />
                 )}
                 {(index < termData.parameters.size - 1 || (editorState.type === "parameters" && editorState.termId === termId)) && ", "}
               </React.Fragment>
             );
           })}
-          {editorState.type === "parameters" && editorState.termId === termId && actions()}){termData.type === "lambda" ? " => " : " -> "}
+          {editorState.type === "parameters" && editorState.termId === termId && actions()}
+          {")"}
         </React.Fragment>
       )}
+      {(termData.parameters.size > 0 || (editorState.type === "parameters" && editorState.termId === termId)) &&
+        (termData.type === "lambda" ? " => " : " -> ")}
       {editorState.type === "reference" && editorState.termId === termId
         ? actions()
-        : termData.reference && (
+        : termData.reference &&
+          (sourceFormattingImplementation.isRoot(source, termData.reference) ? (
             <RenderLabel
               termId={termData.reference}
               onClick={() => {
@@ -190,7 +198,9 @@ function RenderValue<TermId, Source>({
               }}
               {...baseProps}
             />
-          )}
+          ) : (
+            <RenderValue termId={termData.reference} {...baseProps} />
+          ))}
       {(termData.bindings.size > 0 ||
         (editorState.type === "bindings" && editorState.termId === termId) ||
         (editorState.type === "binding" && editorState.termId === termId)) && (
@@ -291,6 +301,7 @@ export function RenderRoot<CommitId, Source>({ ...baseProps }: RenderSourceBaseP
             onEditorStateChange={onEditorStateChange}
             sourceImplemetation={sourceImplementation}
             sourceFacadeImplementation={sourceFacadeImplementation}
+            sourceFormattingImplementation={sourceFormattingImplementation}
           />
         </div>
       )}

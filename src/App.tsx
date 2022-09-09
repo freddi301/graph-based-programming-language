@@ -71,7 +71,7 @@ function GenericApp<TermId, Source, CommitId, Repository>({
     repositoryImplementation,
     repositoryJsonValueSerialization,
   });
-  const [selectedLeftSideTab, setSelectedLeftSideTab] = React.useState<LeftSideTab>("version-control");
+  const [selectedLeftSideTab, setSelectedLeftSideTab] = React.useState<LeftSideTab>("history");
   return (
     <React.Fragment>
       <GlobalStyle />
