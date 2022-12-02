@@ -79,13 +79,19 @@ export function useHistory<CommitId, Source, Repository>({
   React.useLayoutEffect(() => {
     const shortcuts = defaultShortcuts;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === shortcuts.undo.key && event.ctrlKey === shortcuts.undo.ctrl) {
-        event.preventDefault();
-        undo();
-      }
-      if (event.key === shortcuts.redo.key && event.ctrlKey === shortcuts.redo.ctrl && event.shiftKey === shortcuts.redo.shift) {
+      if (
+        event.key.toLowerCase() === shortcuts.redo.key &&
+        event.ctrlKey === shortcuts.redo.ctrl &&
+        event.shiftKey === shortcuts.redo.shift
+      ) {
         event.preventDefault();
         redo();
+        return;
+      }
+      if (event.key.toLowerCase() === shortcuts.undo.key && event.ctrlKey === shortcuts.undo.ctrl) {
+        event.preventDefault();
+        undo();
+        return;
       }
     };
     document.addEventListener("keydown", onKeyDown);
