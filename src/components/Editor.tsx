@@ -104,7 +104,7 @@ function deriveContextualActions<TermId, Source>({
     for (const [existingTermId, { label }] of sourceImplemetation.all(source)) {
       if (label.includes(editorState.text)) {
         contextualActions.push({
-          shortcut: { key: "g", ctrl: true },
+          shortcut: shortcuts.goto,
           display: (
             <span
               css={css`
@@ -174,7 +174,7 @@ function deriveContextualActions<TermId, Source>({
     const termData = sourceImplemetation.get(source, editorState.termId);
     if (termData) {
       contextualActions.push({
-        shortcut: shortcuts.annotation,
+        shortcut: shortcuts.focusAnnotation,
         display: (
           <span
             css={css`
@@ -200,7 +200,7 @@ function deriveContextualActions<TermId, Source>({
     const [newSource, newTermId] = sourceFacadeImplementation.create(source);
     const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.text);
     contextualActions.push({
-      shortcut: shortcuts.annotation,
+      shortcut: shortcuts.focusAnnotation,
       display: (
         <span
           css={css`
@@ -240,7 +240,7 @@ function deriveContextualActions<TermId, Source>({
     const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.text);
     const newSourceWithAddedParameter = sourceFacadeImplementation.addParameter(newSourceWithLabel, editorState.termId, newTermId);
     contextualActions.push({
-      shortcut: shortcuts.annotation,
+      shortcut: shortcuts.focusAnnotation,
       display: (
         <span
           css={css`
@@ -273,7 +273,7 @@ function deriveContextualActions<TermId, Source>({
     const termData = sourceImplemetation.get(source, editorState.termId);
     if (termData) {
       contextualActions.push({
-        shortcut: { key: "p", ctrl: true },
+        shortcut: shortcuts.toggleLambdaPi,
         display: (
           <span
             css={css`
@@ -293,14 +293,14 @@ function deriveContextualActions<TermId, Source>({
 
   if (editorState.type === "parameters" || editorState.type === "reference" || editorState.type === "bindings") {
     contextualActions.push({
-      shortcut: { key: "h", ctrl: true },
+      shortcut: shortcuts.focusTerm,
       display: (
         <span
           css={css`
             color: var(--text-color-secondary);
           `}
         >
-          term
+          focus whole term
         </span>
       ),
       updated: {
@@ -316,7 +316,7 @@ function deriveContextualActions<TermId, Source>({
 
   if (editorState.type === "term" || editorState.type === "reference" || editorState.type === "bindings") {
     contextualActions.push({
-      shortcut: shortcuts.parameters,
+      shortcut: shortcuts.focusParameters,
       display: (
         <span
           css={css`
@@ -376,7 +376,7 @@ function deriveContextualActions<TermId, Source>({
       if (label.includes(editorState.text)) {
         const sourceWithAddedParameter = sourceFacadeImplementation.addParameter(source, editorState.termId, existingTermId);
         contextualActions.push({
-          shortcut: { key: "u", ctrl: true },
+          shortcut: shortcuts.useExisting,
           display: (
             <span
               css={css`
@@ -416,7 +416,7 @@ function deriveContextualActions<TermId, Source>({
     const termData = sourceImplemetation.get(source, editorState.termId);
     const referenceTermData = termData?.reference && sourceImplemetation.get(source, termData.reference);
     contextualActions.push({
-      shortcut: { key: "=" },
+      shortcut: shortcuts.focusReference,
       display: (
         <span
           css={css`
@@ -507,7 +507,7 @@ function deriveContextualActions<TermId, Source>({
       if (label.includes(editorState.text)) {
         const sourceWithSetReference = sourceFacadeImplementation.setReference(source, editorState.termId, existingTermId);
         contextualActions.push({
-          shortcut: { key: "u", ctrl: true },
+          shortcut: shortcuts.useExisting,
           display: (
             <span
               css={css`
@@ -540,7 +540,7 @@ function deriveContextualActions<TermId, Source>({
 
   if (editorState.type === "reference" || editorState.type === "term" || editorState.type === "parameters") {
     contextualActions.push({
-      shortcut: { key: "l", ctrl: true },
+      shortcut: shortcuts.focusBindings,
       display: (
         <span
           css={css`
@@ -559,7 +559,7 @@ function deriveContextualActions<TermId, Source>({
 
   if (editorState.type === "term") {
     contextualActions.push({
-      shortcut: { key: "d", ctrl: true },
+      shortcut: shortcuts.delete,
       display: (
         <span
           css={css`
@@ -628,7 +628,7 @@ function deriveContextualActions<TermId, Source>({
           existingBindigValue
         );
         contextualActions.push({
-          shortcut: { key: "u", ctrl: true },
+          shortcut: shortcuts.useExisting,
           display: (
             <span
               css={css`
@@ -709,7 +709,7 @@ function deriveContextualActions<TermId, Source>({
           existingTermId
         );
         contextualActions.push({
-          shortcut: { key: "u", ctrl: true },
+          shortcut: shortcuts.useExisting,
           display: (
             <span
               css={css`
@@ -752,7 +752,7 @@ function deriveContextualActions<TermId, Source>({
         );
         const sourceWithSetReference = sourceFacadeImplementation.setReference(sourceWithAddedBindingValue, newTermId, existingTermId);
         contextualActions.push({
-          shortcut: { key: "o", ctrl: true },
+          shortcut: shortcuts.wrap,
           display: (
             <span
               css={css`
@@ -761,7 +761,7 @@ function deriveContextualActions<TermId, Source>({
             >
               add new anonymous variable as binding value
               <br />
-              with reference as existing variable{" "}
+              with reference set as existing variable{" "}
               <strong
                 css={css`
                   color: var(--text-color);
@@ -846,7 +846,7 @@ function deriveContextualActions<TermId, Source>({
       if (label.includes(editorState.text)) {
         const sourceWithSetAnnotation = sourceFacadeImplementation.setAnnotation(source, editorState.termId, existingTermId);
         contextualActions.push({
-          shortcut: { key: "u", ctrl: true },
+          shortcut: shortcuts.useExisting,
           display: (
             <span
               css={css`
@@ -981,6 +981,7 @@ export function RenderContextualActions<TermId, Source>({
       )}
       <div
         css={css`
+          z-index: 1;
           left: 0px;
           top: 100%;
           position: absolute;
@@ -1005,10 +1006,10 @@ export function RenderContextualActions<TermId, Source>({
               >
                 {action.shortcut && (
                   <React.Fragment>
-                    {action.shortcut.ctrl && "ctrl + "}
-                    {action.shortcut.shift && "shift + "}
-                    {action.shortcut.alt && "alt + "}
-                    {action.shortcut.key}
+                    {action.shortcut.ctrl && "Ctrl + "}
+                    {action.shortcut.shift && "Shift + "}
+                    {action.shortcut.alt && "Alt + "}
+                    {remapKeyForDisplay(action.shortcut.key)}
                   </React.Fragment>
                 )}
               </div>
@@ -1034,4 +1035,13 @@ export function RenderContextualActions<TermId, Source>({
       </div>
     </div>
   );
+}
+
+function remapKeyForDisplay(key: string) {
+  switch (key) {
+    case " ":
+      return "Space";
+    default:
+      return key;
+  }
 }

@@ -12,8 +12,16 @@ export const defaultShortcuts = ensure({
   redo: { key: "z", ctrl: true, shift: true },
   escape: { key: "Escape" },
   newVariable: { key: "i", ctrl: true },
-  annotation: { key: ":" },
-  parameters: { key: " " },
+  focusAnnotation: { key: ":" },
+  focusParameters: { key: " " },
+  focusTerm: { key: "h", ctrl: true },
+  focusReference: { key: "=" },
+  focusBindings: { key: "l", ctrl: true },
+  wrap: { key: "o", ctrl: true },
+  delete: { key: "d", ctrl: true },
+  goto: { key: "g", ctrl: true },
+  toggleLambdaPi: { key: "p", ctrl: true },
+  useExisting: { key: "u", ctrl: true },
 });
 
 function ensure<V extends Record<string, Shortcut>>(value: V) {
