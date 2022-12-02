@@ -20,6 +20,7 @@ export const GlobalStyle = createGlobalStyle`
     background-color: var(--background-color);
     color: var(--text-color);
     font-family: "JetBrains Mono", monospace;
+    overflow: hidden;
   }
   ::-webkit-scrollbar {
     background: transparent;

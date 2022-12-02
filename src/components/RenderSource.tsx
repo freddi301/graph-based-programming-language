@@ -47,7 +47,11 @@ function RenderLabel<TermId, Source>({
         <div
           css={css`
             position: absolute;
+            left: 0px;
             background-color: var(--background-color-secondary);
+            color: var(--text-color-secondary);
+            padding: 4px 8px;
+            border: 1px solid var(--border-color);
             z-index: 1;
           `}
         >

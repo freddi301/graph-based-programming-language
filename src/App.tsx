@@ -122,7 +122,7 @@ function GenericApp<TermId, Source, CommitId, Repository>({
             sourceFacadeImplementation={sourceFacadeImplementation}
           />
         }
-        bottom={null}
+        bottom={JSON.stringify(editorState)}
         right={null}
       />
     </React.Fragment>
@@ -131,7 +131,7 @@ function GenericApp<TermId, Source, CommitId, Repository>({
 
 const leftSideTabs: Array<LeftSideTab> = ["version-control", "history"];
 
-// choose implemnetations
+// choose implementations
 
 export default function App() {
   type TermId = HexStringOf32Byte;
