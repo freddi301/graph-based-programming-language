@@ -1,6 +1,6 @@
 import React from "react";
 import { css } from "styled-components/macro";
-import { defaultShortcuts, Shortcut, Shortcuts } from "./Shortcut";
+import { defaultShortcuts, Shortcut } from "./Shortcut";
 import { SourceFacadeInterface, SourceFormattingInterface, SourceInterface } from "./Source";
 import { HasEmptyIntance } from "./utils";
 
@@ -79,7 +79,7 @@ function deriveContextualActions<TermId, Source>({
             color: var(--text-color-secondary);
           `}
         >
-          create new variable{" "}
+          add new variable{" "}
           <strong
             css={css`
               color: var(--text-color);
@@ -331,6 +331,45 @@ function deriveContextualActions<TermId, Source>({
         editorState: {
           type: "parameters",
           termId: editorState.termId,
+          text: "",
+        },
+      },
+    });
+  }
+
+  if (editorState.type === "root") {
+    const [newSource, newTermId] = sourceFacadeImplementation.create(source);
+    const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.text);
+    contextualActions.push({
+      shortcut: shortcuts.focusParameters,
+      display: (
+        <span
+          css={css`
+            color: var(--text-color-secondary);
+          `}
+        >
+          <span
+            css={css`
+              color: var(--text-color-secondary);
+            `}
+          >
+            add new variable{" "}
+            <strong
+              css={css`
+                color: var(--text-color);
+              `}
+            >
+              {editorState.text}
+            </strong>{" "}
+            and go to parameters
+          </span>
+        </span>
+      ),
+      updated: {
+        source: newSourceWithLabel,
+        editorState: {
+          type: "parameters",
+          termId: newTermId,
           text: "",
         },
       },
@@ -973,53 +1012,32 @@ export function RenderContextualActions<TermId, Source>({
             border: none;
             font-family: inherit;
             font-size: inherit;
-            color: inherit;
+            color: var(--text-color-secondary);
             padding: 0;
             width: ${editorState.text.length ? `${editorState.text.length}ch` : "1px"};
           `}
         />
       )}
-      <div
+      <table
         css={css`
           z-index: 1;
           left: 0px;
           top: 100%;
           position: absolute;
-          width: 600px;
+          width: max-content;
           max-height: 400px;
-          overflow-y: scroll;
+          overflow-y: auto;
           background-color: var(--background-color-secondary);
           border: 1px solid var(--border-color);
-          display: grid;
-          grid-template-columns: max-content 1fr;
+          border-spacing: 0px;
         `}
       >
-        {actions.map((action, index) => {
-          return (
-            <React.Fragment key={index}>
-              <div
+        <tbody>
+          {actions.map((action, index) => {
+            return (
+              <tr
+                key={index}
                 css={css`
-                  grid-column: 1;
-                  padding: 0 1ch;
-                  background-color: ${index === selectedActionIndex ? "var(--hover-background-color)" : ""};
-                `}
-              >
-                {action.shortcut && (
-                  <React.Fragment>
-                    {action.shortcut.ctrl && "Ctrl + "}
-                    {action.shortcut.shift && "Shift + "}
-                    {action.shortcut.alt && "Alt + "}
-                    {remapKeyForDisplay(action.shortcut.key)}
-                  </React.Fragment>
-                )}
-              </div>
-              <div
-                onClick={() => {
-                  onSourceChange(action.updated.source);
-                  onEditorStateChange(action.updated.editorState);
-                }}
-                css={css`
-                  grid-column: 2;
                   user-select: none;
                   background-color: ${index === selectedActionIndex ? "var(--hover-background-color)" : ""};
                   :hover {
@@ -1027,12 +1045,36 @@ export function RenderContextualActions<TermId, Source>({
                   }
                 `}
               >
-                {action.display}
-              </div>
-            </React.Fragment>
-          );
-        })}
-      </div>
+                <td
+                  css={css`
+                    padding-left: 1ch;
+                  `}
+                >
+                  {action.shortcut && (
+                    <React.Fragment>
+                      {action.shortcut.ctrl && "Ctrl + "}
+                      {action.shortcut.shift && "Shift + "}
+                      {action.shortcut.alt && "Alt + "}
+                      {remapKeyForDisplay(action.shortcut.key)}
+                    </React.Fragment>
+                  )}
+                </td>
+                <td
+                  onClick={() => {
+                    onSourceChange(action.updated.source);
+                    onEditorStateChange(action.updated.editorState);
+                  }}
+                  css={css`
+                    padding: 0px 1ch;
+                  `}
+                >
+                  {action.display}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

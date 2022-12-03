@@ -55,7 +55,6 @@ export function CollapsibleSection({ title, children }: { title: React.ReactNode
             width: 100%;
             height: 100%;
             overflow: auto;
-            padding: 0.5ch 1ch;
             box-sizing: border-box;
           `}
         >
