@@ -150,6 +150,7 @@ function RenderValue<TermId, Source>({
       )}
       {((editorState.type === "reference" && editorState.termId === termId && termData.label !== "") ||
         (editorState.type === "parameter" && editorState.termId === termId) ||
+        (editorState.type === "parameters" && editorState.termId === termId && termData.label !== "") ||
         (editorState.type === "term" && editorState.termId === termId && termData.parameters.size > 0) ||
         (termData.reference && termData.label !== "")) &&
         " = "}
@@ -280,6 +281,8 @@ export function RenderRoot<CommitId, Source>({ ...baseProps }: RenderSourceBaseP
     <div
       css={css`
         padding: 1ch;
+        min-height: 100%;
+        box-sizing: border-box;
       `}
       onClick={(event) => {
         if (event.target === event.currentTarget) {
@@ -291,9 +294,10 @@ export function RenderRoot<CommitId, Source>({ ...baseProps }: RenderSourceBaseP
         .filter(([termId]) => sourceFormattingImplementation.isRoot(source, termId))
         .map(([termId]) => {
           return (
-            <div key={termIdStringSerialization.serialize(termId)}>
+            <React.Fragment key={termIdStringSerialization.serialize(termId)}>
               <RenderValue termId={termId} {...baseProps} />
-            </div>
+              <br />
+            </React.Fragment>
           );
         })}
       {editorState.type === "root" && (

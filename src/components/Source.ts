@@ -264,10 +264,11 @@ export function createSourceFormmattingImplementationFromSourceImplementation<Te
   }
   const implementation: SourceFormattingInterface<TermId, Source> = {
     isRoot(source, termId) {
+      const term = sourceImplementation.get(source, termId);
       const counts = getReferences(source).counts.get(termIdStringSerialization.serialize(termId)) as Counts;
       const { label } = sourceImplementation.get(source, termId);
-      if (counts.asParameter === 1 && counts.asBinding + counts.asAnnotation + counts.asReference === 0) return false;
-      if (counts.asAnnotation === 1 && counts.asBinding + counts.asParameter + counts.asReference === 0) return false;
+      if (counts.asParameter === 1) return false;
+      if (counts.asAnnotation === 1 && counts.asBinding + counts.asParameter + counts.asReference === 0 && !term.annotation) return false;
       if (counts.asReference + counts.asBinding === 1 && counts.asAnnotation + counts.asParameter === 0 && !label) return false;
       return true;
     },

@@ -8,7 +8,7 @@ const darkTheme = css`
     --text-color: #abb2bf;
     --text-color-secondary: #7f848e;
     --text-color-blue: #61afef;
-    --border-color: black;
+    --border-color: rgba(0, 0, 0, 0.3);
   }
 `;
 
@@ -21,6 +21,7 @@ export const GlobalStyle = createGlobalStyle`
     color: var(--text-color);
     font-family: "JetBrains Mono", monospace;
     overflow: hidden;
+    font-size: 14px;
   }
   ::-webkit-scrollbar {
     background: transparent;

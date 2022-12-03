@@ -1,6 +1,5 @@
 import React from "react";
 import { css } from "styled-components/macro";
-import { CollapsibleSection } from "../CollapsibleSection";
 import { defaultShortcuts } from "../Shortcut";
 import { useLocalStorageState } from "../useLocalStorageState";
 import { HasEmptyIntance, JsonValue, SerializationInterface } from "../utils";
@@ -9,12 +8,14 @@ import { RepositoryFacadeInterface, RepositoryInterface } from "./Repository";
 
 export function useHistory<CommitId, Source, Repository>({
   onSource,
+  sourceHasEmptyInstance,
   repositoryFacadeImplementation,
   repositoryHasEmptyInstance,
   repositoryJsonValueSerialization,
   repositoryImplementation,
 }: {
   onSource(source: Source): void;
+  sourceHasEmptyInstance: HasEmptyIntance<Source>;
   repositoryImplementation: RepositoryInterface<CommitId, Source, null, Repository>;
   repositoryFacadeImplementation: RepositoryFacadeInterface<CommitId, Source, null, Repository>;
   repositoryHasEmptyInstance: HasEmptyIntance<Repository>;
@@ -43,11 +44,16 @@ export function useHistory<CommitId, Source, Repository>({
     setRepository(newRepository);
     setCurrent(newCommitId);
   };
-  const goto = (commitId: CommitId) => {
-    const commit = repositoryImplementation.get(repository, commitId);
-    if (commit) {
-      onSource(commit.source);
-      setCurrent(commitId);
+  const goto = (commitId: CommitId | null) => {
+    if (commitId == null) {
+      onSource(sourceHasEmptyInstance.empty());
+      setCurrent(null);
+    } else {
+      const commit = repositoryImplementation.get(repository, commitId);
+      if (commit) {
+        onSource(commit.source);
+        setCurrent(commitId);
+      }
     }
   };
   const undo = React.useCallback(() => {
