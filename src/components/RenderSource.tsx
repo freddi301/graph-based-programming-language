@@ -125,6 +125,7 @@ function RenderValue<TermId, Source>({
         <React.Fragment>
           {" : "}
           {actions()}
+          {/* TODO: do not hide existing value */}
         </React.Fragment>
       ) : (
         termData.annotation && (
@@ -205,6 +206,7 @@ function RenderValue<TermId, Source>({
             />
           ) : (
             <RenderValue termId={termData.reference} {...baseProps} />
+            // TODO: do not hide existing value
           ))}
       {(termData.bindings.size > 0 ||
         (editorState.type === "bindings" && editorState.termId === termId) ||
@@ -294,10 +296,14 @@ export function RenderRoot<CommitId, Source>({ ...baseProps }: RenderSourceBaseP
         .filter(([termId]) => sourceFormattingImplementation.isRoot(source, termId))
         .map(([termId]) => {
           return (
-            <React.Fragment key={termIdStringSerialization.serialize(termId)}>
+            <div
+              key={termIdStringSerialization.serialize(termId)}
+              css={css`
+                width: max-content;
+              `}
+            >
               <RenderValue termId={termId} {...baseProps} />
-              <br />
-            </React.Fragment>
+            </div>
           );
         })}
       {editorState.type === "root" && (

@@ -22,6 +22,7 @@ export const defaultShortcuts = ensure({
   goto: { key: "g", ctrl: true },
   toggleLambdaPi: { key: "p", ctrl: true },
   useExisting: { key: "u", ctrl: true },
+  toggleSuggestions: { key: " ", ctrl: true },
 });
 
 function ensure<V extends Record<string, Shortcut>>(value: V): { [K in keyof V]: Shortcut } {

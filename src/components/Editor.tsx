@@ -50,7 +50,7 @@ export function createEditorStateHasEmptyInstance<TermId>(): HasEmptyIntance<Edi
 type ContextualAction<TermId, Source> = {
   shortcut?: Shortcut;
   display: React.ReactNode;
-  updated: { source: Source; editorState: EditorState<TermId> };
+  updated: { source?: Source; editorState?: EditorState<TermId> };
 };
 
 function deriveContextualActions<TermId, Source>({
@@ -123,7 +123,6 @@ function deriveContextualActions<TermId, Source>({
             </span>
           ),
           updated: {
-            source,
             editorState: { type: "term", termId: existingTermId, text: label },
           },
         });
@@ -186,7 +185,6 @@ function deriveContextualActions<TermId, Source>({
           </span>
         ),
         updated: {
-          source,
           editorState: {
             type: "annotation",
             termId: editorState.termId,
@@ -305,7 +303,6 @@ function deriveContextualActions<TermId, Source>({
         </span>
       ),
       updated: {
-        source,
         editorState: {
           type: "term",
           termId: editorState.termId,
@@ -328,7 +325,6 @@ function deriveContextualActions<TermId, Source>({
         </span>
       ),
       updated: {
-        source,
         editorState: {
           type: "parameters",
           termId: editorState.termId,
@@ -467,7 +463,6 @@ function deriveContextualActions<TermId, Source>({
         </span>
       ),
       updated: {
-        source,
         editorState: {
           type: "reference",
           termId: editorState.termId,
@@ -498,7 +493,6 @@ function deriveContextualActions<TermId, Source>({
         </span>
       ),
       updated: {
-        source: source,
         editorState: {
           type: "parameters",
           termId: editorState.termId,
@@ -591,7 +585,6 @@ function deriveContextualActions<TermId, Source>({
         </span>
       ),
       updated: {
-        source,
         editorState: { type: "bindings", termId: editorState.termId, text: "" },
       },
     });
@@ -839,7 +832,6 @@ function deriveContextualActions<TermId, Source>({
         </span>
       ),
       updated: {
-        source,
         editorState: onlyParent
           ? { type: "term", termId: onlyParent, text: sourceImplemetation.get(source, onlyParent).label }
           : { type: "root", text: "" },
@@ -917,6 +909,22 @@ function deriveContextualActions<TermId, Source>({
     }
   }
 
+  contextualActions.push({
+    shortcut: shortcuts.toggleSuggestions,
+    display: (
+      <span
+        css={css`
+          color: var(--text-color-secondary);
+        `}
+      >
+        toggle suggestions
+      </span>
+    ),
+    updated: {
+      editorState: { ...editorState, showSuggestions: !editorState.showSuggestions },
+    },
+  });
+
   return contextualActions;
 }
 
@@ -948,13 +956,13 @@ export function RenderContextualActions<TermId, Source>({
   });
   const [selectedActionIndex, setSelectedActionIndex] = React.useState(NaN);
   React.useLayoutEffect(() => {
-    const shortcuts = defaultShortcuts;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Enter" && !isNaN(selectedActionIndex) && actions[selectedActionIndex]) {
         event.preventDefault();
         const action = actions[selectedActionIndex];
-        onSourceChange(action.updated.source);
-        onEditorStateChange({ showSuggestions: editorState.showSuggestions, ...action.updated.editorState });
+        if (action.updated.source) onSourceChange(action.updated.source);
+        if (action.updated.editorState)
+          onEditorStateChange({ showSuggestions: editorState.showSuggestions, ...action.updated.editorState });
         setSelectedActionIndex(NaN);
       }
       if (event.key === "ArrowUp") {
@@ -973,10 +981,6 @@ export function RenderContextualActions<TermId, Source>({
           return index + 1;
         });
       }
-      if (event.key === " " && event.ctrlKey) {
-        event.preventDefault();
-        onEditorStateChange({ ...editorState, showSuggestions: !editorState.showSuggestions });
-      }
       const shortcutActions = actions.filter(
         (action) =>
           action.shortcut &&
@@ -992,8 +996,9 @@ export function RenderContextualActions<TermId, Source>({
       const shortcutAction = shortcutActions[0];
       if (shortcutAction) {
         event.preventDefault();
-        onSourceChange(shortcutAction.updated.source);
-        onEditorStateChange(shortcutAction.updated.editorState);
+        if (shortcutAction.updated.source) onSourceChange(shortcutAction.updated.source);
+        if (shortcutAction.updated.editorState)
+          onEditorStateChange({ showSuggestions: editorState.showSuggestions, ...shortcutAction.updated.editorState });
         setSelectedActionIndex(NaN);
       }
     };
@@ -1073,8 +1078,8 @@ export function RenderContextualActions<TermId, Source>({
                   </td>
                   <td
                     onClick={() => {
-                      onSourceChange(action.updated.source);
-                      onEditorStateChange(action.updated.editorState);
+                      if (action.updated.source) onSourceChange(action.updated.source);
+                      if (action.updated.editorState) onEditorStateChange(action.updated.editorState);
                     }}
                     css={css`
                       padding: 0px 1ch;
