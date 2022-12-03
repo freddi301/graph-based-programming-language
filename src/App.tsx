@@ -34,6 +34,8 @@ import {
 import { RenderRoot } from "./components/RenderSource";
 import { CollapsibleSection } from "./components/CollapsibleSection";
 import { css } from "styled-components/macro";
+import { Button } from "./components/Button";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 library.add(fas);
 
@@ -66,6 +68,7 @@ function GenericApp<TermId, Source, CommitId, Repository>({
   const [editorState, setEditorState] = React.useState(editorStateHasEmptyInstance.empty());
   const history = useHistory({
     onSource: setSource,
+    sourceHasEmptyInstance,
     repositoryFacadeImplementation,
     repositoryHasEmptyInstance,
     repositoryImplementation,
@@ -94,14 +97,23 @@ function GenericApp<TermId, Source, CommitId, Repository>({
                   `}
                 >
                   <CollapsibleSection title="GRAPH">
-                    <HistoryGraph
-                      repository={history.repository}
-                      selected={history.current}
-                      onSelect={history.goto}
-                      commitIdStringSerialization={commitIdStringSerialization}
-                      repositoryFacadeImplementation={repositoryFacadeImplementation}
-                      repositoryImplementation={repositoryImplementation}
-                    />
+                    <div
+                      css={css`
+                        padding: 8px;
+                      `}
+                    >
+                      <Button onClick={() => history.goto(null)} label="new history" icon={<FontAwesomeIcon icon="plus" />} />
+                    </div>
+                    <div>
+                      <HistoryGraph
+                        repository={history.repository}
+                        selected={history.current}
+                        onSelect={history.goto}
+                        commitIdStringSerialization={commitIdStringSerialization}
+                        repositoryFacadeImplementation={repositoryFacadeImplementation}
+                        repositoryImplementation={repositoryImplementation}
+                      />
+                    </div>
                   </CollapsibleSection>
                 </div>
               );
