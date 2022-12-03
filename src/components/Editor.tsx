@@ -4,7 +4,7 @@ import { defaultShortcuts, Shortcut } from "./Shortcut";
 import { SourceFacadeInterface, SourceFormattingInterface, SourceInterface } from "./Source";
 import { HasEmptyIntance } from "./utils";
 
-export type EditorState<TermId> = { hoverLabel?: TermId } & (
+export type EditorState<TermId> = { hoverLabel?: TermId; showSuggestions?: boolean } & (
   | {
       type: "root";
       text: string;
@@ -41,6 +41,7 @@ export function createEditorStateHasEmptyInstance<TermId>(): HasEmptyIntance<Edi
       return {
         type: "root",
         text: "",
+        showSuggestions: true,
       };
     },
   };
@@ -947,12 +948,13 @@ export function RenderContextualActions<TermId, Source>({
   });
   const [selectedActionIndex, setSelectedActionIndex] = React.useState(NaN);
   React.useLayoutEffect(() => {
+    const shortcuts = defaultShortcuts;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Enter" && !isNaN(selectedActionIndex) && actions[selectedActionIndex]) {
         event.preventDefault();
         const action = actions[selectedActionIndex];
         onSourceChange(action.updated.source);
-        onEditorStateChange(action.updated.editorState);
+        onEditorStateChange({ showSuggestions: editorState.showSuggestions, ...action.updated.editorState });
         setSelectedActionIndex(NaN);
       }
       if (event.key === "ArrowUp") {
@@ -971,7 +973,11 @@ export function RenderContextualActions<TermId, Source>({
           return index + 1;
         });
       }
-      const shortcutAction = actions.find(
+      if (event.key === " " && event.ctrlKey) {
+        event.preventDefault();
+        onEditorStateChange({ ...editorState, showSuggestions: !editorState.showSuggestions });
+      }
+      const shortcutActions = actions.filter(
         (action) =>
           action.shortcut &&
           action.shortcut.key === event.key &&
@@ -979,6 +985,11 @@ export function RenderContextualActions<TermId, Source>({
           (action.shortcut.shift !== undefined ? action.shortcut.shift === event.shiftKey : true) &&
           (action.shortcut.alt !== undefined ? action.shortcut.alt === event.altKey : true)
       );
+      if (shortcutActions.length > 1) {
+        console.log(shortcutActions);
+        alert("overlapping shortcuts");
+      }
+      const shortcutAction = shortcutActions[0];
       if (shortcutAction) {
         event.preventDefault();
         onSourceChange(shortcutAction.updated.source);
@@ -988,7 +999,7 @@ export function RenderContextualActions<TermId, Source>({
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [actions, onEditorStateChange, onSourceChange, selectedActionIndex]);
+  }, [actions, editorState, onEditorStateChange, onSourceChange, selectedActionIndex]);
   return (
     <div
       css={css`
@@ -1018,63 +1029,65 @@ export function RenderContextualActions<TermId, Source>({
           `}
         />
       )}
-      <table
-        css={css`
-          z-index: 1;
-          left: 0px;
-          top: 100%;
-          position: absolute;
-          width: max-content;
-          max-height: 400px;
-          overflow-y: auto;
-          background-color: var(--background-color-secondary);
-          border: 1px solid var(--border-color);
-          border-spacing: 0px;
-        `}
-      >
-        <tbody>
-          {actions.map((action, index) => {
-            return (
-              <tr
-                key={index}
-                css={css`
-                  user-select: none;
-                  background-color: ${index === selectedActionIndex ? "var(--hover-background-color)" : ""};
-                  :hover {
-                    background-color: var(--hover-background-color);
-                  }
-                `}
-              >
-                <td
+      {editorState.showSuggestions && (
+        <table
+          css={css`
+            z-index: 1;
+            left: 0px;
+            top: 100%;
+            position: absolute;
+            width: max-content;
+            max-height: 400px;
+            overflow-y: auto;
+            background-color: var(--background-color-secondary);
+            border: 1px solid var(--border-color);
+            border-spacing: 0px;
+          `}
+        >
+          <tbody>
+            {actions.map((action, index) => {
+              return (
+                <tr
+                  key={index}
                   css={css`
-                    padding-left: 1ch;
+                    user-select: none;
+                    background-color: ${index === selectedActionIndex ? "var(--hover-background-color)" : ""};
+                    :hover {
+                      background-color: var(--hover-background-color);
+                    }
                   `}
                 >
-                  {action.shortcut && (
-                    <React.Fragment>
-                      {action.shortcut.ctrl && "Ctrl + "}
-                      {action.shortcut.shift && "Shift + "}
-                      {action.shortcut.alt && "Alt + "}
-                      {remapKeyForDisplay(action.shortcut.key)}
-                    </React.Fragment>
-                  )}
-                </td>
-                <td
-                  onClick={() => {
-                    onSourceChange(action.updated.source);
-                    onEditorStateChange(action.updated.editorState);
-                  }}
-                  css={css`
-                    padding: 0px 1ch;
-                  `}
-                >
-                  {action.display}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                  <td
+                    css={css`
+                      padding-left: 1ch;
+                    `}
+                  >
+                    {action.shortcut && (
+                      <React.Fragment>
+                        {action.shortcut.ctrl && "Ctrl + "}
+                        {action.shortcut.shift && "Shift + "}
+                        {action.shortcut.alt && "Alt + "}
+                        {remapKeyForDisplay(action.shortcut.key)}
+                      </React.Fragment>
+                    )}
+                  </td>
+                  <td
+                    onClick={() => {
+                      onSourceChange(action.updated.source);
+                      onEditorStateChange(action.updated.editorState);
+                    }}
+                    css={css`
+                      padding: 0px 1ch;
+                    `}
+                  >
+                    {action.display}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }

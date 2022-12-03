@@ -2,9 +2,9 @@ export type Shortcuts = typeof defaultShortcuts;
 
 export type Shortcut = {
   key: string;
-  ctrl?: true;
-  shift?: true;
-  alt?: true;
+  ctrl?: boolean;
+  shift?: boolean;
+  alt?: boolean;
 };
 
 export const defaultShortcuts = ensure({
@@ -13,7 +13,7 @@ export const defaultShortcuts = ensure({
   escape: { key: "Escape" },
   newVariable: { key: "i", ctrl: true },
   focusAnnotation: { key: ":" },
-  focusParameters: { key: " " },
+  focusParameters: { key: " ", ctrl: false },
   focusTerm: { key: "h", ctrl: true },
   focusReference: { key: "=" },
   focusBindings: { key: "l", ctrl: true },
@@ -24,6 +24,6 @@ export const defaultShortcuts = ensure({
   useExisting: { key: "u", ctrl: true },
 });
 
-function ensure<V extends Record<string, Shortcut>>(value: V) {
+function ensure<V extends Record<string, Shortcut>>(value: V): { [K in keyof V]: Shortcut } {
   return value;
 }
