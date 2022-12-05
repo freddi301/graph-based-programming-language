@@ -17,6 +17,10 @@ const allTabs = ensure({
     icon: <FontAwesomeIcon icon="clock-rotate-left" />,
     label: "History",
   },
+  "term-editor": {
+    icon: <FontAwesomeIcon icon="pen-to-square" />,
+    label: "Term Editor",
+  },
 });
 
 function RenderLeftSideTab({ tab, onSelect, isSelected }: { tab: LeftSideTab; onSelect(tab: LeftSideTab): void; isSelected: boolean }) {
@@ -32,10 +36,14 @@ function RenderLeftSideTab({ tab, onSelect, isSelected }: { tab: LeftSideTab; on
         background-color: ${isSelected ? "var(--background-color-secondary)" : "var(--background-color)"};
         :hover {
           background-color: var(--hover-background-color);
+          border-top: 1px solid var(--border-color);
+          border-top: 1px solid var(--border-color);
+          border-bottom: 1px solid var(--border-color);
         }
         color: ${isSelected ? "var(--text-color)" : "var(--text-color-secondary)"};
         border-right: ${isSelected ? "1px solid var(--background-color-secondary)" : ""};
         position: relative;
+        box-sizing: border-box;
       `}
       onClick={() => {
         onSelect(tab);
@@ -52,7 +60,7 @@ function RenderLeftSideTab({ tab, onSelect, isSelected }: { tab: LeftSideTab; on
         <div
           css={css`
             position: absolute;
-            top: 0%;
+            top: -1px;
             left: 100%;
             background-color: var(--hover-background-color);
             z-index: 1;
@@ -62,6 +70,9 @@ function RenderLeftSideTab({ tab, onSelect, isSelected }: { tab: LeftSideTab; on
             display: flex;
             align-items: center;
             padding-right: 1ch;
+            border-top: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
           `}
         >
           {allTabs[tab].label}

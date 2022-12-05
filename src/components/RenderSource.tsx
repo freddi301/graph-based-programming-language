@@ -85,7 +85,7 @@ function RenderValue<TermId, Source>({
       onSourceChange={onSourceChange}
       editorState={editorState}
       onEditorStateChange={onEditorStateChange}
-      sourceImplemetation={sourceImplementation}
+      sourceImplementation={sourceImplementation}
       sourceFacadeImplementation={sourceFacadeImplementation}
       sourceFormattingImplementation={sourceFormattingImplementation}
     >
@@ -120,6 +120,19 @@ function RenderValue<TermId, Source>({
             {...baseProps}
           />
         )
+      )}
+      {sourceFormattingImplementation.isRoot(source, termId) && !termData.label && (
+        <RenderLabel
+          termId={termId}
+          onClick={() => {
+            onEditorStateChange({
+              type: "term",
+              termId,
+              text: termData.label,
+            });
+          }}
+          {...baseProps}
+        />
       )}
       {editorState.type === "annotation" && editorState.termId === termId ? (
         <React.Fragment>
@@ -313,7 +326,7 @@ export function RenderRoot<CommitId, Source>({ ...baseProps }: RenderSourceBaseP
             onSourceChange={onSourceChange}
             editorState={editorState}
             onEditorStateChange={onEditorStateChange}
-            sourceImplemetation={sourceImplementation}
+            sourceImplementation={sourceImplementation}
             sourceFacadeImplementation={sourceFacadeImplementation}
             sourceFormattingImplementation={sourceFormattingImplementation}
           />

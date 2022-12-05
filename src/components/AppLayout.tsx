@@ -26,7 +26,7 @@ export function AppLayout({
           "top top top top"
           "left-left left center right"
           "left-left left bottom right";
-        grid-template-columns: 40px 400px 1fr 10px;
+        grid-template-columns: 40px 800px 1fr 400px;
         grid-template-rows: 20px 1fr 20px;
       `}
     >

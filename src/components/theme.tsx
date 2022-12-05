@@ -8,7 +8,8 @@ const darkTheme = css`
     --text-color: #abb2bf;
     --text-color-secondary: #7f848e;
     --text-color-blue: #61afef;
-    --border-color: rgba(0, 0, 0, 0.3);
+    --border-color: #0f1113;
+    --border-color-secondary: #3e4452;
   }
 `;
 

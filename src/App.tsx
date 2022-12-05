@@ -36,6 +36,7 @@ import { CollapsibleSection } from "./components/CollapsibleSection";
 import { css } from "styled-components/macro";
 import { Button } from "./components/Button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { TermEditor } from "./components/TermEditor";
 
 library.add(fas);
 
@@ -117,6 +118,19 @@ function GenericApp<TermId, Source, CommitId, Repository>({
                   </CollapsibleSection>
                 </div>
               );
+            case "term-editor":
+              return (
+                <TermEditor<TermId, Source>
+                  source={source}
+                  onSourceChange={(source) => {
+                    setSource(source);
+                    history.change(source);
+                  }}
+                  sourceImplementation={sourceImplementation}
+                  sourceFacadeImplementation={sourceFacadeImplementation}
+                  termIdStringSerialization={termIdStringSerialization}
+                />
+              );
           }
         })()}
         center={
@@ -134,14 +148,14 @@ function GenericApp<TermId, Source, CommitId, Repository>({
             sourceFacadeImplementation={sourceFacadeImplementation}
           />
         }
-        bottom={JSON.stringify(editorState)}
+        bottom={null}
         right={null}
       />
     </React.Fragment>
   );
 }
 
-const leftSideTabs: Array<LeftSideTab> = ["version-control", "history"];
+const leftSideTabs: Array<LeftSideTab> = ["version-control", "history", "term-editor"];
 
 // choose implementations
 
