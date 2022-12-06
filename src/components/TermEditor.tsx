@@ -8,6 +8,10 @@ import { SerializationInterface } from "./utils";
 
 const shortIdLength = 5;
 
+type EditorState<TermId> = {
+  hoveredTermId?: TermId;
+};
+
 export function TermEditor<TermId, Source>({
   source,
   onSourceChange,
@@ -23,6 +27,7 @@ export function TermEditor<TermId, Source>({
   termIdStringSerialization: SerializationInterface<TermId, string>;
   sourceFormattingImplementation: SourceFormattingInterface<TermId, Source>;
 }) {
+  const [editorState, setEditorState] = React.useState<EditorState<TermId>>({});
   return (
     <div
       css={css`
@@ -39,6 +44,8 @@ export function TermEditor<TermId, Source>({
                 termId={termId}
                 source={source}
                 onSourceChange={onSourceChange}
+                editorState={editorState}
+                onEditorStateChange={setEditorState}
                 sourceFacadeImplementation={sourceFacadeImplementation}
                 sourceImplementation={sourceImplementation}
                 termIdStringSerialization={termIdStringSerialization}
@@ -64,6 +71,8 @@ export function TermEditor<TermId, Source>({
 type TermBaseProps<TermId, Source> = {
   source: Source;
   onSourceChange(source: Source): void;
+  editorState: EditorState<TermId>;
+  onEditorStateChange(editorState: EditorState<TermId>): void;
   sourceImplementation: SourceInterface<TermId, Source>;
   sourceFacadeImplementation: SourceFacadeInterface<TermId, Source>;
   termIdStringSerialization: SerializationInterface<TermId, string>;
@@ -73,6 +82,8 @@ function Term<TermId, Source>({ termId, ...baseProps }: { termId: TermId } & Ter
   const {
     source,
     onSourceChange,
+    editorState,
+    onEditorStateChange,
     sourceImplementation,
     sourceFacadeImplementation,
     termIdStringSerialization,
@@ -143,7 +154,7 @@ function Term<TermId, Source>({ termId, ...baseProps }: { termId: TermId } & Ter
         onChange={(event) => setLabelText(event.currentTarget.value)}
         placeholder={termIdStringSerialization.serialize(termId)}
         css={css`
-          background-color: transparent;
+          background-color: ${editorState.hoveredTermId === termId ? "var(--hover-background-color)" : "transparent"};
           outline: none;
           border: none;
           font-family: inherit;
@@ -158,10 +169,12 @@ function Term<TermId, Source>({ termId, ...baseProps }: { termId: TermId } & Ter
         onMouseEnter={() => {
           setTermIdTooltipOpen(true);
           setShowDelete(true);
+          onEditorStateChange({ ...editorState, hoveredTermId: termId });
         }}
         onMouseLeave={() => {
           setTermIdTooltipOpen(false);
           setShowDelete(false);
+          onEditorStateChange({ ...editorState, hoveredTermId: undefined });
         }}
       />
       {termData.annotation && " : "}
@@ -362,6 +375,8 @@ function Selector<TermId, Source>({
   const {
     source,
     onSourceChange,
+    editorState,
+    onEditorStateChange,
     sourceImplementation,
     sourceFacadeImplementation,
     termIdStringSerialization,
@@ -384,6 +399,7 @@ function Selector<TermId, Source>({
     setSearchText(termData?.label ?? "");
   }, [termData?.label]);
   const [optionIndex, setOptionIndex] = React.useState<number | null>(null);
+  // TODO sort options that in scope terms come first
   const options = Array.from(sourceImplementation.all(source)).filter(([termId, termData]) => {
     const isSearching = searchText !== "";
     const matchesTermId = termIdStringSerialization.serialize(termId).includes(searchText.toLowerCase());
@@ -445,19 +461,23 @@ function Selector<TermId, Source>({
             `}
             autoFocus={isOpen}
             onKeyDown={(event) => {
+              const setIndex = (index: number | null) => {
+                setOptionIndex(index);
+                onEditorStateChange({ ...editorState, hoveredTermId: index ? options[index][0] : undefined });
+              };
               switch (event.key) {
                 case "ArrowDown": {
                   event.preventDefault();
-                  if (optionIndex === options.length - 1) setOptionIndex(null);
-                  else if (optionIndex === null) setOptionIndex(0);
-                  else setOptionIndex(optionIndex + 1);
+                  if (optionIndex === options.length - 1) setIndex(null);
+                  else if (optionIndex === null) setIndex(0);
+                  else setIndex(optionIndex + 1);
                   break;
                 }
                 case "ArrowUp": {
                   event.preventDefault();
-                  if (optionIndex === null) setOptionIndex(options.length - 1);
-                  else if (optionIndex === 0) setOptionIndex(null);
-                  else setOptionIndex(optionIndex - 1);
+                  if (optionIndex === null) setIndex(options.length - 1);
+                  else if (optionIndex === 0) setIndex(null);
+                  else setIndex(optionIndex - 1);
                   break;
                 }
                 case "Enter": {
@@ -545,6 +565,12 @@ function Selector<TermId, Source>({
                       user-select: none;
                     }
                   `}
+                  onMouseEnter={() => {
+                    onEditorStateChange({ ...editorState, hoveredTermId: termId });
+                  }}
+                  onMouseLeave={() => {
+                    onEditorStateChange({ ...editorState, hoveredTermId: undefined });
+                  }}
                 >
                   {termIdStringSerialization.serialize(termId).slice(0, 5)} {termData.label}
                 </div>

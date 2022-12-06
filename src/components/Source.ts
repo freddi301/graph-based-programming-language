@@ -7,6 +7,7 @@ export type SourceInterface<TermId, Source> = {
   rem(source: Source, termId: TermId): Source;
 };
 
+// TODO recursively remove terms
 export type SourceFacadeInterface<TermId, Source> = {
   create(source: Source): [Source, TermId];
   remove(source: Source, termId: TermId): Source;
