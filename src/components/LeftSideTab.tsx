@@ -17,10 +17,6 @@ const allTabs = ensure({
     icon: <FontAwesomeIcon icon="clock-rotate-left" />,
     label: "History",
   },
-  "term-editor": {
-    icon: <FontAwesomeIcon icon="pen-to-square" />,
-    label: "Term Editor",
-  },
 });
 
 function RenderLeftSideTab({ tab, onSelect, isSelected }: { tab: LeftSideTab; onSelect(tab: LeftSideTab): void; isSelected: boolean }) {

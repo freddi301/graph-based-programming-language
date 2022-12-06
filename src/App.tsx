@@ -118,20 +118,6 @@ function GenericApp<TermId, Source, CommitId, Repository>({
                   </CollapsibleSection>
                 </div>
               );
-            case "term-editor":
-              return (
-                <TermEditor<TermId, Source>
-                  source={source}
-                  onSourceChange={(source) => {
-                    setSource(source);
-                    history.change(source);
-                  }}
-                  sourceImplementation={sourceImplementation}
-                  sourceFacadeImplementation={sourceFacadeImplementation}
-                  termIdStringSerialization={termIdStringSerialization}
-                  sourceFormattingImplementation={sourceFormattingImplementation}
-                />
-              );
           }
         })()}
         center={
@@ -149,14 +135,26 @@ function GenericApp<TermId, Source, CommitId, Repository>({
             sourceFacadeImplementation={sourceFacadeImplementation}
           />
         }
-        bottom={null}
+        bottom={
+          <TermEditor<TermId, Source>
+            source={source}
+            onSourceChange={(source) => {
+              setSource(source);
+              history.change(source);
+            }}
+            sourceImplementation={sourceImplementation}
+            sourceFacadeImplementation={sourceFacadeImplementation}
+            termIdStringSerialization={termIdStringSerialization}
+            sourceFormattingImplementation={sourceFormattingImplementation}
+          />
+        }
         right={null}
       />
     </React.Fragment>
   );
 }
 
-const leftSideTabs: Array<LeftSideTab> = ["version-control", "history", "term-editor"];
+const leftSideTabs: Array<LeftSideTab> = ["version-control", "history"];
 
 // choose implementations
 

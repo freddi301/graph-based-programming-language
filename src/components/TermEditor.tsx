@@ -9,6 +9,7 @@ import { SerializationInterface } from "./utils";
 const shortIdLength = 5;
 
 type EditorState<TermId> = {
+  focusedTermId?: TermId;
   hoveredTermId?: TermId;
 };
 
@@ -40,8 +41,17 @@ export function TermEditor<TermId, Source>({
         .map(([termId, termData]) => {
           return (
             <div key={termIdStringSerialization.serialize(termId)}>
+              <SmallButton
+                icon={<FontAwesomeIcon icon="minus" />}
+                label="Delete term"
+                onClick={() => {
+                  const newSource = sourceFacadeImplementation.remove(source, termId);
+                  onSourceChange(newSource);
+                }}
+              />
               <Term<TermId, Source>
                 termId={termId}
+                atRoot={true}
                 source={source}
                 onSourceChange={onSourceChange}
                 editorState={editorState}
@@ -59,8 +69,9 @@ export function TermEditor<TermId, Source>({
           icon={<FontAwesomeIcon icon="plus" />}
           label="Create new term"
           onClick={() => {
-            const [newSource] = sourceFacadeImplementation.create(source);
+            const [newSource, newTermId] = sourceFacadeImplementation.create(source);
             onSourceChange(newSource);
+            setEditorState({ ...editorState, hoveredTermId: undefined, focusedTermId: newTermId });
           }}
         />
       </div>
@@ -78,7 +89,7 @@ type TermBaseProps<TermId, Source> = {
   termIdStringSerialization: SerializationInterface<TermId, string>;
   sourceFormattingImplementation: SourceFormattingInterface<TermId, Source>;
 };
-function Term<TermId, Source>({ termId, ...baseProps }: { termId: TermId } & TermBaseProps<TermId, Source>) {
+function Term<TermId, Source>({ termId, atRoot, ...baseProps }: { termId: TermId; atRoot: boolean } & TermBaseProps<TermId, Source>) {
   const {
     source,
     onSourceChange,
@@ -90,7 +101,6 @@ function Term<TermId, Source>({ termId, ...baseProps }: { termId: TermId } & Ter
     sourceFormattingImplementation,
   } = baseProps;
   const termData = sourceImplementation.get(source, termId);
-  const [isTermIdTooltipOpen, setTermIdTooltipOpen] = React.useState(false);
   const [labelText, setLabelText] = React.useState(termData.label);
   React.useLayoutEffect(() => {
     setLabelText(termData.label);
@@ -99,55 +109,42 @@ function Term<TermId, Source>({ termId, ...baseProps }: { termId: TermId } & Ter
     const newSource = sourceFacadeImplementation.setLabel(source, termId, labelText);
     onSourceChange(newSource);
   };
-  const [showDelete, setShowDelete] = React.useState(false);
-  const showEnclosingParentheses = !sourceFormattingImplementation.isRoot(source, termId);
+  const showStructure = termId === editorState.focusedTermId;
+  const showEnclosingParentheses = !sourceFormattingImplementation.isRoot(source, termId) || termId === editorState.focusedTermId; // TODO better, and highlight parentheses
+  const showAnnotationToken = showStructure || termData.annotation !== null;
+  const showEqualsToken =
+    showStructure || ((termData.parameters.size > 0 || termData.reference || termData.bindings.size > 0) && termData.label !== "");
+  const showParametersParentheses = showStructure || termData.parameters.size > 0;
+  const showArrowToken = showStructure || termData.parameters.size > 0;
+  const showBindingsParentheses = showStructure || termData.bindings.size > 0;
+  const isRoot = sourceFormattingImplementation.isRoot(source, termId);
+  if (isRoot && !atRoot) {
+    return (
+      <span
+        css={css`
+          background-color: ${editorState.hoveredTermId === termId ? "var(--hover-background-color)" : "transparent"};
+          color: ${termData.label ? "var(--text-color)" : "var(--text-color-secondary)"};
+        `}
+        onMouseEnter={() => {
+          onEditorStateChange({ ...editorState, hoveredTermId: termId });
+        }}
+        onMouseLeave={() => {
+          onEditorStateChange({ ...editorState, hoveredTermId: undefined });
+        }}
+        onClick={() => {
+          onEditorStateChange({ ...editorState, focusedTermId: termId });
+        }}
+      >
+        {labelText || termIdStringSerialization.serialize(termId).slice(0, shortIdLength)}
+      </span>
+    );
+  }
   return (
     <span
       css={css`
         position: relative;
       `}
     >
-      {isTermIdTooltipOpen && (
-        <div
-          css={css`
-            position: absolute;
-            top: 100%;
-            left: 0px;
-            background-color: var(--background-color);
-            color: var(--text-color-secondary);
-            padding: 4px 8px;
-            border: 1px solid var(--border-color);
-            z-index: 1;
-            user-select: none;
-          `}
-        >
-          {termIdStringSerialization.serialize(termId)}
-        </div>
-      )}
-      {showDelete && (
-        <div
-          css={css`
-            position: absolute;
-            bottom: 100%;
-            left: calc(1ch - 10px);
-          `}
-          onMouseEnter={() => {
-            setShowDelete(true);
-          }}
-          onMouseLeave={() => {
-            setShowDelete(false);
-          }}
-        >
-          <SmallButton
-            icon={<FontAwesomeIcon icon="minus" />}
-            label="Delete term"
-            onClick={() => {
-              const newSource = sourceFacadeImplementation.remove(source, termId);
-              onSourceChange(newSource);
-            }}
-          />
-        </div>
-      )}
       {showEnclosingParentheses && "("}
       <input
         value={labelText}
@@ -167,66 +164,73 @@ function Term<TermId, Source>({ termId, ...baseProps }: { termId: TermId } & Ter
           updateLabel();
         }}
         onMouseEnter={() => {
-          setTermIdTooltipOpen(true);
-          setShowDelete(true);
           onEditorStateChange({ ...editorState, hoveredTermId: termId });
         }}
         onMouseLeave={() => {
-          setTermIdTooltipOpen(false);
-          setShowDelete(false);
           onEditorStateChange({ ...editorState, hoveredTermId: undefined });
         }}
-      />
-      {termData.annotation && " : "}
-      <Selector
-        label="Select annotation"
-        value={termData.annotation}
-        onChange={(selectedTermId) => {
-          const newSource = sourceFacadeImplementation.setAnnotation(source, termId, selectedTermId);
-          onSourceChange(newSource);
+        onClick={() => {
+          onEditorStateChange({ ...editorState, focusedTermId: termId });
         }}
-        {...baseProps}
       />
-      {(termData.parameters.size > 0 || termData.reference || termData.bindings.size > 0) && termData.label !== "" && " = "}
-      {termData.parameters.size > 0 && "("}
+      {showAnnotationToken && " : "}
+      {showStructure && (
+        <Selector
+          label="Select annotation"
+          value={termData.annotation}
+          onChange={(selectedTermId) => {
+            const newSource = sourceFacadeImplementation.setAnnotation(source, termId, selectedTermId);
+            onSourceChange(newSource);
+          }}
+          {...baseProps}
+        />
+      )}
+      {termData.annotation && <Term termId={termData.annotation} atRoot={false} {...baseProps} />}
+      {showEqualsToken && " = "}
+      {showParametersParentheses && "("}
       {Array.from(termData.parameters.keys()).map((parameterTermId, index, array) => {
         return (
           <React.Fragment key={termIdStringSerialization.serialize(parameterTermId)}>
-            <Selector
-              label="Select parameter"
-              value={parameterTermId}
-              onChange={(selectedTermId) => {
-                if (selectedTermId) {
-                  const newSource = sourceFacadeImplementation.addParameter(
-                    sourceFacadeImplementation.removeParameter(source, termId, parameterTermId),
-                    termId,
-                    selectedTermId
-                  );
-                  onSourceChange(newSource);
-                } else {
-                  const newSource = sourceFacadeImplementation.removeParameter(source, termId, parameterTermId);
-                  onSourceChange(newSource);
-                }
-              }}
-              {...baseProps}
-            />
+            {showStructure && (
+              <Selector
+                label="Select parameter"
+                value={parameterTermId}
+                onChange={(selectedTermId) => {
+                  if (selectedTermId) {
+                    const newSource = sourceFacadeImplementation.addParameter(
+                      sourceFacadeImplementation.removeParameter(source, termId, parameterTermId),
+                      termId,
+                      selectedTermId
+                    );
+                    onSourceChange(newSource);
+                  } else {
+                    const newSource = sourceFacadeImplementation.removeParameter(source, termId, parameterTermId);
+                    onSourceChange(newSource);
+                  }
+                }}
+                {...baseProps}
+              />
+            )}
+            <Term termId={parameterTermId} atRoot={false} {...baseProps} />
             {index < array.length - 1 && ", "}
           </React.Fragment>
         );
       })}
-      <Selector
-        label="Select parameter to add"
-        value={null}
-        onChange={(selectedTermId) => {
-          if (selectedTermId) {
-            const newSource = sourceFacadeImplementation.addParameter(source, termId, selectedTermId);
-            onSourceChange(newSource);
-          }
-        }}
-        {...baseProps}
-      />
-      {termData.parameters.size > 0 && ")"}
-      {termData.parameters.size > 0 && (
+      {showStructure && (
+        <Selector
+          label="Select parameter to add"
+          value={null}
+          onChange={(selectedTermId) => {
+            if (selectedTermId) {
+              const newSource = sourceFacadeImplementation.addParameter(source, termId, selectedTermId);
+              onSourceChange(newSource);
+            }
+          }}
+          {...baseProps}
+        />
+      )}
+      {showParametersParentheses && ")"}
+      {showArrowToken && (
         <span
           onClick={() => {
             switch (termData.type) {
@@ -253,59 +257,70 @@ function Term<TermId, Source>({ termId, ...baseProps }: { termId: TermId } & Ter
           })()}
         </span>
       )}
-      <Selector
-        label="Select reference"
-        value={termData.reference}
-        onChange={(selectedTermId) => {
-          const newSource = sourceFacadeImplementation.setReference(source, termId, selectedTermId);
-          onSourceChange(newSource);
-        }}
-        {...baseProps}
-      />
-      {termData.bindings.size > 0 && "("}
+      {showStructure && (
+        <Selector
+          label="Select reference"
+          value={termData.reference}
+          onChange={(selectedTermId) => {
+            const newSource = sourceFacadeImplementation.setReference(source, termId, selectedTermId);
+            onSourceChange(newSource);
+          }}
+          {...baseProps}
+        />
+      )}
+      {termData.reference && <Term termId={termData.reference} atRoot={false} {...baseProps} />}
+      {showBindingsParentheses && "("}
       {Array.from(termData.bindings.entries()).map(([bindingKeyTermId, bindingValueTermId], index, array) => {
         return (
           <React.Fragment key={termIdStringSerialization.serialize(bindingKeyTermId)}>
-            <Selector
-              label="Select binding key"
-              value={bindingKeyTermId}
-              onChange={(selectedTermId) => {
-                if (selectedTermId) {
-                  const newSource = sourceFacadeImplementation.setBinding(source, termId, selectedTermId, bindingValueTermId);
-                  onSourceChange(newSource);
-                } else {
-                  const newSource = sourceFacadeImplementation.removeBinding(source, termId, bindingKeyTermId);
-                  onSourceChange(newSource);
-                }
-              }}
-              {...baseProps}
-            />
+            {showStructure && (
+              <Selector
+                label="Select binding key"
+                value={bindingKeyTermId}
+                onChange={(selectedTermId) => {
+                  if (selectedTermId) {
+                    const newSource = sourceFacadeImplementation.setBinding(source, termId, selectedTermId, bindingValueTermId);
+                    onSourceChange(newSource);
+                  } else {
+                    const newSource = sourceFacadeImplementation.removeBinding(source, termId, bindingKeyTermId);
+                    onSourceChange(newSource);
+                  }
+                }}
+                {...baseProps}
+              />
+            )}
+            <Term termId={bindingKeyTermId} atRoot={false} {...baseProps} />
             {" = "}
-            <Selector
-              label="Select binding value"
-              value={bindingValueTermId}
-              onChange={(selectedTermId) => {
-                const newSource = sourceFacadeImplementation.setBinding(source, termId, bindingKeyTermId, selectedTermId);
-                onSourceChange(newSource);
-              }}
-              {...baseProps}
-            />
+            {showStructure && (
+              <Selector
+                label="Select binding value"
+                value={bindingValueTermId}
+                onChange={(selectedTermId) => {
+                  const newSource = sourceFacadeImplementation.setBinding(source, termId, bindingKeyTermId, selectedTermId);
+                  onSourceChange(newSource);
+                }}
+                {...baseProps}
+              />
+            )}
+            {bindingValueTermId && <Term atRoot={false} termId={bindingValueTermId} {...baseProps} />}
             {index < array.length - 1 && ", "}
           </React.Fragment>
         );
       })}
-      <Selector
-        label="Select binding key to add"
-        value={null}
-        onChange={(selectedTermId) => {
-          if (selectedTermId) {
-            const newSource = sourceFacadeImplementation.setBinding(source, termId, selectedTermId, null);
-            onSourceChange(newSource);
-          }
-        }}
-        {...baseProps}
-      />
-      {termData.bindings.size > 0 && ")"}
+      {showStructure && (
+        <Selector
+          label="Select binding key to add"
+          value={null}
+          onChange={(selectedTermId) => {
+            if (selectedTermId) {
+              const newSource = sourceFacadeImplementation.setBinding(source, termId, selectedTermId, null);
+              onSourceChange(newSource);
+            }
+          }}
+          {...baseProps}
+        />
+      )}
+      {showBindingsParentheses && ")"}
       {showEnclosingParentheses && ")"}
     </span>
   );
@@ -399,7 +414,10 @@ function Selector<TermId, Source>({
     setSearchText(termData?.label ?? "");
   }, [termData?.label]);
   const [optionIndex, setOptionIndex] = React.useState<number | null>(null);
-  // TODO sort options that in scope terms come first
+  // TODO sort options
+  // - that in scope terms come first
+  // - most recently used terms comes first
+  // - correct type terms comes first
   const options = Array.from(sourceImplementation.all(source)).filter(([termId, termData]) => {
     const isSearching = searchText !== "";
     const matchesTermId = termIdStringSerialization.serialize(termId).includes(searchText.toLowerCase());
@@ -407,7 +425,6 @@ function Selector<TermId, Source>({
     if (isSearching && !(matchesTermId || matchesTermLabel)) return false;
     return true;
   });
-  const [showHover, setShowHover] = React.useState(false);
   return (
     <React.Fragment>
       <span
@@ -417,31 +434,17 @@ function Selector<TermId, Source>({
           position: relative;
         `}
       >
-        {value && showHover && (
-          <div
-            css={css`
-              position: absolute;
-              bottom: 100%;
-              left: calc(50% - 10px);
-            `}
-            onMouseEnter={() => {
-              setShowHover(true);
+        {value && (
+          <SmallButton
+            icon={<FontAwesomeIcon icon="minus" />}
+            label="Remove term"
+            onClick={() => {
+              onChange(null);
+              setIsOpen(false);
             }}
-            onMouseLeave={() => {
-              setShowHover(false);
-            }}
-          >
-            <SmallButton
-              icon={<FontAwesomeIcon icon="minus" />}
-              label="Remove term"
-              onClick={() => {
-                onChange(null);
-                setIsOpen(false);
-              }}
-            />
-          </div>
+          />
         )}
-        {(value || isOpen) && (
+        {isOpen && (
           <input
             value={searchText}
             placeholder={value ? termIdStringSerialization.serialize(value) : ""}
@@ -459,7 +462,6 @@ function Selector<TermId, Source>({
               color: var(--text-color);
               width: ${searchText.length ? `${searchText.length}ch` : value ? `${shortIdLength}ch` : `1px`};
             `}
-            autoFocus={isOpen}
             onKeyDown={(event) => {
               const setIndex = (index: number | null) => {
                 setOptionIndex(index);
@@ -490,53 +492,19 @@ function Selector<TermId, Source>({
                 }
               }
             }}
-            onMouseEnter={() => {
-              setShowHover(true);
-            }}
-            onMouseLeave={() => {
-              setShowHover(false);
-            }}
             onBlur={() => {
               setSearchText(termData?.label ?? "");
             }}
           />
         )}
-        {!value && !isOpen && (
-          <React.Fragment>
-            <span
-              onMouseEnter={() => {
-                setShowHover(true);
-              }}
-              onMouseLeave={() => {
-                setShowHover(false);
-              }}
-            >
-              {" "}
-            </span>
-            {showHover && (
-              <div
-                css={css`
-                  position: absolute;
-                  bottom: 100%;
-                  left: calc(50% - 10px);
-                `}
-                onMouseEnter={() => {
-                  setShowHover(true);
-                }}
-                onMouseLeave={() => {
-                  setShowHover(false);
-                }}
-              >
-                <SmallButton
-                  icon={<FontAwesomeIcon icon="plus" />}
-                  label={label}
-                  onClick={() => {
-                    setIsOpen(true);
-                  }}
-                />
-              </div>
-            )}
-          </React.Fragment>
+        {!value && (
+          <SmallButton
+            icon={<FontAwesomeIcon icon="plus" style={{ visibility: "hidden" }} />}
+            label={label}
+            onClick={() => {
+              setIsOpen(!isOpen);
+            }}
+          />
         )}
         {isOpen && (
           <div
@@ -556,7 +524,6 @@ function Selector<TermId, Source>({
                     onChange(termId);
                     setSearchText("");
                     setIsOpen(false);
-                    setShowHover(false);
                   }}
                   css={css`
                     background-color: ${index === optionIndex ? "var(--hover-background-color)" : ""};
@@ -579,7 +546,6 @@ function Selector<TermId, Source>({
           </div>
         )}
       </span>
-      {value && !sourceFormattingImplementation.isRoot(source, value) && <Term termId={value} {...baseProps} />}
     </React.Fragment>
   );
 }
