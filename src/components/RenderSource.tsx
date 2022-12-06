@@ -1,3 +1,5 @@
+// TODO deprecate and remove
+
 import React from "react";
 import { css } from "styled-components/macro";
 import { EditorState, RenderContextualActions } from "./Editor";

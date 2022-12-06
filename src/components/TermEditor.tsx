@@ -1,8 +1,12 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React from "react";
 import { css } from "styled-components/macro";
-import { SourceFacadeInterface, SourceInterface } from "./Source";
+import { SourceFacadeInterface, SourceFormattingInterface, SourceInterface } from "./Source";
 import { SerializationInterface } from "./utils";
+
+// TODO: make buttons ergonomic for click
+
+const shortIdLength = 5;
 
 export function TermEditor<TermId, Source>({
   source,
@@ -10,38 +14,46 @@ export function TermEditor<TermId, Source>({
   sourceImplementation,
   sourceFacadeImplementation,
   termIdStringSerialization,
+  sourceFormattingImplementation,
 }: {
   source: Source;
   onSourceChange(source: Source): void;
   sourceImplementation: SourceInterface<TermId, Source>;
   sourceFacadeImplementation: SourceFacadeInterface<TermId, Source>;
   termIdStringSerialization: SerializationInterface<TermId, string>;
+  sourceFormattingImplementation: SourceFormattingInterface<TermId, Source>;
 }) {
-  const [selectedTerm, setSelectedTerm] = React.useState<TermId | null>(null);
   return (
-    <div>
-      {Array.from(sourceImplementation.all(source)).map(([termId, termData]) => {
-        return (
-          <div key={termIdStringSerialization.serialize(termId)}>
-            <Term<TermId, Source>
-              termId={termId}
-              source={source}
-              onSourceChange={onSourceChange}
-              sourceFacadeImplementation={sourceFacadeImplementation}
-              sourceImplementation={sourceImplementation}
-              termIdStringSerialization={termIdStringSerialization}
-            />
-          </div>
-        );
-      })}
+    <div
+      css={css`
+        white-space: pre;
+        padding: 1ch;
+      `}
+    >
+      {Array.from(sourceImplementation.all(source))
+        .filter(([termId]) => sourceFormattingImplementation.isRoot(source, termId))
+        .map(([termId, termData]) => {
+          return (
+            <div key={termIdStringSerialization.serialize(termId)}>
+              <Term<TermId, Source>
+                termId={termId}
+                source={source}
+                onSourceChange={onSourceChange}
+                sourceFacadeImplementation={sourceFacadeImplementation}
+                sourceImplementation={sourceImplementation}
+                termIdStringSerialization={termIdStringSerialization}
+                sourceFormattingImplementation={sourceFormattingImplementation}
+              />
+            </div>
+          );
+        })}
       <div>
         <SmallButton
           icon={<FontAwesomeIcon icon="plus" />}
           label="Create new term"
           onClick={() => {
-            const [newSource, newTermId] = sourceFacadeImplementation.create(source);
+            const [newSource] = sourceFacadeImplementation.create(source);
             onSourceChange(newSource);
-            setSelectedTerm(newTermId);
           }}
         />
       </div>
@@ -55,15 +67,17 @@ type TermBaseProps<TermId, Source> = {
   sourceImplementation: SourceInterface<TermId, Source>;
   sourceFacadeImplementation: SourceFacadeInterface<TermId, Source>;
   termIdStringSerialization: SerializationInterface<TermId, string>;
+  sourceFormattingImplementation: SourceFormattingInterface<TermId, Source>;
 };
-function Term<TermId, Source>({
-  termId,
-  source,
-  onSourceChange,
-  sourceImplementation,
-  sourceFacadeImplementation,
-  termIdStringSerialization,
-}: { termId: TermId } & TermBaseProps<TermId, Source>) {
+function Term<TermId, Source>({ termId, ...baseProps }: { termId: TermId } & TermBaseProps<TermId, Source>) {
+  const {
+    source,
+    onSourceChange,
+    sourceImplementation,
+    sourceFacadeImplementation,
+    termIdStringSerialization,
+    sourceFormattingImplementation,
+  } = baseProps;
   const termData = sourceImplementation.get(source, termId);
   const [isTermIdTooltipOpen, setTermIdTooltipOpen] = React.useState(false);
   const [labelText, setLabelText] = React.useState(termData.label);
@@ -74,6 +88,8 @@ function Term<TermId, Source>({
     const newSource = sourceFacadeImplementation.setLabel(source, termId, labelText);
     onSourceChange(newSource);
   };
+  const [showDelete, setShowDelete] = React.useState(false);
+  const showEnclosingParentheses = !sourceFormattingImplementation.isRoot(source, termId);
   return (
     <span
       css={css`
@@ -97,15 +113,31 @@ function Term<TermId, Source>({
           {termIdStringSerialization.serialize(termId)}
         </div>
       )}
-      <SmallButton
-        icon={<FontAwesomeIcon icon="minus" />}
-        label="Delete term"
-        onClick={() => {
-          const newSource = sourceFacadeImplementation.remove(source, termId);
-          onSourceChange(newSource);
-        }}
-      />
-      {"("}
+      {showDelete && (
+        <div
+          css={css`
+            position: absolute;
+            bottom: 100%;
+            left: calc(1ch - 10px);
+          `}
+          onMouseEnter={() => {
+            setShowDelete(true);
+          }}
+          onMouseLeave={() => {
+            setShowDelete(false);
+          }}
+        >
+          <SmallButton
+            icon={<FontAwesomeIcon icon="minus" />}
+            label="Delete term"
+            onClick={() => {
+              const newSource = sourceFacadeImplementation.remove(source, termId);
+              onSourceChange(newSource);
+            }}
+          />
+        </div>
+      )}
+      {showEnclosingParentheses && "("}
       <input
         value={labelText}
         onChange={(event) => setLabelText(event.currentTarget.value)}
@@ -118,35 +150,37 @@ function Term<TermId, Source>({
           font-size: inherit;
           padding: 0;
           color: var(--text-color);
-          width: ${labelText.length ? `${labelText.length}ch` : `${termIdStringSerialization.serialize(termId).length}ch`};
+          width: ${labelText.length ? `${labelText.length}ch` : `${shortIdLength}ch`};
         `}
         onBlur={() => {
           updateLabel();
         }}
         onMouseEnter={() => {
           setTermIdTooltipOpen(true);
+          setShowDelete(true);
         }}
         onMouseLeave={() => {
           setTermIdTooltipOpen(false);
+          setShowDelete(false);
         }}
       />
-      {" : "}
-      <TermSelector
+      {termData.annotation && " : "}
+      <Selector
+        label="Select annotation"
         value={termData.annotation}
         onChange={(selectedTermId) => {
           const newSource = sourceFacadeImplementation.setAnnotation(source, termId, selectedTermId);
           onSourceChange(newSource);
         }}
-        source={source}
-        sourceImplementation={sourceImplementation}
-        termIdStringSerialization={termIdStringSerialization}
+        {...baseProps}
       />
-      {" = "}
-      {"("}
-      {Array.from(termData.parameters.keys()).map((parameterTermId) => {
+      {(termData.parameters.size > 0 || termData.reference || termData.bindings.size > 0) && termData.label !== "" && " = "}
+      {termData.parameters.size > 0 && "("}
+      {Array.from(termData.parameters.keys()).map((parameterTermId, index, array) => {
         return (
           <React.Fragment key={termIdStringSerialization.serialize(parameterTermId)}>
-            <TermSelector
+            <Selector
+              label="Select parameter"
               value={parameterTermId}
               onChange={(selectedTermId) => {
                 if (selectedTermId) {
@@ -157,18 +191,18 @@ function Term<TermId, Source>({
                   );
                   onSourceChange(newSource);
                 } else {
-                  sourceFacadeImplementation.removeParameter(source, termId, parameterTermId);
+                  const newSource = sourceFacadeImplementation.removeParameter(source, termId, parameterTermId);
+                  onSourceChange(newSource);
                 }
               }}
-              source={source}
-              sourceImplementation={sourceImplementation}
-              termIdStringSerialization={termIdStringSerialization}
+              {...baseProps}
             />
-            {", "}
+            {index < array.length - 1 && ", "}
           </React.Fragment>
         );
       })}
-      <TermSelector
+      <Selector
+        label="Select parameter to add"
         value={null}
         onChange={(selectedTermId) => {
           if (selectedTermId) {
@@ -176,80 +210,79 @@ function Term<TermId, Source>({
             onSourceChange(newSource);
           }
         }}
-        source={source}
-        sourceImplementation={sourceImplementation}
-        termIdStringSerialization={termIdStringSerialization}
+        {...baseProps}
       />
-      {")"}
-      <span
-        onClick={() => {
-          switch (termData.type) {
-            case "lambda": {
-              const newSource = sourceFacadeImplementation.setType(source, termId, "pi");
-              onSourceChange(newSource);
-              break;
+      {termData.parameters.size > 0 && ")"}
+      {termData.parameters.size > 0 && (
+        <span
+          onClick={() => {
+            switch (termData.type) {
+              case "lambda": {
+                const newSource = sourceFacadeImplementation.setType(source, termId, "pi");
+                onSourceChange(newSource);
+                break;
+              }
+              case "pi": {
+                const newSource = sourceFacadeImplementation.setType(source, termId, "lambda");
+                onSourceChange(newSource);
+                break;
+              }
             }
-            case "pi": {
-              const newSource = sourceFacadeImplementation.setType(source, termId, "lambda");
-              onSourceChange(newSource);
-              break;
+          }}
+        >
+          {(() => {
+            switch (termData.type) {
+              case "lambda":
+                return " => ";
+              case "pi":
+                return " -> ";
             }
-          }
-        }}
-      >
-        {(() => {
-          switch (termData.type) {
-            case "lambda":
-              return " => ";
-            case "pi":
-              return " -> ";
-          }
-        })()}
-      </span>
-      <TermSelector
+          })()}
+        </span>
+      )}
+      <Selector
+        label="Select reference"
         value={termData.reference}
         onChange={(selectedTermId) => {
           const newSource = sourceFacadeImplementation.setReference(source, termId, selectedTermId);
           onSourceChange(newSource);
         }}
-        source={source}
-        sourceImplementation={sourceImplementation}
-        termIdStringSerialization={termIdStringSerialization}
+        {...baseProps}
       />
-      {"("}
-      {Array.from(termData.bindings.entries()).map(([bindingKeyTermId, bindingValueTermId]) => {
+      {termData.bindings.size > 0 && "("}
+      {Array.from(termData.bindings.entries()).map(([bindingKeyTermId, bindingValueTermId], index, array) => {
         return (
           <React.Fragment key={termIdStringSerialization.serialize(bindingKeyTermId)}>
-            <TermSelector
+            <Selector
+              label="Select binding key"
               value={bindingKeyTermId}
               onChange={(selectedTermId) => {
                 if (selectedTermId) {
                   const newSource = sourceFacadeImplementation.setBinding(source, termId, selectedTermId, bindingValueTermId);
                   onSourceChange(newSource);
                 } else {
-                  sourceFacadeImplementation.removeBinding(source, termId, bindingKeyTermId);
+                  const newSource = sourceFacadeImplementation.removeBinding(source, termId, bindingKeyTermId);
+                  onSourceChange(newSource);
                 }
               }}
-              source={source}
-              sourceImplementation={sourceImplementation}
-              termIdStringSerialization={termIdStringSerialization}
+              {...baseProps}
             />
             {" = "}
-            <TermSelector
+            <Selector
+              label="Select binding value"
               value={bindingValueTermId}
               onChange={(selectedTermId) => {
                 const newSource = sourceFacadeImplementation.setBinding(source, termId, bindingKeyTermId, selectedTermId);
                 onSourceChange(newSource);
               }}
-              source={source}
-              sourceImplementation={sourceImplementation}
-              termIdStringSerialization={termIdStringSerialization}
+              {...baseProps}
             />
-            {", "}
+            {index < array.length - 1 && ", "}
           </React.Fragment>
         );
       })}
-      <TermSelector
+      <Selector
+        label="Select binding key to add"
         value={null}
         onChange={(selectedTermId) => {
           if (selectedTermId) {
@@ -257,12 +290,10 @@ function Term<TermId, Source>({
             onSourceChange(newSource);
           }
         }}
-        source={source}
-        sourceImplementation={sourceImplementation}
-        termIdStringSerialization={termIdStringSerialization}
+        {...baseProps}
       />
-      {")"}
-      {")"}
+      {termData.bindings.size > 0 && ")"}
+      {showEnclosingParentheses && ")"}
     </span>
   );
 }
@@ -277,7 +308,7 @@ function SmallButton({ icon, label, onClick }: { icon: React.ReactNode; label: R
         :hover {
           background-color: var(--hover-background-color);
         }
-        border: 1px solid var(--border-color);
+        border: 1px solid var(--border-color-secondary);
         color: inherit;
         padding: 0px;
         width: 20px;
@@ -318,19 +349,24 @@ function SmallButton({ icon, label, onClick }: { icon: React.ReactNode; label: R
   );
 }
 
-function TermSelector<TermId, Source>({
+function Selector<TermId, Source>({
   value,
   onChange,
-  source,
-  sourceImplementation,
-  termIdStringSerialization,
+  label,
+  ...baseProps
 }: {
   value: TermId | null;
   onChange(value: TermId | null): void;
-  source: Source;
-  sourceImplementation: SourceInterface<TermId, Source>;
-  termIdStringSerialization: SerializationInterface<TermId, string>;
-}) {
+  label: React.ReactNode;
+} & TermBaseProps<TermId, Source>) {
+  const {
+    source,
+    onSourceChange,
+    sourceImplementation,
+    sourceFacadeImplementation,
+    termIdStringSerialization,
+    sourceFormattingImplementation,
+  } = baseProps;
   const termData = value && sourceImplementation.get(source, value);
   const [searchText, setSearchText] = React.useState("");
   const [isOpen, setIsOpen] = React.useState(false);
@@ -355,116 +391,169 @@ function TermSelector<TermId, Source>({
     if (isSearching && !(matchesTermId || matchesTermLabel)) return false;
     return true;
   });
+  const [showHover, setShowHover] = React.useState(false);
   return (
-    <span
-      ref={containerRef}
-      css={css`
-        display: inline-block;
-        position: relative;
-      `}
-    >
-      {(value || isOpen) && (
-        <input
-          value={searchText}
-          placeholder={value ? termIdStringSerialization.serialize(value) : ""}
-          onChange={(event) => setSearchText(event.currentTarget.value)}
-          onClick={() => {
-            setIsOpen(!isOpen);
-          }}
-          css={css`
-            background-color: transparent;
-            outline: none;
-            border: none;
-            font-family: inherit;
-            font-size: inherit;
-            padding: 0;
-            color: var(--text-color);
-            width: ${searchText.length
-              ? `${searchText.length}ch`
-              : value
-              ? `${termIdStringSerialization.serialize(value).length}ch`
-              : `1px`};
-          `}
-          autoFocus={isOpen}
-          onKeyDown={(event) => {
-            switch (event.key) {
-              case "ArrowDown": {
-                event.preventDefault();
-                if (optionIndex === options.length - 1) setOptionIndex(null);
-                else if (optionIndex === null) setOptionIndex(0);
-                else setOptionIndex(optionIndex + 1);
-                break;
-              }
-              case "ArrowUp": {
-                event.preventDefault();
-                if (optionIndex === null) setOptionIndex(options.length - 1);
-                else if (optionIndex === 0) setOptionIndex(null);
-                else setOptionIndex(optionIndex - 1);
-                break;
-              }
-              case "Enter": {
-                event.preventDefault();
-                if (optionIndex !== null && optionIndex < options.length) {
-                  onChange(options[optionIndex][0]);
-                  setSearchText("");
+    <React.Fragment>
+      <span
+        ref={containerRef}
+        css={css`
+          display: inline-block;
+          position: relative;
+        `}
+      >
+        {value && showHover && (
+          <div
+            css={css`
+              position: absolute;
+              bottom: 100%;
+              left: calc(50% - 10px);
+            `}
+            onMouseEnter={() => {
+              setShowHover(true);
+            }}
+            onMouseLeave={() => {
+              setShowHover(false);
+            }}
+          >
+            <SmallButton
+              icon={<FontAwesomeIcon icon="minus" />}
+              label="Remove term"
+              onClick={() => {
+                onChange(null);
+                setIsOpen(false);
+              }}
+            />
+          </div>
+        )}
+        {(value || isOpen) && (
+          <input
+            value={searchText}
+            placeholder={value ? termIdStringSerialization.serialize(value) : ""}
+            onChange={(event) => setSearchText(event.currentTarget.value)}
+            onClick={() => {
+              setIsOpen(!isOpen);
+            }}
+            css={css`
+              background-color: transparent;
+              outline: none;
+              border: none;
+              font-family: inherit;
+              font-size: inherit;
+              padding: 0;
+              color: var(--text-color);
+              width: ${searchText.length ? `${searchText.length}ch` : value ? `${shortIdLength}ch` : `1px`};
+            `}
+            autoFocus={isOpen}
+            onKeyDown={(event) => {
+              switch (event.key) {
+                case "ArrowDown": {
+                  event.preventDefault();
+                  if (optionIndex === options.length - 1) setOptionIndex(null);
+                  else if (optionIndex === null) setOptionIndex(0);
+                  else setOptionIndex(optionIndex + 1);
+                  break;
                 }
-                break;
-              }
-            }
-          }}
-        />
-      )}
-      {!value && !isOpen && (
-        <SmallButton
-          icon={<FontAwesomeIcon icon="plus" />}
-          label="Select term"
-          onClick={() => {
-            setIsOpen(true);
-          }}
-        />
-      )}
-      {value && (
-        <SmallButton
-          icon={<FontAwesomeIcon icon="minus" />}
-          label="Remove term"
-          onClick={() => {
-            onChange(null);
-            setIsOpen(false);
-          }}
-        />
-      )}
-      {isOpen && (
-        <div
-          css={css`
-            position: absolute;
-            width: 200px;
-            background-color: var(--background-color);
-            border: 1px solid var(--border-color);
-            z-index: 1;
-          `}
-        >
-          {options.map(([termId, termData], index) => {
-            return (
-              <div
-                key={termIdStringSerialization.serialize(termId)}
-                onClick={() => {
-                  onChange(termId);
-                  setIsOpen(false);
-                }}
-                css={css`
-                  background-color: ${index === optionIndex ? "var(--hover-background-color)" : ""};
-                  :hover {
-                    background-color: var(--hover-background-color);
-                    user-select: none;
+                case "ArrowUp": {
+                  event.preventDefault();
+                  if (optionIndex === null) setOptionIndex(options.length - 1);
+                  else if (optionIndex === 0) setOptionIndex(null);
+                  else setOptionIndex(optionIndex - 1);
+                  break;
+                }
+                case "Enter": {
+                  event.preventDefault();
+                  if (optionIndex !== null && optionIndex < options.length) {
+                    onChange(options[optionIndex][0]);
+                    setSearchText("");
                   }
+                  break;
+                }
+              }
+            }}
+            onMouseEnter={() => {
+              setShowHover(true);
+            }}
+            onMouseLeave={() => {
+              setShowHover(false);
+            }}
+            onBlur={() => {
+              setSearchText(termData?.label ?? "");
+            }}
+          />
+        )}
+        {!value && !isOpen && (
+          <React.Fragment>
+            <span
+              onMouseEnter={() => {
+                setShowHover(true);
+              }}
+              onMouseLeave={() => {
+                setShowHover(false);
+              }}
+            >
+              {" "}
+            </span>
+            {showHover && (
+              <div
+                css={css`
+                  position: absolute;
+                  bottom: 100%;
+                  left: calc(50% - 10px);
                 `}
+                onMouseEnter={() => {
+                  setShowHover(true);
+                }}
+                onMouseLeave={() => {
+                  setShowHover(false);
+                }}
               >
-                {termIdStringSerialization.serialize(termId).slice(0, 5)} {termData.label}
+                <SmallButton
+                  icon={<FontAwesomeIcon icon="plus" />}
+                  label={label}
+                  onClick={() => {
+                    setIsOpen(true);
+                  }}
+                />
               </div>
-            );
-          })}
-        </div>
-      )}
-    </span>
+            )}
+          </React.Fragment>
+        )}
+        {isOpen && (
+          <div
+            css={css`
+              position: absolute;
+              width: 200px;
+              background-color: var(--background-color);
+              border: 1px solid var(--border-color);
+              z-index: 1;
+            `}
+          >
+            {options.map(([termId, termData], index) => {
+              return (
+                <div
+                  key={termIdStringSerialization.serialize(termId)}
+                  onClick={() => {
+                    onChange(termId);
+                    setSearchText("");
+                    setIsOpen(false);
+                    setShowHover(false);
+                  }}
+                  css={css`
+                    background-color: ${index === optionIndex ? "var(--hover-background-color)" : ""};
+                    :hover {
+                      background-color: var(--hover-background-color);
+                      user-select: none;
+                    }
+                  `}
+                >
+                  {termIdStringSerialization.serialize(termId).slice(0, 5)} {termData.label}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </span>
+      {value && !sourceFormattingImplementation.isRoot(source, value) && <Term termId={value} {...baseProps} />}
+    </React.Fragment>
   );
 }

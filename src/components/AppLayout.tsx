@@ -26,7 +26,7 @@ export function AppLayout({
           "top top top top"
           "left-left left center right"
           "left-left left bottom right";
-        grid-template-columns: 40px 800px 1fr 400px;
+        grid-template-columns: 40px 800px 1fr 100px;
         grid-template-rows: 20px 1fr 20px;
       `}
     >
@@ -34,6 +34,7 @@ export function AppLayout({
         css={css`
           grid-area: top;
           background-color: var(--background-color-secondary);
+          border-bottom: 1px solid var(--border-color-secondary);
         `}
       >
         {top}
@@ -65,7 +66,8 @@ export function AppLayout({
       <div
         css={css`
           grid-area: bottom;
-          background-color: var(--background-color-secondary);
+          background-color: var(--background-color);
+          border-top: 1px solid var(--border-color-secondary);
         `}
       >
         {bottom}

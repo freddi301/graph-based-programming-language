@@ -1,3 +1,5 @@
+// TODO deprecate and remove
+
 import React from "react";
 import { css } from "styled-components/macro";
 import { defaultShortcuts, Shortcut } from "./Shortcut";
@@ -57,12 +59,12 @@ function deriveContextualActions<TermId, Source>({
   source,
   editorState,
   sourceFacadeImplementation,
-  sourceImplemetation,
+  sourceImplementation,
   sourceFormattingImplementation,
 }: {
   source: Source;
   editorState: EditorState<TermId>;
-  sourceImplemetation: SourceInterface<TermId, Source>;
+  sourceImplementation: SourceInterface<TermId, Source>;
   sourceFacadeImplementation: SourceFacadeInterface<TermId, Source>;
   sourceFormattingImplementation: SourceFormattingInterface<TermId, Source>;
 }): Array<ContextualAction<TermId, Source>> {
@@ -102,7 +104,7 @@ function deriveContextualActions<TermId, Source>({
   }
 
   if (editorState.type === "root" && editorState.text) {
-    for (const [existingTermId, { label }] of sourceImplemetation.all(source)) {
+    for (const [existingTermId, { label }] of sourceImplementation.all(source)) {
       if (label.includes(editorState.text)) {
         contextualActions.push({
           shortcut: shortcuts.goto,
@@ -131,7 +133,7 @@ function deriveContextualActions<TermId, Source>({
   }
 
   if (editorState.type === "term") {
-    const termData = sourceImplemetation.get(source, editorState.termId);
+    const termData = sourceImplementation.get(source, editorState.termId);
     if (termData && editorState.text !== termData.label) {
       contextualActions.push({
         display: (
@@ -171,7 +173,7 @@ function deriveContextualActions<TermId, Source>({
   }
 
   if (editorState.type === "term") {
-    const termData = sourceImplemetation.get(source, editorState.termId);
+    const termData = sourceImplementation.get(source, editorState.termId);
     if (termData) {
       contextualActions.push({
         shortcut: shortcuts.focusAnnotation,
@@ -188,7 +190,7 @@ function deriveContextualActions<TermId, Source>({
           editorState: {
             type: "annotation",
             termId: editorState.termId,
-            text: (termData.annotation && sourceImplemetation.get(source, termData.annotation)?.label) ?? "",
+            text: (termData.annotation && sourceImplementation.get(source, termData.annotation)?.label) ?? "",
           },
         },
       });
@@ -269,7 +271,7 @@ function deriveContextualActions<TermId, Source>({
   }
 
   if (editorState.type === "term" || editorState.type === "parameters" || editorState.type === "parameter") {
-    const termData = sourceImplemetation.get(source, editorState.termId);
+    const termData = sourceImplementation.get(source, editorState.termId);
     if (termData) {
       contextualActions.push({
         shortcut: shortcuts.toggleLambdaPi,
@@ -306,7 +308,7 @@ function deriveContextualActions<TermId, Source>({
         editorState: {
           type: "term",
           termId: editorState.termId,
-          text: sourceImplemetation.get(source, editorState.termId)?.label ?? "",
+          text: sourceImplementation.get(source, editorState.termId)?.label ?? "",
         },
       },
     });
@@ -408,7 +410,7 @@ function deriveContextualActions<TermId, Source>({
   }
 
   if (editorState.type === "parameters" && editorState.text) {
-    for (const [existingTermId, { label }] of sourceImplemetation.all(source)) {
+    for (const [existingTermId, { label }] of sourceImplementation.all(source)) {
       if (label.includes(editorState.text)) {
         const sourceWithAddedParameter = sourceFacadeImplementation.addParameter(source, editorState.termId, existingTermId);
         contextualActions.push({
@@ -449,8 +451,8 @@ function deriveContextualActions<TermId, Source>({
     editorState.type === "bindings" ||
     editorState.type === "annotation"
   ) {
-    const termData = sourceImplemetation.get(source, editorState.termId);
-    const referenceTermData = termData?.reference && sourceImplemetation.get(source, termData.reference);
+    const termData = sourceImplementation.get(source, editorState.termId);
+    const referenceTermData = termData?.reference && sourceImplementation.get(source, termData.reference);
     contextualActions.push({
       shortcut: shortcuts.focusReference,
       display: (
@@ -473,7 +475,7 @@ function deriveContextualActions<TermId, Source>({
   }
 
   if (editorState.type === "parameter") {
-    const termData = sourceImplemetation.get(source, editorState.parameterTermId);
+    const termData = sourceImplementation.get(source, editorState.parameterTermId);
     contextualActions.push({
       display: (
         <span
@@ -537,7 +539,7 @@ function deriveContextualActions<TermId, Source>({
   }
 
   if (editorState.type === "reference" && editorState.text) {
-    for (const [existingTermId, { label }] of sourceImplemetation.all(source)) {
+    for (const [existingTermId, { label }] of sourceImplementation.all(source)) {
       if (label.includes(editorState.text)) {
         const sourceWithSetReference = sourceFacadeImplementation.setReference(source, editorState.termId, existingTermId);
         contextualActions.push({
@@ -650,10 +652,10 @@ function deriveContextualActions<TermId, Source>({
   }
 
   if (editorState.type === "bindings" && editorState.text) {
-    for (const [existingTermId, { label }] of sourceImplemetation.all(source)) {
+    for (const [existingTermId, { label }] of sourceImplementation.all(source)) {
       if (label.includes(editorState.text)) {
-        const existingBindigValue = sourceImplemetation.get(source, editorState.termId)?.bindings.get(existingTermId) ?? null;
-        const text = (existingBindigValue && sourceImplemetation.get(source, existingBindigValue)?.label) ?? "";
+        const existingBindigValue = sourceImplementation.get(source, editorState.termId)?.bindings.get(existingTermId) ?? null;
+        const text = (existingBindigValue && sourceImplementation.get(source, existingBindigValue)?.label) ?? "";
         const sourceWithSetBindingKey = sourceFacadeImplementation.setBinding(
           source,
           editorState.termId,
@@ -733,7 +735,7 @@ function deriveContextualActions<TermId, Source>({
   }
 
   if (editorState.type === "binding" && editorState.text) {
-    for (const [existingTermId, { label }] of sourceImplemetation.all(source)) {
+    for (const [existingTermId, { label }] of sourceImplementation.all(source)) {
       if (label.includes(editorState.text)) {
         const sourceWithSetBindingValue = sourceFacadeImplementation.setBinding(
           source,
@@ -774,7 +776,7 @@ function deriveContextualActions<TermId, Source>({
   }
 
   if (editorState.type === "binding" && editorState.text) {
-    for (const [existingTermId, { label }] of sourceImplemetation.all(source)) {
+    for (const [existingTermId, { label }] of sourceImplementation.all(source)) {
       if (label.includes(editorState.text)) {
         const [sourceWithNewTerm, newTermId] = sourceFacadeImplementation.create(source);
         const sourceWithAddedBindingValue = sourceFacadeImplementation.setBinding(
@@ -833,7 +835,7 @@ function deriveContextualActions<TermId, Source>({
       ),
       updated: {
         editorState: onlyParent
-          ? { type: "term", termId: onlyParent, text: sourceImplemetation.get(source, onlyParent).label }
+          ? { type: "term", termId: onlyParent, text: sourceImplementation.get(source, onlyParent).label }
           : { type: "root", text: "" },
       },
     });
@@ -874,7 +876,7 @@ function deriveContextualActions<TermId, Source>({
   }
 
   if (editorState.type === "annotation" && editorState.text) {
-    for (const [existingTermId, { label }] of sourceImplemetation.all(source)) {
+    for (const [existingTermId, { label }] of sourceImplementation.all(source)) {
       if (label.includes(editorState.text)) {
         const sourceWithSetAnnotation = sourceFacadeImplementation.setAnnotation(source, editorState.termId, existingTermId);
         contextualActions.push({
@@ -934,7 +936,7 @@ export function RenderContextualActions<TermId, Source>({
   onSourceChange,
   editorState,
   onEditorStateChange,
-  sourceImplemetation,
+  sourceImplementation,
   sourceFacadeImplementation,
   sourceFormattingImplementation,
 }: {
@@ -943,13 +945,13 @@ export function RenderContextualActions<TermId, Source>({
   onSourceChange(source: Source): void;
   editorState: EditorState<TermId>;
   onEditorStateChange(editorState: EditorState<TermId>): void;
-  sourceImplemetation: SourceInterface<TermId, Source>;
+  sourceImplementation: SourceInterface<TermId, Source>;
   sourceFacadeImplementation: SourceFacadeInterface<TermId, Source>;
   sourceFormattingImplementation: SourceFormattingInterface<TermId, Source>;
 }) {
   const actions = deriveContextualActions({
     source,
-    sourceImplemetation,
+    sourceImplementation,
     sourceFacadeImplementation,
     editorState,
     sourceFormattingImplementation,
@@ -1002,7 +1004,7 @@ export function RenderContextualActions<TermId, Source>({
         setSelectedActionIndex(NaN);
       }
     };
-    document.addEventListener("keydown", onKeyDown);
+    // document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [actions, editorState, onEditorStateChange, onSourceChange, selectedActionIndex]);
   return (
@@ -1021,16 +1023,15 @@ export function RenderContextualActions<TermId, Source>({
               text: event.currentTarget.value,
             })
           }
-          ref={(element) => element?.focus()}
           css={css`
             background-color: transparent;
             outline: none;
             border: none;
             font-family: inherit;
             font-size: inherit;
-            color: var(--text-color-secondary);
             padding: 0;
             width: ${editorState.text.length ? `${editorState.text.length}ch` : "1px"};
+            color: var(--text-color-secondary);
           `}
         />
       )}

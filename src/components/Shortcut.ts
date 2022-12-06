@@ -1,3 +1,5 @@
+// TODO deprecate and remove
+
 export type Shortcuts = typeof defaultShortcuts;
 
 export type Shortcut = {

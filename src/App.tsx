@@ -129,6 +129,7 @@ function GenericApp<TermId, Source, CommitId, Repository>({
                   sourceImplementation={sourceImplementation}
                   sourceFacadeImplementation={sourceFacadeImplementation}
                   termIdStringSerialization={termIdStringSerialization}
+                  sourceFormattingImplementation={sourceFormattingImplementation}
                 />
               );
           }
