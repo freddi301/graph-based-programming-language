@@ -7,9 +7,16 @@ const darkTheme = css`
     --hover-background-color: #2c313a;
     --text-color: #abb2bf;
     --text-color-secondary: #7f848e;
-    --text-color-blue: #61afef;
     --border-color: #0f1113;
     --border-color-secondary: #3e4452;
+    --selection-background-color: #3f4859;
+    --text-color-binding: #e06c75;
+    --text-color-lambda: #61afef;
+    --text-color-pi: #56b6c2;
+    --text-color-type: #e5c07b;
+    --text-color-literal: #98c379;
+    --text-color-constructor: #d19a66;
+    --text-color-comment: #7f848e;
   }
 `;
 

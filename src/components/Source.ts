@@ -209,26 +209,28 @@ export const hexStringOf32ByteStringSerialization: SerializationInterface<HexStr
 export type SourceFormattingInterface<TermId, Source> = {
   isRoot(source: Source, termId: TermId): boolean;
   getParents(source: Source, termId: TermId): Set<TermId>;
+  getReferencesCount(source: Source, termId: TermId): ReferenceCounts;
 };
 
+type ReferenceCounts = {
+  asReference: number;
+  asBindingKey: number;
+  asBindingValue: number;
+  asParameter: number;
+  asAnnotation: number;
+};
 export function createSourceFormmattingImplementationFromSourceImplementation<TermId, Source>(
   sourceImplementation: SourceInterface<TermId, Source>,
   termIdStringSerialization: SerializationInterface<TermId, string>
 ): SourceFormattingInterface<TermId, Source> {
-  type Counts = {
-    asReference: number;
-    asBinding: number;
-    asParameter: number;
-    asAnnotation: number;
-  };
-
   function getReferences(source: Source) {
-    const countByTermId = new Map<string, Counts>();
+    const countByTermId = new Map<string, ReferenceCounts>();
     const parentsById = new Map<string, Set<TermId>>();
     for (const [termId] of sourceImplementation.all(source)) {
-      const counts: Counts = {
+      const counts: ReferenceCounts = {
         asReference: 0,
-        asBinding: 0,
+        asBindingKey: 0,
+        asBindingValue: 0,
         asParameter: 0,
         asAnnotation: 0,
       };
@@ -248,9 +250,13 @@ export function createSourceFormmattingImplementationFromSourceImplementation<Te
           counts.asReference += 1;
           parents.add(parentTermId);
         }
-        for (const [, val] of bindings.entries()) {
+        for (const [key, val] of bindings.entries()) {
+          if (key === termId) {
+            counts.asBindingKey += 1;
+            parents.add(parentTermId);
+          }
           if (val === termId) {
-            counts.asBinding += 1;
+            counts.asBindingValue += 1;
             parents.add(parentTermId);
           }
         }
@@ -266,15 +272,19 @@ export function createSourceFormmattingImplementationFromSourceImplementation<Te
   const implementation: SourceFormattingInterface<TermId, Source> = {
     isRoot(source, termId) {
       const term = sourceImplementation.get(source, termId);
-      const counts = getReferences(source).counts.get(termIdStringSerialization.serialize(termId)) as Counts;
+      const counts = getReferences(source).counts.get(termIdStringSerialization.serialize(termId))!;
       const { label } = sourceImplementation.get(source, termId);
       if (counts.asParameter === 1) return false;
-      if (counts.asAnnotation === 1 && counts.asBinding + counts.asParameter + counts.asReference === 0 && !term.annotation) return false;
-      if (counts.asReference + counts.asBinding === 1 && counts.asAnnotation + counts.asParameter === 0 && !label) return false;
+      if (counts.asAnnotation === 1 && counts.asBindingValue + counts.asParameter + counts.asReference === 0 && !term.annotation)
+        return false;
+      if (counts.asReference + counts.asBindingValue === 1 && counts.asAnnotation + counts.asParameter === 0 && !label) return false;
       return true;
     },
     getParents(source, termId) {
       return getReferences(source).parents.get(termIdStringSerialization.serialize(termId)) ?? new Set();
+    },
+    getReferencesCount(source, termId) {
+      return getReferences(source).counts.get(termIdStringSerialization.serialize(termId))!;
     },
   };
   return implementation;
