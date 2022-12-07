@@ -17,6 +17,7 @@ const darkTheme = css`
     --text-color-literal: #98c379;
     --text-color-constructor: #d19a66;
     --text-color-comment: #7f848e;
+    --text-color-keyword: #c678dd;
   }
 `;
 

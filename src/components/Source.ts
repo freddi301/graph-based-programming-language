@@ -209,14 +209,14 @@ export const hexStringOf32ByteStringSerialization: SerializationInterface<HexStr
 export type SourceFormattingInterface<TermId, Source> = {
   isRoot(source: Source, termId: TermId): boolean;
   getParents(source: Source, termId: TermId): Set<TermId>;
-  getReferencesCount(source: Source, termId: TermId): ReferenceCounts;
+  getReferencesCount(source: Source, termId: TermId): ReferenceCounts<TermId>;
 };
 
-type ReferenceCounts = {
+type ReferenceCounts<TermId> = {
   asReference: number;
   asBindingKey: number;
   asBindingValue: number;
-  asParameter: number;
+  asParameter: Set<TermId>;
   asAnnotation: number;
 };
 export function createSourceFormmattingImplementationFromSourceImplementation<TermId, Source>(
@@ -224,14 +224,14 @@ export function createSourceFormmattingImplementationFromSourceImplementation<Te
   termIdStringSerialization: SerializationInterface<TermId, string>
 ): SourceFormattingInterface<TermId, Source> {
   function getReferences(source: Source) {
-    const countByTermId = new Map<string, ReferenceCounts>();
+    const countByTermId = new Map<string, ReferenceCounts<TermId>>();
     const parentsById = new Map<string, Set<TermId>>();
     for (const [termId] of sourceImplementation.all(source)) {
-      const counts: ReferenceCounts = {
+      const counts: ReferenceCounts<TermId> = {
         asReference: 0,
         asBindingKey: 0,
         asBindingValue: 0,
-        asParameter: 0,
+        asParameter: new Set(),
         asAnnotation: 0,
       };
       const parents = new Set<TermId>();
@@ -242,7 +242,7 @@ export function createSourceFormmattingImplementationFromSourceImplementation<Te
         }
         for (const [val] of parameters.entries()) {
           if (val === termId) {
-            counts.asParameter += 1;
+            counts.asParameter.add(parentTermId);
             parents.add(parentTermId);
           }
         }
@@ -274,10 +274,10 @@ export function createSourceFormmattingImplementationFromSourceImplementation<Te
       const term = sourceImplementation.get(source, termId);
       const counts = getReferences(source).counts.get(termIdStringSerialization.serialize(termId))!;
       const { label } = sourceImplementation.get(source, termId);
-      if (counts.asParameter === 1) return false;
-      if (counts.asAnnotation === 1 && counts.asBindingValue + counts.asParameter + counts.asReference === 0 && !term.annotation)
+      if (counts.asParameter.size === 1) return false;
+      if (counts.asAnnotation === 1 && counts.asBindingValue + counts.asParameter.size + counts.asReference === 0 && !term.annotation)
         return false;
-      if (counts.asReference + counts.asBindingValue === 1 && counts.asAnnotation + counts.asParameter === 0 && !label) return false;
+      if (counts.asReference + counts.asBindingValue === 1 && counts.asAnnotation + counts.asParameter.size === 0 && !label) return false;
       return true;
     },
     getParents(source, termId) {

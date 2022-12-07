@@ -178,7 +178,7 @@ function Term<TermId, Source>({
   })();
   if (
     (isRoot && atPosition !== "root") ||
-    (!isRoot && referencesCount.asParameter === 1 && atPosition !== "parameter") ||
+    (!isRoot && referencesCount.asParameter.size === 1 && atPosition !== "parameter") ||
     atPosition === "binding-key"
   ) {
     return (
@@ -207,9 +207,6 @@ function Term<TermId, Source>({
   return (
     <span
       css={css`
-        display: inline-block;
-        position: relative;
-        transition: 0.2s;
         background-color: ${editorState.hoveredTermId === termId ? "var(--hover-background-color)" : ""};
         border-radius: 4px;
       `}
@@ -627,6 +624,7 @@ function Selector<TermId, Source>({
             onBlur={() => {
               setSearchText(termData?.label ?? "");
             }}
+            autoFocus={isOpen}
           />
         )}
         {!value && (
@@ -770,23 +768,14 @@ function editorNavigate<TermId, Source>({
     .filter(([termId]) => sourceFormattingImplementation.isRoot(source, termId))
     .map(([termId]) => termId);
   const rootIndex = roots.findIndex((ti) => ti === termId);
-  const parents = sourceFormattingImplementation.getParents(source, termId);
-  const parentTermId = parents.size === 1 ? Array.from(parents.keys()).at(0) : null;
-  const parentTermData = parentTermId ? sourceImplementation.get(source, parentTermId) : null;
-  const parentPosition = ((): EditorNavigation<TermId> | undefined => {
-    if (!parentTermData || !parentTermId) return;
-    if (parentTermData.annotation === termId) return { termId: parentTermId, part: "annotation" };
-    const parameters = Array.from(parentTermData.parameters.keys());
-    for (let parameterIndex = 0; parameterIndex < parameters.length; parameterIndex++) {
-      if (parameters[parameterIndex] === termId) return { termId: parentTermId, part: "parameter", parameterIndex };
-    }
-    if (parentTermData.reference === termId) return { termId: parentTermId, part: "reference" };
-    const bindings = Array.from(parentTermData.bindings.entries());
-    for (let bindingIndex = 0; bindingIndex < bindings.length; bindingIndex++) {
-      if (bindings[bindingIndex][0] === termId) return { termId: parentTermId, part: "binding", bindingIndex, subPart: "key" };
-      if (bindings[bindingIndex][1] === termId) return { termId: parentTermId, part: "binding", bindingIndex, subPart: "value" };
-    }
-  })();
+  const parentPosition = getParentPosition({
+    termId,
+    source,
+    sourceFacadeImplementation,
+    sourceFormattingImplementation,
+    sourceImplementation,
+    termIdStringSerialization,
+  });
   switch (navigation.part) {
     case "label": {
       switch (direction) {
@@ -797,7 +786,7 @@ function editorNavigate<TermId, Source>({
         case "up": {
           if (rootIndex === 0) return { termId: roots[roots.length - 1], part: "label" };
           if (rootIndex >= 0) return { termId: roots[rootIndex - 1], part: "label" };
-          if (parentTermId) return { termId: parentTermId, part: "label" }; // TODO
+          if (parentPosition) return parentPosition;
           break;
         }
         case "down": {
@@ -931,5 +920,42 @@ function editorNavigate<TermId, Source>({
         }
       }
     }
+  }
+}
+
+function getParentPosition<TermId, Source>({
+  termId,
+  source,
+  sourceFacadeImplementation,
+  sourceFormattingImplementation,
+  sourceImplementation,
+  termIdStringSerialization,
+}: {
+  termId: TermId;
+  source: Source;
+  sourceImplementation: SourceInterface<TermId, Source>;
+  sourceFacadeImplementation: SourceFacadeInterface<TermId, Source>;
+  termIdStringSerialization: SerializationInterface<TermId, string>;
+  sourceFormattingImplementation: SourceFormattingInterface<TermId, Source>;
+}): EditorNavigation<TermId> | undefined {
+  const isRoot = sourceFormattingImplementation.isRoot(source, termId);
+  const referencesCount = sourceFormattingImplementation.getReferencesCount(source, termId);
+  const parents = sourceFormattingImplementation.getParents(source, termId);
+  const parentTermId = ((): TermId | undefined => {
+    if (parents.size === 1) return Array.from(parents.keys()).at(0);
+    if (!isRoot && referencesCount.asParameter.size === 1) return Array.from(referencesCount.asParameter.keys()).at(0);
+  })();
+  const parentTermData = parentTermId ? sourceImplementation.get(source, parentTermId) : null;
+  if (!parentTermData || !parentTermId) return;
+  if (parentTermData.annotation === termId) return { termId: parentTermId, part: "annotation" };
+  const parameters = Array.from(parentTermData.parameters.keys());
+  for (let parameterIndex = 0; parameterIndex < parameters.length; parameterIndex++) {
+    if (parameters[parameterIndex] === termId) return { termId: parentTermId, part: "parameter", parameterIndex };
+  }
+  if (parentTermData.reference === termId) return { termId: parentTermId, part: "reference" };
+  const bindings = Array.from(parentTermData.bindings.entries());
+  for (let bindingIndex = 0; bindingIndex < bindings.length; bindingIndex++) {
+    if (bindings[bindingIndex][0] === termId) return { termId: parentTermId, part: "binding", bindingIndex, subPart: "key" };
+    if (bindings[bindingIndex][1] === termId) return { termId: parentTermId, part: "binding", bindingIndex, subPart: "value" };
   }
 }

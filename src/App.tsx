@@ -121,6 +121,19 @@ function GenericApp<TermId, Source, CommitId, Repository>({
           }
         })()}
         center={
+          <TermEditor<TermId, Source>
+            source={source}
+            onSourceChange={(source) => {
+              setSource(source);
+              history.change(source);
+            }}
+            sourceImplementation={sourceImplementation}
+            sourceFacadeImplementation={sourceFacadeImplementation}
+            termIdStringSerialization={termIdStringSerialization}
+            sourceFormattingImplementation={sourceFormattingImplementation}
+          />
+        }
+        bottom={
           <RenderRoot
             source={source}
             onSourceChange={(source) => {
@@ -133,19 +146,6 @@ function GenericApp<TermId, Source, CommitId, Repository>({
             sourceImplementation={sourceImplementation}
             termIdStringSerialization={termIdStringSerialization}
             sourceFacadeImplementation={sourceFacadeImplementation}
-          />
-        }
-        bottom={
-          <TermEditor<TermId, Source>
-            source={source}
-            onSourceChange={(source) => {
-              setSource(source);
-              history.change(source);
-            }}
-            sourceImplementation={sourceImplementation}
-            sourceFacadeImplementation={sourceFacadeImplementation}
-            termIdStringSerialization={termIdStringSerialization}
-            sourceFormattingImplementation={sourceFormattingImplementation}
           />
         }
         right={null}
