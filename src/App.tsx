@@ -31,7 +31,6 @@ import {
   RepositoryFacadeInterface,
   RepositoryInterface,
 } from "./components/version-control/Repository";
-import { RenderRoot } from "./components/RenderSource";
 import { CollapsibleSection } from "./components/CollapsibleSection";
 import { css } from "styled-components/macro";
 import { Button } from "./components/Button";
@@ -66,7 +65,6 @@ function GenericApp<TermId, Source, CommitId, Repository>({
   termIdStringSerialization: SerializationInterface<TermId, string>;
 }) {
   const [source, setSource] = React.useState(sourceHasEmptyInstance.empty());
-  const [editorState, setEditorState] = React.useState(editorStateHasEmptyInstance.empty());
   const history = useHistory({
     onSource: setSource,
     sourceHasEmptyInstance,
@@ -133,22 +131,22 @@ function GenericApp<TermId, Source, CommitId, Repository>({
             sourceFormattingImplementation={sourceFormattingImplementation}
           />
         }
-        bottom={
-          <RenderRoot
-            source={source}
-            onSourceChange={(source) => {
-              setSource(source);
-              history.change(source);
-            }}
-            editorState={editorState}
-            onEditorStateChange={setEditorState}
-            sourceFormattingImplementation={sourceFormattingImplementation}
-            sourceImplementation={sourceImplementation}
-            termIdStringSerialization={termIdStringSerialization}
-            sourceFacadeImplementation={sourceFacadeImplementation}
-          />
+        bottom={null}
+        right={
+          <div
+            css={css`
+              padding: 0px 2ch;
+            `}
+          >
+            Navigate with arrows
+            <br />
+            Esc to escape any action
+            <br />
+            Enter to select options
+            <br />
+            Ctrl + click to go to definition
+          </div>
         }
-        right={null}
       />
     </React.Fragment>
   );
