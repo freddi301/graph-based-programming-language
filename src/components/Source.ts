@@ -116,7 +116,7 @@ export function createJsonValueSerializationFromSourceImplementation<TermId, Sou
           bindings: Object.fromEntries(
             [...termData.parameters.entries()].map(([k, v]) => [
               termIdStringSerialization.serialize(k),
-              v && termIdStringSerialization.serialize(k),
+              v && termIdStringSerialization.serialize(v),
             ])
           ),
         };
@@ -146,8 +146,8 @@ export function createJsonValueSerializationFromSourceImplementation<TermId, Sou
           reference: termDataJsonValue.reference === null ? null : termIdStringSerialization.deserialize(termDataJsonValue.reference),
           bindings: new Map(
             Object.entries(termDataJsonValue.bindings).map(([k, v]) => {
-              if (!guard.isString(v)) throw new Error();
-              return [termIdStringSerialization.deserialize(k), termIdStringSerialization.deserialize(v)];
+              if (!(guard.isString(v) || v === null)) throw new Error();
+              return [termIdStringSerialization.deserialize(k), v === null ? null : termIdStringSerialization.deserialize(v)];
             })
           ),
         };

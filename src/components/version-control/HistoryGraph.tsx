@@ -25,7 +25,16 @@ export function useHistory<CommitId, Source, Repository>({
     "history",
     repositoryHasEmptyInstance.empty(),
     React.useCallback(
-      async (deserialized) => JSON.stringify(await repositoryJsonValueSerialization.serialize(Promise.resolve(deserialized))),
+      async (deserialized) => {
+        const serialized = JSON.stringify(await repositoryJsonValueSerialization.serialize(Promise.resolve(deserialized)));
+        try {
+          await repositoryJsonValueSerialization.deserialize(JSON.parse(serialized));
+        } catch (error) {
+          console.error(error);
+          alert("fatal serialization error");
+        }
+        return serialized;
+      },
       [repositoryJsonValueSerialization]
     ),
     React.useCallback(
