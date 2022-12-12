@@ -73,6 +73,7 @@ export function TermEditor<TermId, Source>({
         if (selectedTermId) {
           const newSource = sourceFacadeImplementation.setBinding(source, termId, selectedTermId, null);
           onSourceChange(newSource);
+          setEditorState({ ...editorState, navigation: { termId, part: "binding", bindingIndex: termData.bindings.size, subPart: "key" } });
         }
         break;
       }
@@ -119,7 +120,7 @@ export function TermEditor<TermId, Source>({
         });
         if (editorState.searchText !== undefined && editorState.navigation) {
           const setIndex = (index: number | undefined) => {
-            setEditorState({ ...editorState, optionIndex: index, hoveredTermId: index ? options[index] : undefined });
+            setEditorState({ ...editorState, optionIndex: index, hoveredTermId: index !== undefined ? options[index] : undefined });
           };
           switch (event.key) {
             case "ArrowDown": {
@@ -249,6 +250,19 @@ export function TermEditor<TermId, Source>({
                 const newSource = sourceFacadeImplementation.setType(source, editorState.navigation.termId, newType);
                 onSourceChange(newSource);
               }
+              if (editorState.navigation.part === "mode") {
+                const termData = sourceImplementation.get(source, editorState.navigation.termId);
+                const newMode = (() => {
+                  switch (termData.mode) {
+                    case "call":
+                      return "match";
+                    case "match":
+                      return "call";
+                  }
+                })();
+                const newSource = sourceFacadeImplementation.setMode(source, editorState.navigation.termId, newMode);
+                onSourceChange(newSource);
+              }
               break;
             }
             case "Escape": {
@@ -367,6 +381,7 @@ function Term<TermId, Source>({
     showStructure || ((termData.parameters.size > 0 || termData.reference || termData.bindings.size > 0) && termData.label !== "");
   const showParametersParentheses = showStructure || termData.parameters.size > 0;
   const showArrowToken = showStructure || termData.parameters.size > 0;
+  const showModeToken = showStructure || termData.mode === "match";
   const showBindingsParentheses = showStructure || termData.bindings.size > 0;
   const isRoot = sourceFormattingImplementation.isRoot(source, termId);
   const referencesCount = sourceFormattingImplementation.getReferencesCount(source, termId);
@@ -394,13 +409,25 @@ function Term<TermId, Source>({
       document.addEventListener("keyup", onKeyDownUp);
     };
   }, []);
+  const updateLabel = React.useCallback(() => {
+    if (labelText !== termData.label) {
+      const newSource = sourceFacadeImplementation.setLabel(source, termId, labelText);
+      onSourceChange(newSource);
+    }
+  }, [labelText, onSourceChange, source, sourceFacadeImplementation, termData.label, termId]);
+  React.useLayoutEffect(() => {
+    if (!showStructure) updateLabel();
+  }, [showStructure, updateLabel]);
+  const isLabelFocused = editorState.navigation?.termId === termId && editorState.navigation.part === "label";
+  const labelInputRef = React.useRef<HTMLInputElement>(null);
+  React.useLayoutEffect(() => {
+    if (isLabelFocused) labelInputRef.current?.focus();
+    else labelInputRef.current?.blur();
+  }, [isLabelFocused]);
   const labelNode = (
     <span
       css={css`
-        background-color: ${editorState.hoveredTermId === termId ||
-        (editorState.navigation?.part === "label" && editorState.navigation.termId === termId)
-          ? "var(--hover-background-color)"
-          : ""};
+        background-color: ${editorState.hoveredTermId === termId ? "var(--hover-background-color)" : ""};
         color: ${labelColor};
         ${ctrlIsPressed
           ? css`
@@ -425,28 +452,17 @@ function Term<TermId, Source>({
         }
       }}
     >
-      {labelText || termIdStringSerialization.serialize(termId).slice(0, shortIdLength)}
+      {/* {labelText || termIdStringSerialization.serialize(termId).slice(0, shortIdLength)} */}
+      {labelText}
     </span>
   );
-  const updateLabel = React.useCallback(() => {
-    if (labelText !== termData.label) {
-      const newSource = sourceFacadeImplementation.setLabel(source, termId, labelText);
-      onSourceChange(newSource);
-    }
-  }, [labelText, onSourceChange, source, sourceFacadeImplementation, termData.label, termId]);
-  React.useLayoutEffect(() => {
-    if (!showStructure) updateLabel();
-  }, [showStructure, updateLabel]);
-  const isLabelFocused = editorState.navigation?.termId === termId && editorState.navigation.part === "label";
-  const labelInputRef = React.useRef<HTMLInputElement>(null);
-  React.useLayoutEffect(() => {
-    if (isLabelFocused) labelInputRef.current?.focus();
-    else labelInputRef.current?.blur();
-  }, [isLabelFocused]);
+  const parentTermData = navigation ? sourceImplementation.get(source, navigation.termId) : null;
+  const isPatternMatchLeftSide =
+    navigation && navigation.part === "binding" && navigation.subPart === "key" && parentTermData && parentTermData.mode === "match";
   if (
     (isRoot && navigation) ||
     (!isRoot && referencesCount.asParameter.size === 1 && navigation?.part !== "parameter") ||
-    (navigation?.part === "binding" && navigation.subPart === "key")
+    (navigation?.part === "binding" && navigation.subPart === "key" && !isPatternMatchLeftSide)
   ) {
     return labelNode;
   }
@@ -491,7 +507,7 @@ function Term<TermId, Source>({
           }}
         />
       ) : (
-        labelNode
+        !isPatternMatchLeftSide && labelNode
       )}
       {showAnnotationToken && " : "}
       <span
@@ -577,6 +593,40 @@ function Term<TermId, Source>({
       </span>
       <span
         css={css`
+          color: var(--text-color-keyword);
+          ${editorState.navigation?.termId === termId && editorState.navigation.part === "mode" && navigationSelectedStyle};
+        `}
+      >
+        {showModeToken && (
+          <span
+            onClick={() => {
+              switch (termData.mode) {
+                case "call": {
+                  const newSource = sourceFacadeImplementation.setMode(source, termId, "match");
+                  onSourceChange(newSource);
+                  break;
+                }
+                case "match": {
+                  const newSource = sourceFacadeImplementation.setMode(source, termId, "call");
+                  onSourceChange(newSource);
+                  break;
+                }
+              }
+            }}
+          >
+            {(() => {
+              switch (termData.mode) {
+                case "call":
+                  return "call";
+                case "match":
+                  return "match";
+              }
+            })()}{" "}
+          </span>
+        )}
+      </span>
+      <span
+        css={css`
           ${editorState.navigation?.termId === termId && editorState.navigation.part === "reference" && navigationSelectedStyle};
         `}
       >
@@ -584,17 +634,28 @@ function Term<TermId, Source>({
         {termData.reference && <Term termId={termData.reference} navigation={{ termId, part: "reference" }} {...baseProps} />}
       </span>
       {showBindingsParentheses && (
-        <span
-          css={css`
-            ${editorState.navigation?.termId === termId && editorState.navigation.part === "bindings" && navigationSelectedStyle};
-          `}
-        >
-          {"("}
-        </span>
+        <React.Fragment>
+          {termData.mode === "match" && termData.reference && " "}
+          <span
+            css={css`
+              ${editorState.navigation?.termId === termId && editorState.navigation.part === "bindings" && navigationSelectedStyle};
+            `}
+          >
+            {(() => {
+              switch (termData.mode) {
+                case "call":
+                  return "(";
+                case "match":
+                  return "{";
+              }
+            })()}
+          </span>
+          {termData.mode === "match" && " "}
+        </React.Fragment>
       )}
       {Array.from(termData.bindings.entries()).map(([bindingKeyTermId, bindingValueTermId], index, array) => {
         return (
-          <React.Fragment key={termIdStringSerialization.serialize(bindingKeyTermId)}>
+          <span key={termIdStringSerialization.serialize(bindingKeyTermId)}>
             <span
               css={css`
                 ${editorState.navigation?.termId === termId &&
@@ -642,21 +703,29 @@ function Term<TermId, Source>({
                 />
               )}
             </span>
-            {(index < array.length - 1 || showStructure) && ", "}
-          </React.Fragment>
+            {termData.mode === "match" && "; "}
+            {termData.mode === "call" && (showStructure || index < array.length - 1) && ", "}
+          </span>
         );
       })}
       {showStructure && <Options label="Select binding key to add" navigation={{ termId, part: "bindings" }} {...baseProps} />}
-
       {showBindingsParentheses && (
         <span
           css={css`
             ${editorState.navigation?.termId === termId && editorState.navigation.part === "bindings" && navigationSelectedStyle};
           `}
         >
-          {")"}
+          {(() => {
+            switch (termData.mode) {
+              case "call":
+                return ")";
+              case "match":
+                return "}";
+            }
+          })()}
         </span>
       )}
+
       {showEnclosingParentheses && <span css={enclosingParenthesesStyle}>{")"}</span>}
     </span>
   );
@@ -802,7 +871,7 @@ function Options<TermId, Source>({
           icon={<FontAwesomeIcon icon="minus" color="red" />}
           label="Remove term"
           onClick={() => {
-            // onChange(null); TODO
+            onSelectOption(null);
             onEditorStateChange({ ...editorState, searchText: undefined });
           }}
         />
@@ -888,6 +957,10 @@ type EditorNavigation<TermId> =
   | {
       termId: TermId;
       part: "type";
+    }
+  | {
+      termId: TermId;
+      part: "mode";
     }
   | {
       termId: TermId;
@@ -1037,9 +1110,20 @@ function editorNavigate<TermId, Source>({
     case "type": {
       switch (direction) {
         case "right":
-          return { termId, part: "reference" };
+          return { termId, part: "mode" };
         case "left":
           return { termId, part: "parameters" };
+        case "up":
+          return { termId, part: "label" };
+      }
+      break;
+    }
+    case "mode": {
+      switch (direction) {
+        case "right":
+          return { termId, part: "reference" };
+        case "left":
+          return { termId, part: "type" };
         case "up":
           return { termId, part: "label" };
       }

@@ -16,18 +16,21 @@ export type SourceFacadeInterface<TermId, Source> = {
   addParameter(source: Source, termId: TermId, parameterTermId: TermId): Source;
   removeParameter(source: Source, termId: TermId, parameterTermId: TermId): Source;
   setType(source: Source, termId: TermId, type: TermType): Source;
+  setMode(source: Source, termId: TermId, mode: TermMode): Source;
   setReference(source: Source, termId: TermId, referenceTermId: TermId | null): Source;
   setBinding(source: Source, termId: TermId, keyTermId: TermId, valueTermId: TermId | null): Source;
   removeBinding(source: Source, termId: TermId, keyTermId: TermId): Source;
 };
 
 export type TermType = "lambda" | "pi";
+export type TermMode = "call" | "match";
 
 export type TermData<TermId> = {
   label: string;
   annotation: TermId | null;
   parameters: Map<TermId, null>;
   type: TermType;
+  mode: TermMode;
   reference: TermId | null;
   bindings: Map<TermId, TermId | null>;
 };
@@ -38,6 +41,7 @@ export function createEmptyTermData<TermId>(): TermData<TermId> {
     annotation: null,
     parameters: new Map(),
     type: "lambda",
+    mode: "call",
     reference: null,
     bindings: new Map(),
   };
@@ -80,6 +84,9 @@ export function createSourceFacadeFromSourceInterface<TermId, Source>(
     setType(source, termId, type) {
       return sourceImplementation.set(source, termId, { ...sourceImplementation.get(source, termId), type });
     },
+    setMode(source, termId, mode) {
+      return sourceImplementation.set(source, termId, { ...sourceImplementation.get(source, termId), mode });
+    },
     setReference(source, termId, referenceTermId) {
       return sourceImplementation.set(source, termId, { ...sourceImplementation.get(source, termId), reference: referenceTermId });
     },
@@ -112,6 +119,7 @@ export function createJsonValueSerializationFromSourceImplementation<TermId, Sou
           annotation: termData.annotation && termIdStringSerialization.serialize(termData.annotation),
           parameters: Object.fromEntries([...termData.parameters.entries()].map(([k]) => [termIdStringSerialization.serialize(k), null])),
           type: termData.type as string,
+          mode: termData.mode as string,
           reference: termData.reference && termIdStringSerialization.serialize(termData.reference),
           bindings: Object.fromEntries(
             [...termData.bindings.entries()].map(([k, v]) => [
@@ -133,6 +141,7 @@ export function createJsonValueSerializationFromSourceImplementation<TermId, Sou
           throw new Error();
         if (!("parameters" in termDataJsonValue && guard.isObject(termDataJsonValue.parameters))) throw new Error();
         if (!("type" in termDataJsonValue && (termDataJsonValue.type === "lambda" || termDataJsonValue.type === "pi"))) throw new Error();
+        if (!("mode" in termDataJsonValue && (termDataJsonValue.mode === "call" || termDataJsonValue.mode === "match"))) throw new Error();
         if (!("reference" in termDataJsonValue && (guard.isString(termDataJsonValue.reference) || termDataJsonValue.reference === null)))
           throw new Error();
         if (!("bindings" in termDataJsonValue && guard.isObject(termDataJsonValue.bindings))) throw new Error();
@@ -143,6 +152,7 @@ export function createJsonValueSerializationFromSourceImplementation<TermId, Sou
             Object.entries(termDataJsonValue.parameters).map(([k, v]) => [termIdStringSerialization.deserialize(k), null])
           ),
           type: termDataJsonValue.type,
+          mode: termDataJsonValue.mode,
           reference: termDataJsonValue.reference === null ? null : termIdStringSerialization.deserialize(termDataJsonValue.reference),
           bindings: new Map(
             Object.entries(termDataJsonValue.bindings).map(([k, v]) => {
@@ -278,6 +288,11 @@ export function createSourceFormmattingImplementationFromSourceImplementation<Te
       if (counts.asAnnotation === 1 && counts.asBindingValue + counts.asParameter.size + counts.asReference === 0 && !term.annotation)
         return false;
       if (counts.asReference + counts.asBindingValue === 1 && counts.asAnnotation + counts.asParameter.size === 0 && !label) return false;
+      if (
+        counts.asAnnotation + counts.asParameter.size + counts.asReference + counts.asBindingKey + counts.asBindingValue === 1 &&
+        !term.label
+      )
+        return false;
       return true;
     },
     getParents(source, termId) {

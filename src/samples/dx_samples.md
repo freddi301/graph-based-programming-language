@@ -1,3 +1,14 @@
+## Boolean basics
+
+```
+Boolean : Type
+True : Boolean
+False : Boolean
+
+not = (x) => match x { True = False; False = True; }
+and = (x, y) => match { (x = True) = y; (x = False) = False; }
+```
+
 ## Boolean definition
 
 ```
