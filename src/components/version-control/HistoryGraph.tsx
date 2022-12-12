@@ -31,7 +31,7 @@ export function useHistory<CommitId, Source, Repository>({
           await repositoryJsonValueSerialization.deserialize(JSON.parse(serialized));
         } catch (error) {
           console.error(error);
-          alert("fatal serialization error");
+          console.log(JSON.parse(serialized));
         }
         return serialized;
       },
