@@ -68,11 +68,11 @@ False : Boolean
 not(True) = false
 not(False) = true
 
-and(True, True) = True
-and(_, _) = False
+and(True, y) = y
+and(False, y) = False
 
-or(False, False) = False
-or(_, _) = True
+or(True, y) = True
+or(False, y) = y
 
 xor(True, True) = False
 xor(True, False) = True
@@ -87,6 +87,7 @@ DeMorgan1 : Equality(not(and(a, b)), or(not(a), not(b))) = ???
 DeMorgan2 : Equality(not(or(a, b)), and(not(a), not(b))) = ???
 AndIsCommutative : Equality(and(a, b), and(b, a)) = ???
 OrIsCommutative : Equality(or(a, b), or(b, a)) = ???
+XorIsCommutative : Equality(xor(a, b), xor(b, a)) = ???
 ```
 
 ## Naturals with pattern matching

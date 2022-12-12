@@ -30,11 +30,6 @@ export function TermEditor<TermId, Source>({
 }) {
   const [editorState, setEditorState] = React.useState<EditorState<TermId>>({});
   const options = getOptions<TermId, Source>({ sourceImplementation, source, editorState, termIdStringSerialization });
-  const createNewTerm = () => {
-    const [newSource, newTermId] = sourceFacadeImplementation.create(source);
-    onSourceChange(newSource);
-    setEditorState({ ...editorState, hoveredTermId: undefined, navigation: { termId: newTermId, part: "label" } });
-  };
   const selectOption = (selectedTermId: TermId | null) => {
     const navigation = editorState.navigation;
     if (!navigation) return;
@@ -210,6 +205,10 @@ export function TermEditor<TermId, Source>({
               break;
             }
           }
+        } else if (!editorState.navigation) {
+          const [newSource, newTermId] = sourceFacadeImplementation.create(source);
+          onSourceChange(newSource);
+          setEditorState({ ...editorState, hoveredTermId: undefined, navigation: { termId: newTermId, part: "label" } });
         } else {
           const nav = (direction: NavigationDirection) => {
             event?.preventDefault();
@@ -237,9 +236,7 @@ export function TermEditor<TermId, Source>({
               return nav("down");
             case "Enter": {
               event.preventDefault();
-              if (!editorState.navigation) {
-                createNewTerm();
-              } else if (editorState.navigation.part === "type") {
+              if (editorState.navigation.part === "type") {
                 const termData = sourceImplementation.get(source, editorState.navigation.termId);
                 const newType = (() => {
                   switch (termData.type) {
@@ -266,6 +263,7 @@ export function TermEditor<TermId, Source>({
       onClick={(event) => {
         if (event.target === event.currentTarget) {
           ref.current?.focus();
+          setEditorState({ ...editorState, navigation: undefined });
         }
       }}
     >
@@ -306,12 +304,21 @@ export function TermEditor<TermId, Source>({
             </div>
           );
         })}
-      <div
-        css={css`
-          ${editorState.navigation === undefined ? navigationSelectedStyle : ""}
-        `}
-      >
-        <SmallButton icon={<FontAwesomeIcon icon="plus" />} label="Create new term" onClick={createNewTerm} />
+      <div>
+        <Options
+          label="New term"
+          navigation={undefined}
+          source={source}
+          onSourceChange={onSourceChange}
+          editorState={editorState}
+          onEditorStateChange={setEditorState}
+          sourceFacadeImplementation={sourceFacadeImplementation}
+          sourceImplementation={sourceImplementation}
+          termIdStringSerialization={termIdStringSerialization}
+          sourceFormattingImplementation={sourceFormattingImplementation}
+          options={options}
+          onSelectOption={selectOption}
+        />
       </div>
     </div>
   );
@@ -719,7 +726,7 @@ function Options<TermId, Source>({
   sourceFacadeImplementation,
   sourceFormattingImplementation,
   termIdStringSerialization,
-}: { label: string; navigation: EditorNavigation<TermId> } & TermBaseProps<TermId, Source>) {
+}: { label: string; navigation: EditorNavigation<TermId> | undefined } & TermBaseProps<TermId, Source>) {
   const navigationEquals = (a: EditorNavigation<TermId>, b: EditorNavigation<TermId>) => {
     if (a.termId !== b.termId) return false;
     if (a.part !== b.part) return false;
@@ -727,13 +734,14 @@ function Options<TermId, Source>({
     if (a.part === "binding" && b.part === "binding" && (a.bindingIndex !== b.bindingIndex || a.subPart !== b.subPart)) return false;
     return true;
   };
-  const isAtPosition = editorState.navigation && navigationEquals(navigation, editorState.navigation);
+  const isAtPosition =
+    navigation === editorState.navigation || (editorState.navigation && navigation && navigationEquals(navigation, editorState.navigation));
   const isOpen = editorState.searchText !== undefined && isAtPosition && options.length > 0;
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   React.useLayoutEffect(() => {
     if (isAtPosition) inputRef.current?.focus();
   }, [isAtPosition, editorState]);
-  const value = getTermIdAtEditorNavigation({ navigation, source, sourceImplementation });
+  const value = navigation ? getTermIdAtEditorNavigation({ navigation, source, sourceImplementation }) : null;
   return (
     <span
       css={css`
