@@ -114,7 +114,7 @@ export function createJsonValueSerializationFromSourceImplementation<TermId, Sou
           type: termData.type as string,
           reference: termData.reference && termIdStringSerialization.serialize(termData.reference),
           bindings: Object.fromEntries(
-            [...termData.parameters.entries()].map(([k, v]) => [
+            [...termData.bindings.entries()].map(([k, v]) => [
               termIdStringSerialization.serialize(k),
               v && termIdStringSerialization.serialize(v),
             ])

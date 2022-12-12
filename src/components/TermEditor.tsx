@@ -29,7 +29,6 @@ export function TermEditor<TermId, Source>({
   sourceFormattingImplementation: SourceFormattingInterface<TermId, Source>;
 }) {
   const [editorState, setEditorState] = React.useState<EditorState<TermId>>({});
-  console.log(editorState.navigation);
   const options = getOptions<TermId, Source>({ sourceImplementation, source, editorState, termIdStringSerialization });
   const createNewTerm = () => {
     const [newSource, newTermId] = sourceFacadeImplementation.create(source);
@@ -240,6 +239,18 @@ export function TermEditor<TermId, Source>({
               event.preventDefault();
               if (!editorState.navigation) {
                 createNewTerm();
+              } else if (editorState.navigation.part === "type") {
+                const termData = sourceImplementation.get(source, editorState.navigation.termId);
+                const newType = (() => {
+                  switch (termData.type) {
+                    case "lambda":
+                      return "pi";
+                    case "pi":
+                      return "lambda";
+                  }
+                })();
+                const newSource = sourceFacadeImplementation.setType(source, editorState.navigation.termId, newType);
+                onSourceChange(newSource);
               }
               break;
             }

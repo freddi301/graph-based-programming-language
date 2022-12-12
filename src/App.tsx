@@ -42,6 +42,7 @@ library.add(fas);
 function GenericApp<TermId, Source, CommitId, Repository>({
   sourceImplementation,
   sourceHasEmptyInstance,
+  sourceJsonValueSerialization,
   editorStateHasEmptyInstance,
   repositoryFacadeImplementation,
   repositoryHasEmptyInstance,
@@ -55,6 +56,7 @@ function GenericApp<TermId, Source, CommitId, Repository>({
   sourceImplementation: SourceInterface<TermId, Source>;
   sourceFacadeImplementation: SourceFacadeInterface<TermId, Source>;
   sourceHasEmptyInstance: HasEmptyIntance<Source>;
+  sourceJsonValueSerialization: SerializationInterface<Source, JsonValue>;
   editorStateHasEmptyInstance: HasEmptyIntance<EditorState<TermId>>;
   repositoryImplementation: RepositoryInterface<CommitId, Source, null, Repository>;
   repositoryFacadeImplementation: RepositoryFacadeInterface<CommitId, Source, null, Repository>;
@@ -101,7 +103,7 @@ function GenericApp<TermId, Source, CommitId, Repository>({
                         padding: 8px;
                       `}
                     >
-                      <Button onClick={() => history.goto(null)} label="new history" icon={<FontAwesomeIcon icon="plus" />} />
+                      <Button label="new history" icon={<FontAwesomeIcon icon="plus" />} onClick={() => history.goto(null)} />
                     </div>
                     <div>
                       <HistoryGraph
@@ -111,6 +113,56 @@ function GenericApp<TermId, Source, CommitId, Repository>({
                         commitIdStringSerialization={commitIdStringSerialization}
                         repositoryFacadeImplementation={repositoryFacadeImplementation}
                         repositoryImplementation={repositoryImplementation}
+                      />
+                    </div>
+                  </CollapsibleSection>
+                  <CollapsibleSection title="UTILS">
+                    <div
+                      css={css`
+                        padding: 8px;
+                      `}
+                    >
+                      <Button
+                        label="export current code as json"
+                        icon={<FontAwesomeIcon icon="file-export" />}
+                        onClick={() => {
+                          const blob = new Blob([JSON.stringify(sourceJsonValueSerialization.serialize(source))], {
+                            type: "application/json",
+                          });
+                          const objectUrl = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = objectUrl;
+                          a.download = "download";
+                          a.onclick = () => {
+                            setTimeout(() => URL.revokeObjectURL(objectUrl));
+                          };
+                          a.click();
+                        }}
+                      />
+                      <Button
+                        label="import json as current code"
+                        icon={<FontAwesomeIcon icon="file-import" />}
+                        onClick={() => {
+                          const input = document.createElement("input");
+                          input.type = "file";
+                          input.onchange = () => {
+                            const file = input.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                try {
+                                  const source = sourceJsonValueSerialization.deserialize(JSON.parse(reader.result as string));
+                                  history.goto(null);
+                                  setSource(source);
+                                } catch (error) {
+                                  console.error(error);
+                                }
+                              };
+                              reader.readAsText(file);
+                            }
+                          };
+                          input.click();
+                        }}
                       />
                     </div>
                   </CollapsibleSection>
@@ -205,6 +257,7 @@ export default function App() {
       repositoryHasEmptyInstance={repositoryHasEmptyInstance}
       repositoryImplementation={repositoryImplementation}
       repositoryJsonValueSerialization={repositoryJsonValueSerialization}
+      sourceJsonValueSerialization={sourceJsonValueSerialization}
       sourceFormattingImplementation={sourceFormattingImplementation}
       sourceHasEmptyInstance={sourceHasEmptyInstance}
       sourceImplementation={sourceImplementation}

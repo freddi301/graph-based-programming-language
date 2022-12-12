@@ -27,11 +27,13 @@ export function useHistory<CommitId, Source, Repository>({
     React.useCallback(
       async (deserialized) => {
         const serialized = JSON.stringify(await repositoryJsonValueSerialization.serialize(Promise.resolve(deserialized)));
-        try {
-          await repositoryJsonValueSerialization.deserialize(JSON.parse(serialized));
-        } catch (error) {
-          console.error(error);
-          console.log(JSON.parse(serialized));
+        if (process.env.NODE_ENV === "development") {
+          try {
+            await repositoryJsonValueSerialization.deserialize(JSON.parse(serialized));
+          } catch (error) {
+            console.error(error);
+            console.log(JSON.parse(serialized));
+          }
         }
         return serialized;
       },
