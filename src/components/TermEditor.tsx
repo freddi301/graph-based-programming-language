@@ -292,6 +292,21 @@ export function TermEditor<TermId, Source>({
             if (editorState.navigation.part === "label") {
               setEditorState({ ...editorState, navigation: { termId: editorState.navigation.termId, part: "annotation" } });
             }
+            if (editorState.navigation.part === "parameters") {
+              const [newSource, newTermId] = sourceFacadeImplementation.create(source);
+              const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.searchText ?? "");
+              const newSourceWithPlacement = sourceFacadeImplementation.addParameter(
+                newSourceWithLabel,
+                editorState.navigation.termId,
+                newTermId
+              );
+              onSourceChange(newSourceWithPlacement);
+              setEditorState({
+                ...editorState,
+                searchText: undefined,
+                navigation: { termId: newTermId, part: "annotation" },
+              });
+            }
           } else {
             const [newSource, newTermId] = sourceFacadeImplementation.create(source);
             const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.searchText ?? "");
@@ -304,14 +319,39 @@ export function TermEditor<TermId, Source>({
           if (editorState.navigation) {
             if (editorState.navigation.part === "label") {
               setEditorState({ ...editorState, navigation: { termId: editorState.navigation.termId, part: "parameters" } });
-            } else if (editorState.navigation.part === "reference") {
+            }
+            if (editorState.navigation.part === "reference") {
               setEditorState({ ...editorState, navigation: { termId: editorState.navigation.termId, part: "bindings" } });
+            }
+            if (editorState.navigation.part === "bindings") {
+              const [newSource, newTermId] = sourceFacadeImplementation.create(source);
+              const newSourceWithPlacement = sourceFacadeImplementation.setBinding(
+                newSource,
+                editorState.navigation.termId,
+                newTermId,
+                null
+              );
+              onSourceChange(newSourceWithPlacement);
+              setEditorState({
+                ...editorState,
+                searchText: undefined,
+                navigation: { termId: newTermId, part: "label" },
+              });
             }
           } else {
             const [newSource, newTermId] = sourceFacadeImplementation.create(source);
             const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.searchText ?? "");
             onSourceChange(newSourceWithLabel);
             setEditorState({ ...editorState, searchText: undefined, navigation: { termId: newTermId, part: "parameters" } });
+          }
+        }
+        if (event.key === ")") {
+          event.preventDefault();
+          if (editorState.navigation?.part === "parameter" || editorState.navigation?.part === "parameters") {
+            setEditorState({ ...editorState, navigation: { termId: editorState.navigation.termId, part: "type" } });
+          }
+          if (editorState.navigation?.part === "binding" || editorState.navigation?.part === "bindings") {
+            setEditorState({ ...editorState, navigation: { termId: editorState.navigation.termId, part: "label" } });
           }
         }
         if (event.key === "=") {
@@ -395,6 +435,15 @@ export function TermEditor<TermId, Source>({
           }
           if (editorState.navigation?.part === "binding") {
             setEditorState({ ...editorState, navigation: { termId: editorState.navigation.termId, part: "bindings" } });
+          }
+          const parentTermIdAsParameter = (() => {
+            if (!editorState.navigation) return;
+            const referenceCounts = sourceFormattingImplementation.getReferencesCount(source, editorState.navigation.termId);
+            if (referenceCounts.asParameter.size !== 1) return;
+            return Array.from(referenceCounts.asParameter).at(0);
+          })();
+          if (editorState.navigation?.part === "annotation" && parentTermIdAsParameter) {
+            setEditorState({ ...editorState, navigation: { termId: parentTermIdAsParameter, part: "parameters" } });
           }
         }
       }}
@@ -1257,7 +1306,7 @@ function editorNavigate<TermId, Source>({
           if (termData.bindings.size === 0) return { termId, part: "bindings" };
           return { termId, part: "binding", bindingIndex: 0, subPart: "key" };
         case "left":
-          return { termId, part: "type" };
+          return { termId, part: "mode" };
         case "up":
           return { termId, part: "label" };
         case "down": {

@@ -7,7 +7,7 @@ export type SourceInterface<TermId, Source> = {
   rem(source: Source, termId: TermId): Source;
 };
 
-// TODO recursively remove terms
+// TODO recursively remove embedded terms
 export type SourceFacadeInterface<TermId, Source> = {
   create(source: Source): [Source, TermId];
   remove(source: Source, termId: TermId): Source;
@@ -61,7 +61,17 @@ export function createSourceFacadeFromSourceInterface<TermId, Source>(
       return [sourceImplementation.set(source, newTermId, createEmptyTermData()), newTermId] as [Source, TermId];
     },
     remove(source, termId) {
-      return sourceImplementation.rem(source, termId);
+      source = sourceImplementation.rem(source, termId);
+      for (const [id, termData] of sourceImplementation.all(source)) {
+        if (termData.annotation === termId) source = this.setAnnotation(source, id, null);
+        if (termData.parameters.has(termId)) source = this.removeParameter(source, id, termId);
+        if (termData.reference === termId) source = this.setReference(source, id, null);
+        if (termData.bindings.has(termId)) source = this.removeBinding(source, id, termId);
+        for (const [bindingKey, bindingValue] of termData.bindings.entries()) {
+          if (bindingValue === termId) source = this.setBinding(source, id, bindingKey, null);
+        }
+      }
+      return source;
     },
     setLabel(source, termId, label) {
       return sourceImplementation.set(source, termId, { ...sourceImplementation.get(source, termId), label });

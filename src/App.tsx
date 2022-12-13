@@ -203,6 +203,7 @@ function GenericApp<TermId, Source, CommitId, Repository>({
             <br />
             ( to declare or set parameters
             <br />= to asign
+            <br />) to close current parentheses
           </div>
         }
       />
