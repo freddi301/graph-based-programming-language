@@ -1,5 +1,4 @@
 import React from "react";
-import { createEditorStateHasEmptyInstance, EditorState } from "./components/Editor";
 import { GlobalStyle } from "./components/theme";
 import { library } from "@fortawesome/fontawesome-svg-core";
 import { fas } from "@fortawesome/free-solid-svg-icons";
@@ -43,7 +42,6 @@ function GenericApp<TermId, Source, CommitId, Repository>({
   sourceImplementation,
   sourceHasEmptyInstance,
   sourceJsonValueSerialization,
-  editorStateHasEmptyInstance,
   repositoryFacadeImplementation,
   repositoryHasEmptyInstance,
   repositoryImplementation,
@@ -57,7 +55,6 @@ function GenericApp<TermId, Source, CommitId, Repository>({
   sourceFacadeImplementation: SourceFacadeInterface<TermId, Source>;
   sourceHasEmptyInstance: HasEmptyIntance<Source>;
   sourceJsonValueSerialization: SerializationInterface<Source, JsonValue>;
-  editorStateHasEmptyInstance: HasEmptyIntance<EditorState<TermId>>;
   repositoryImplementation: RepositoryInterface<CommitId, Source, null, Repository>;
   repositoryFacadeImplementation: RepositoryFacadeInterface<CommitId, Source, null, Repository>;
   repositoryHasEmptyInstance: HasEmptyIntance<Repository>;
@@ -197,6 +194,15 @@ function GenericApp<TermId, Source, CommitId, Repository>({
             Enter to select options
             <br />
             Ctrl + click to go to definition
+            <br />
+            Tab next option
+            <br />
+            Shift + Tab previous option
+            <br />
+            : to set annotation
+            <br />
+            ( to declare or set parameters
+            <br />= to asign
           </div>
         }
       />
@@ -247,12 +253,10 @@ export default function App() {
     immutableJsRepositoryStateHasEmptyInstance,
     repositoryImplementation
   );
-  const editorStateHasEmptyInstance = createEditorStateHasEmptyInstance<TermId>();
   const repositoryHasEmptyInstance = createImmutableJsRepositoryHasEmptyInstance<CommitId, Source, Info>();
   return (
     <GenericApp
       commitIdStringSerialization={commitIdStringSerialization}
-      editorStateHasEmptyInstance={editorStateHasEmptyInstance}
       repositoryFacadeImplementation={repositoryFacadeImplementation}
       repositoryHasEmptyInstance={repositoryHasEmptyInstance}
       repositoryImplementation={repositoryImplementation}

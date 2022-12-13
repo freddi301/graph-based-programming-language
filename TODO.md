@@ -1,9 +1,11 @@
-Positional arguments
+Add record/record type (when no reference but has bindings)
 Refactor purpose dei term + keyword viola (data type, constructor, parameter/attribute, function, lambda, variable, record, record type)
-Binary operator (with relative precedence, left-roght associativity)
 Delete Term -> remove all of its occurences
 Remove Term -> delete if no more occurences, and recursively for children
 If focus in label input do not navigate on left/right arrow
+Order roots as bottom-up usage
+Positional arguments
+Binary operator (with relative precedence, left-roght associativity)
 
 Filesystem api (current directory)
 

@@ -1,6 +1,5 @@
 import React from "react";
 import { css } from "styled-components/macro";
-import { defaultShortcuts } from "../Shortcut";
 import { useLocalStorageState } from "../useLocalStorageState";
 import { HasEmptyIntance, JsonValue, SerializationInterface } from "../utils";
 import { CommitGraph } from "./CommitGraph";
@@ -94,18 +93,13 @@ export function useHistory<CommitId, Source, Repository>({
     }
   }, [current, onSource, repository, repositoryFacadeImplementation, repositoryImplementation]);
   React.useLayoutEffect(() => {
-    const shortcuts = defaultShortcuts;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.key.toLowerCase() === shortcuts.redo.key &&
-        event.ctrlKey === shortcuts.redo.ctrl &&
-        event.shiftKey === shortcuts.redo.shift
-      ) {
+      if (event.key.toLowerCase() === "z" && event.ctrlKey && event.shiftKey) {
         event.preventDefault();
         redo();
         return;
       }
-      if (event.key.toLowerCase() === shortcuts.undo.key && event.ctrlKey === shortcuts.undo.ctrl) {
+      if (event.key.toLowerCase() === "z" && event.ctrlKey) {
         event.preventDefault();
         undo();
         return;

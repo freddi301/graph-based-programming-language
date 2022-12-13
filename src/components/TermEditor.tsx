@@ -46,6 +46,11 @@ export function TermEditor<TermId, Source>({
         if (selectedTermId) {
           const newSource = sourceFacadeImplementation.addParameter(source, termId, selectedTermId);
           onSourceChange(newSource);
+          setEditorState({
+            ...editorState,
+            searchText: undefined,
+            navigation: { termId, part: "parameter", parameterIndex: termData.parameters.size },
+          });
         }
         break;
       }
@@ -89,18 +94,33 @@ export function TermEditor<TermId, Source>({
               const newSource = sourceFacadeImplementation.removeBinding(source, termId, bindingKeyTermId);
               onSourceChange(newSource);
             }
+            setEditorState({
+              ...editorState,
+              navigation: { termId, part: "binding", bindingIndex: termData.bindings.size, subPart: "key" },
+            });
             break;
           }
           case "value": {
             const newSource = sourceFacadeImplementation.setBinding(source, termId, bindingKeyTermId, selectedTermId);
             onSourceChange(newSource);
+            setEditorState({
+              ...editorState,
+              navigation: {
+                termId,
+                part: "binding",
+                bindingIndex: Array.from(sourceImplementation.get(newSource, termId).bindings.keys()).findIndex(
+                  (bindingKey) => bindingKey === bindingKeyTermId
+                ),
+                subPart: "value",
+              },
+            });
             break;
           }
         }
         break;
       }
     }
-    setEditorState({ ...editorState, searchText: undefined, hoveredTermId: undefined, optionIndex: undefined });
+    setEditorState((editorState) => ({ ...editorState, searchText: undefined, hoveredTermId: undefined, optionIndex: undefined }));
     ref.current?.focus();
   };
   const ref = React.useRef<HTMLDivElement | null>(null);
@@ -118,158 +138,263 @@ export function TermEditor<TermId, Source>({
         setTimeout(() => {
           if (!ref.current?.contains(document.activeElement)) ref.current?.focus();
         });
-        if (editorState.searchText !== undefined && editorState.navigation) {
-          const setIndex = (index: number | undefined) => {
-            setEditorState({ ...editorState, optionIndex: index, hoveredTermId: index !== undefined ? options[index] : undefined });
-          };
-          switch (event.key) {
-            case "ArrowDown": {
-              event.preventDefault();
-              if (editorState.optionIndex === options.length - 1) setIndex(undefined);
-              else if (editorState.optionIndex === undefined) setIndex(0);
-              else setIndex(editorState.optionIndex + 1);
-              break;
-            }
-            case "ArrowUp": {
-              event.preventDefault();
-              if (editorState.optionIndex === undefined) setIndex(options.length - 1);
-              else if (editorState.optionIndex === 0) setIndex(undefined);
-              else setIndex(editorState.optionIndex - 1);
-              break;
-            }
-            case "Enter": {
-              event.preventDefault();
-              if (editorState.optionIndex === undefined) {
-                const [newSource, newTermId] = sourceFacadeImplementation.create(source);
-                const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.searchText ?? "");
-                const placed = ((source): { source: Source; navigation: EditorNavigation<TermId> } => {
-                  const navigation = editorState.navigation;
-                  if (!navigation) return { source, navigation };
-                  const termData = sourceImplementation.get(source, navigation.termId);
-                  switch (navigation.part) {
-                    case "annotation":
-                      return { source: sourceFacadeImplementation.setAnnotation(source, navigation.termId, newTermId), navigation };
-                    case "parameters":
-                      return {
-                        source: sourceFacadeImplementation.addParameter(source, navigation.termId, newTermId),
-                        navigation: { termId: navigation.termId, part: "parameter", parameterIndex: termData.parameters.size },
-                      };
-                    case "reference":
-                      return { source: sourceFacadeImplementation.setReference(source, navigation.termId, newTermId), navigation };
-                    case "bindings":
-                      return {
-                        source: sourceFacadeImplementation.setBinding(source, navigation.termId, newTermId, null),
-                        navigation: { termId: navigation.termId, part: "binding", bindingIndex: termData.bindings.size, subPart: "key" },
-                      };
-                    case "binding": {
-                      switch (navigation.subPart) {
-                        case "key":
-                          return { source, navigation };
-                        case "value":
-                          return {
-                            source: sourceFacadeImplementation.setBinding(
-                              source,
-                              navigation.termId,
-                              Array.from(termData.bindings.keys()).at(navigation.bindingIndex)!,
-                              newTermId
-                            ),
-                            navigation: {
-                              termId: navigation.termId,
-                              part: "binding",
-                              bindingIndex: navigation.bindingIndex,
-                              subPart: "value",
-                            },
-                          };
-                      }
-                      break;
-                    }
-                    default:
+        const isOptionSelection = editorState.searchText !== undefined && editorState.navigation;
+        const setIndex = (index: number | undefined) => {
+          setEditorState({ ...editorState, optionIndex: index, hoveredTermId: index !== undefined ? options[index] : undefined });
+        };
+        if (isOptionSelection && (event.key === "ArrowDown" || event.key === "Tab")) {
+          event.preventDefault();
+          if (editorState.optionIndex === options.length - 1) setIndex(undefined);
+          else if (editorState.optionIndex === undefined) setIndex(0);
+          else setIndex(editorState.optionIndex + 1);
+        }
+        if (isOptionSelection && (event.key === "ArrowUp" || (event.key === "Tab" && event.shiftKey))) {
+          event.preventDefault();
+          if (editorState.optionIndex === undefined) setIndex(options.length - 1);
+          else if (editorState.optionIndex === 0) setIndex(undefined);
+          else setIndex(editorState.optionIndex - 1);
+        }
+        if (isOptionSelection && event.key === "Enter") {
+          event.preventDefault();
+          if (editorState.optionIndex === undefined) {
+            const [newSource, newTermId] = sourceFacadeImplementation.create(source);
+            const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.searchText ?? "");
+            const placed = ((source): { source: Source; navigation: EditorNavigation<TermId> } => {
+              const navigation = editorState.navigation!;
+              if (!navigation) return { source, navigation };
+              const termData = sourceImplementation.get(source, navigation.termId);
+              switch (navigation.part) {
+                case "annotation":
+                  return { source: sourceFacadeImplementation.setAnnotation(source, navigation.termId, newTermId), navigation };
+                case "parameters":
+                  return {
+                    source: sourceFacadeImplementation.addParameter(source, navigation.termId, newTermId),
+                    navigation: { termId: navigation.termId, part: "parameter", parameterIndex: termData.parameters.size },
+                  };
+                case "reference":
+                  return { source: sourceFacadeImplementation.setReference(source, navigation.termId, newTermId), navigation };
+                case "bindings":
+                  return {
+                    source: sourceFacadeImplementation.setBinding(source, navigation.termId, newTermId, null),
+                    navigation: { termId: navigation.termId, part: "binding", bindingIndex: termData.bindings.size, subPart: "key" },
+                  };
+                case "binding": {
+                  switch (navigation.subPart) {
+                    case "key":
                       return { source, navigation };
+                    case "value":
+                      return {
+                        source: sourceFacadeImplementation.setBinding(
+                          source,
+                          navigation.termId,
+                          Array.from(termData.bindings.keys()).at(navigation.bindingIndex)!,
+                          newTermId
+                        ),
+                        navigation: {
+                          termId: navigation.termId,
+                          part: "binding",
+                          bindingIndex: navigation.bindingIndex,
+                          subPart: "value",
+                        },
+                      };
                   }
-                })(newSourceWithLabel);
-                onSourceChange(placed.source);
-                setEditorState({
-                  ...editorState,
-                  hoveredTermId: undefined,
-                  searchText: undefined,
-                  navigation: placed.navigation,
-                  optionIndex: undefined,
-                });
-              } else if (editorState.optionIndex !== undefined && editorState.optionIndex < options.length) {
-                selectOption(options[editorState.optionIndex]);
+                  break;
+                }
+                default:
+                  return { source, navigation };
               }
-              break;
-            }
-            case "Escape": {
-              event.preventDefault();
-              setEditorState({ ...editorState, searchText: undefined });
-              break;
-            }
-          }
-        } else if (!editorState.navigation) {
-          const [newSource, newTermId] = sourceFacadeImplementation.create(source);
-          onSourceChange(newSource);
-          setEditorState({ ...editorState, hoveredTermId: undefined, navigation: { termId: newTermId, part: "label" } });
-        } else {
-          const nav = (direction: NavigationDirection) => {
-            event?.preventDefault();
+            })(newSourceWithLabel);
+            onSourceChange(placed.source);
             setEditorState({
               ...editorState,
-              navigation: editorNavigate({
-                navigation: editorState.navigation,
-                direction,
-                source,
-                sourceFacadeImplementation,
-                sourceFormattingImplementation,
-                sourceImplementation,
-                termIdStringSerialization,
-              }),
+              hoveredTermId: undefined,
+              searchText: undefined,
+              navigation: placed.navigation,
+              optionIndex: undefined,
             });
-          };
-          switch (event.key) {
-            case "ArrowLeft":
-              return nav("left");
-            case "ArrowUp":
-              return nav("up");
-            case "ArrowRight":
-              return nav("right");
-            case "ArrowDown":
-              return nav("down");
-            case "Enter": {
-              event.preventDefault();
-              if (editorState.navigation.part === "type") {
-                const termData = sourceImplementation.get(source, editorState.navigation.termId);
-                const newType = (() => {
-                  switch (termData.type) {
-                    case "lambda":
-                      return "pi";
-                    case "pi":
-                      return "lambda";
-                  }
-                })();
-                const newSource = sourceFacadeImplementation.setType(source, editorState.navigation.termId, newType);
-                onSourceChange(newSource);
+          } else if (editorState.optionIndex !== undefined && editorState.optionIndex < options.length) {
+            selectOption(options[editorState.optionIndex]);
+          }
+        }
+        if (isOptionSelection && event.key === "Escape") {
+          event.preventDefault();
+          setEditorState({ ...editorState, searchText: undefined });
+        }
+        if (!editorState.navigation && event.key === "Enter") {
+          const [newSource, newTermId] = sourceFacadeImplementation.create(source);
+          const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.searchText ?? "");
+          onSourceChange(newSourceWithLabel);
+          setEditorState({ ...editorState, searchText: undefined, navigation: { termId: newTermId, part: "label" } });
+        }
+        const nav = (direction: NavigationDirection) => {
+          event?.preventDefault();
+          setEditorState({
+            ...editorState,
+            navigation: editorNavigate({
+              navigation: editorState.navigation,
+              direction,
+              source,
+              sourceFacadeImplementation,
+              sourceFormattingImplementation,
+              sourceImplementation,
+              termIdStringSerialization,
+            }),
+          });
+        };
+        if (!isOptionSelection && event.key === "ArrowLeft") {
+          nav("left");
+        }
+        if (!isOptionSelection && event.key === "ArrowRight") {
+          nav("right");
+        }
+        if (!isOptionSelection && event.key === "ArrowUp") {
+          nav("up");
+        }
+        if (!isOptionSelection && event.key === "ArrowDown") {
+          nav("down");
+        }
+        if (!isOptionSelection && event.key === "Enter") {
+          event.preventDefault();
+          if (editorState.navigation?.part === "type") {
+            const termData = sourceImplementation.get(source, editorState.navigation.termId);
+            const newType = (() => {
+              switch (termData.type) {
+                case "lambda":
+                  return "pi";
+                case "pi":
+                  return "lambda";
               }
-              if (editorState.navigation.part === "mode") {
-                const termData = sourceImplementation.get(source, editorState.navigation.termId);
-                const newMode = (() => {
-                  switch (termData.mode) {
-                    case "call":
-                      return "match";
-                    case "match":
-                      return "call";
-                  }
-                })();
-                const newSource = sourceFacadeImplementation.setMode(source, editorState.navigation.termId, newMode);
-                onSourceChange(newSource);
+            })();
+            const newSource = sourceFacadeImplementation.setType(source, editorState.navigation.termId, newType);
+            onSourceChange(newSource);
+          }
+          if (editorState.navigation?.part === "mode") {
+            const termData = sourceImplementation.get(source, editorState.navigation.termId);
+            const newMode = (() => {
+              switch (termData.mode) {
+                case "call":
+                  return "match";
+                case "match":
+                  return "call";
               }
-              break;
+            })();
+            const newSource = sourceFacadeImplementation.setMode(source, editorState.navigation.termId, newMode);
+            onSourceChange(newSource);
+          }
+        }
+        if (!isOptionSelection && event.key === "Escape") {
+          event.preventDefault();
+          setEditorState({ ...editorState, navigation: undefined });
+        }
+        if (event.key === ":") {
+          event.preventDefault();
+          if (editorState.navigation) {
+            if (editorState.navigation.part === "label") {
+              setEditorState({ ...editorState, navigation: { termId: editorState.navigation.termId, part: "annotation" } });
             }
-            case "Escape": {
-              event.preventDefault();
-              setEditorState({ ...editorState, navigation: undefined });
-              break;
+          } else {
+            const [newSource, newTermId] = sourceFacadeImplementation.create(source);
+            const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.searchText ?? "");
+            onSourceChange(newSourceWithLabel);
+            setEditorState({ ...editorState, searchText: undefined, navigation: { termId: newTermId, part: "annotation" } });
+          }
+        }
+        if (event.key === "(") {
+          event.preventDefault();
+          if (editorState.navigation) {
+            if (editorState.navigation.part === "label") {
+              setEditorState({ ...editorState, navigation: { termId: editorState.navigation.termId, part: "parameters" } });
+            } else if (editorState.navigation.part === "reference") {
+              setEditorState({ ...editorState, navigation: { termId: editorState.navigation.termId, part: "bindings" } });
             }
+          } else {
+            const [newSource, newTermId] = sourceFacadeImplementation.create(source);
+            const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.searchText ?? "");
+            onSourceChange(newSourceWithLabel);
+            setEditorState({ ...editorState, searchText: undefined, navigation: { termId: newTermId, part: "parameters" } });
+          }
+        }
+        if (event.key === "=") {
+          event.preventDefault();
+          if (editorState.navigation) {
+            if (editorState.navigation.part === "label") {
+              setEditorState({ ...editorState, navigation: { termId: editorState.navigation.termId, part: "reference" } });
+            }
+            if (editorState.navigation.part === "parameters") {
+              if (editorState.searchText) {
+                const [newSource, newTermId] = sourceFacadeImplementation.create(source);
+                const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.searchText);
+                const newSourceWithPlacement = sourceFacadeImplementation.addParameter(
+                  newSourceWithLabel,
+                  editorState.navigation.termId,
+                  newTermId
+                );
+                onSourceChange(newSourceWithPlacement);
+              }
+              setEditorState({
+                ...editorState,
+                searchText: undefined,
+                navigation: { termId: editorState.navigation.termId, part: "reference" },
+              });
+            }
+            if (editorState.navigation.part === "binding" && editorState.navigation.subPart === "key") {
+              setEditorState({
+                ...editorState,
+                navigation: {
+                  termId: editorState.navigation.termId,
+                  part: "binding",
+                  bindingIndex: editorState.navigation.bindingIndex,
+                  subPart: "value",
+                },
+              });
+            }
+          } else {
+            const [newSource, newTermId] = sourceFacadeImplementation.create(source);
+            const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.searchText ?? "");
+            onSourceChange(newSourceWithLabel);
+            setEditorState({ ...editorState, searchText: undefined, navigation: { termId: newTermId, part: "reference" } });
+          }
+        }
+        if (event.key === ",") {
+          event.preventDefault();
+          if (editorState.navigation?.part === "parameters") {
+            const [newSource, newTermId] = sourceFacadeImplementation.create(source);
+            const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.searchText ?? "");
+            const newSourceWithPlacement = sourceFacadeImplementation.addParameter(
+              newSourceWithLabel,
+              editorState.navigation.termId,
+              newTermId
+            );
+            onSourceChange(newSourceWithPlacement);
+            setEditorState({
+              ...editorState,
+              searchText: undefined,
+              navigation: { termId: editorState.navigation.termId, part: "parameters" },
+            });
+          }
+          if (editorState.navigation?.part === "parameter") {
+            if (
+              editorState.navigation.parameterIndex >=
+              sourceImplementation.get(source, editorState.navigation.termId).parameters.size - 1
+            ) {
+              setEditorState({
+                navigation: {
+                  termId: editorState.navigation.termId,
+                  part: "parameters",
+                },
+              });
+            } else {
+              setEditorState({
+                navigation: {
+                  termId: editorState.navigation.termId,
+                  part: "parameter",
+                  parameterIndex: editorState.navigation.parameterIndex + 1,
+                },
+              });
+            }
+          }
+          if (editorState.navigation?.part === "binding") {
+            setEditorState({ ...editorState, navigation: { termId: editorState.navigation.termId, part: "bindings" } });
           }
         }
       }}
@@ -1009,10 +1134,6 @@ function editorNavigate<TermId, Source>({
         if (roots.length) return { termId: roots[roots.length - 1], part: "label" };
         break;
       }
-      case "down": {
-        if (roots.length) return { termId: roots[0], part: "label" };
-        break;
-      }
     }
     return;
   }
@@ -1043,9 +1164,10 @@ function editorNavigate<TermId, Source>({
         case "right":
           return { termId, part: "annotation" };
         case "left":
+          if (!parentPosition) return navigation;
           return onceMore("left", parentPosition);
         case "up": {
-          if (rootIndex === 0) return;
+          if (rootIndex === 0) return navigation;
           if (rootIndex >= 0) return { termId: roots[rootIndex - 1], part: "label" };
           if (parentPosition) return parentPosition;
           break;
@@ -1148,6 +1270,7 @@ function editorNavigate<TermId, Source>({
     case "bindings": {
       switch (direction) {
         case "right":
+          if (!parentPosition) return navigation;
           return onceMore("right", parentPosition);
         case "left":
           if (termData.bindings.size === 0) return { termId, part: "reference" };

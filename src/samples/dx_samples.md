@@ -125,16 +125,16 @@ add(Successive(x), y) = add(x, Successive(y))
 
 # Contextual text editing commands
 
-- is (create term in place and let set annotation)
-- done (goes to initial editing state)
-- given (create term in place and let add parameters)
-- and (after given, let add another parameter)
-- where (create term in place and let add binding)
-- and (after where, let add another binding)
-- returns (create lambda term in place and let set reference)
-- gives (create pi term in place and let set reference)
+- is (create term in place and let set annotation) | :
+- done (goes to initial editing state) | Enter
+- given (create term in place and let add parameters) | (
+- and (after given, let add another parameter) | ,
+- where (create term in place and let add binding) | (
+- and (after where, let add another binding) | ,
+- returns (create lambda term in place and let set reference) | =
+- gives (create pi term in place and let set reference) | =
 - up arrow (goes up in the hierarchy)
-- down arroa (goes down in the hierarchy)
+- down arrows (goes down in the hierarchy)
 - arrow left/right (goes to sibling in hierarchy)
 
 # TODO
