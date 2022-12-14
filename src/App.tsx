@@ -2,7 +2,6 @@ import React from "react";
 import { GlobalStyle } from "./components/theme";
 import { library } from "@fortawesome/fontawesome-svg-core";
 import { fas } from "@fortawesome/free-solid-svg-icons";
-import { LeftSideTab, RenderLeftSideTabMemo } from "./components/LeftSideTab";
 import { AppLayout } from "./components/AppLayout";
 import {
   createJsMapHasEmptyInstance,
@@ -30,11 +29,11 @@ import {
   RepositoryFacadeInterface,
   RepositoryInterface,
 } from "./components/version-control/Repository";
-import { CollapsibleSection } from "./components/CollapsibleSection";
 import { css } from "styled-components/macro";
 import { Button } from "./components/Button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { TermEditor } from "./components/TermEditor";
+import { TermEditor } from "./components/editor/Editor";
+import { LeftBar } from "./components/LeftBar";
 
 library.add(fas);
 
@@ -72,101 +71,106 @@ function GenericApp<TermId, Source, CommitId, Repository>({
     repositoryImplementation,
     repositoryJsonValueSerialization,
   });
-  const [selectedLeftSideTab, setSelectedLeftSideTab] = React.useState<LeftSideTab>("history");
   return (
     <React.Fragment>
       <GlobalStyle />
       <AppLayout
         top={null}
-        leftLeft={leftSideTabs.map((tab) => (
-          <RenderLeftSideTabMemo key={tab} tab={tab} onSelect={setSelectedLeftSideTab} isSelected={tab === selectedLeftSideTab} />
-        ))}
-        left={(() => {
-          switch (selectedLeftSideTab) {
-            case "version-control":
-              return null;
-            case "history":
-              return (
-                <div
-                  css={css`
-                    display: flex;
-                    flex-direction: column;
-                    height: 100%;
-                  `}
-                >
-                  <CollapsibleSection title="GRAPH">
-                    <div
-                      css={css`
-                        padding: 8px;
-                      `}
-                    >
-                      <Button label="new history" icon={<FontAwesomeIcon icon="plus" />} onClick={() => history.goto(null)} />
-                    </div>
-                    <div>
-                      <HistoryGraph
-                        repository={history.repository}
-                        selected={history.current}
-                        onSelect={history.goto}
-                        commitIdStringSerialization={commitIdStringSerialization}
-                        repositoryFacadeImplementation={repositoryFacadeImplementation}
-                        repositoryImplementation={repositoryImplementation}
-                      />
-                    </div>
-                  </CollapsibleSection>
-                  <CollapsibleSection title="UTILS">
-                    <div
-                      css={css`
-                        padding: 8px;
-                      `}
-                    >
-                      <Button
-                        label="export current code as json"
-                        icon={<FontAwesomeIcon icon="file-export" />}
-                        onClick={() => {
-                          const blob = new Blob([JSON.stringify(sourceJsonValueSerialization.serialize(source))], {
-                            type: "application/json",
-                          });
-                          const objectUrl = URL.createObjectURL(blob);
-                          const a = document.createElement("a");
-                          a.href = objectUrl;
-                          a.download = "download";
-                          a.onclick = () => {
-                            setTimeout(() => URL.revokeObjectURL(objectUrl));
-                          };
-                          a.click();
-                        }}
-                      />
-                      <Button
-                        label="import json as current code"
-                        icon={<FontAwesomeIcon icon="file-import" />}
-                        onClick={() => {
-                          const input = document.createElement("input");
-                          input.type = "file";
-                          input.onchange = () => {
-                            const file = input.files?.[0];
-                            if (file) {
-                              const reader = new FileReader();
-                              reader.onload = () => {
-                                try {
-                                  const source = sourceJsonValueSerialization.deserialize(JSON.parse(reader.result as string));
-                                  history.goto(null);
-                                  setSource(source);
-                                } catch (error) {
-                                  console.error(error);
-                                }
-                              };
-                              reader.readAsText(file);
-                            }
-                          };
-                          input.click();
-                        }}
-                      />
-                    </div>
-                  </CollapsibleSection>
-                </div>
-              );
-          }
-        })()}
+        left={
+          <LeftBar
+            tabs={[
+              {
+                label: "File",
+                icon: <FontAwesomeIcon icon="file" />,
+                sections: [
+                  {
+                    title: "UTILS",
+                    content: (
+                      <div
+                        css={css`
+                          padding: 8px;
+                        `}
+                      >
+                        <Button
+                          label="export current code as json"
+                          icon={<FontAwesomeIcon icon="file-export" />}
+                          onClick={() => {
+                            const blob = new Blob([JSON.stringify(sourceJsonValueSerialization.serialize(source))], {
+                              type: "application/json",
+                            });
+                            const objectUrl = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = objectUrl;
+                            a.download = "download";
+                            a.onclick = () => {
+                              setTimeout(() => URL.revokeObjectURL(objectUrl));
+                            };
+                            a.click();
+                          }}
+                        />
+                        <Button
+                          label="import json as current code"
+                          icon={<FontAwesomeIcon icon="file-import" />}
+                          onClick={() => {
+                            const input = document.createElement("input");
+                            input.type = "file";
+                            input.onchange = () => {
+                              const file = input.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                  try {
+                                    const source = sourceJsonValueSerialization.deserialize(JSON.parse(reader.result as string));
+                                    history.goto(null);
+                                    setSource(source);
+                                  } catch (error) {
+                                    console.error(error);
+                                  }
+                                };
+                                reader.readAsText(file);
+                              }
+                            };
+                            input.click();
+                          }}
+                        />
+                      </div>
+                    ),
+                  },
+                ],
+              },
+              {
+                label: "History",
+                icon: <FontAwesomeIcon icon="clock-rotate-left" />,
+                sections: [
+                  {
+                    title: "GRAPH",
+                    content: (
+                      <React.Fragment>
+                        <div
+                          css={css`
+                            padding: 8px;
+                          `}
+                        >
+                          <Button label="new history" icon={<FontAwesomeIcon icon="plus" />} onClick={() => history.goto(null)} />
+                        </div>
+                        <div>
+                          <HistoryGraph
+                            repository={history.repository}
+                            selected={history.current}
+                            onSelect={history.goto}
+                            commitIdStringSerialization={commitIdStringSerialization}
+                            repositoryFacadeImplementation={repositoryFacadeImplementation}
+                            repositoryImplementation={repositoryImplementation}
+                          />
+                        </div>
+                      </React.Fragment>
+                    ),
+                  },
+                ],
+              },
+            ]}
+          />
+        }
         center={
           <TermEditor<TermId, Source>
             source={source}
@@ -211,10 +215,7 @@ function GenericApp<TermId, Source, CommitId, Repository>({
   );
 }
 
-const leftSideTabs: Array<LeftSideTab> = ["version-control", "history"];
-
-// choose implementations
-
+/** choose implementations */
 export default function App() {
   type TermId = HexStringOf32Byte;
   type CommitId = HexSHA256;

@@ -4,14 +4,12 @@ import { css } from "styled-components/macro";
 export function AppLayout({
   top,
   left,
-  leftLeft,
   center,
   bottom,
   right,
 }: {
   top: React.ReactNode;
   left: React.ReactNode;
-  leftLeft: React.ReactNode;
   center: React.ReactNode;
   bottom: React.ReactNode;
   right: React.ReactNode;
@@ -23,10 +21,10 @@ export function AppLayout({
         width: 100vw;
         height: 100vh;
         grid-template-areas:
-          "top top top top"
-          "left-left left center right"
-          "left-left left bottom right";
-        grid-template-columns: 40px 300px 1fr 400px;
+          "top top top"
+          "left center right"
+          "left bottom right";
+        grid-template-columns: 340px 1fr 400px;
         grid-template-rows: 20px 1fr 1fr;
       `}
     >
@@ -37,14 +35,6 @@ export function AppLayout({
         `}
       >
         {top}
-      </div>
-      <div
-        css={css`
-          grid-area: left-left;
-          background-color: var(--background-color);
-        `}
-      >
-        {leftLeft}
       </div>
       <div
         css={css`

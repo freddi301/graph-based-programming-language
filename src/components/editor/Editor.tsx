@@ -1,10 +1,10 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React from "react";
 import { css } from "styled-components/macro";
-import { keyboardAction } from "./editor/keyboardAction";
-import { getOptions, getTermIdAtEditorNavigation, Navigation, State } from "./editor/State";
-import { SourceFacadeInterface, SourceFormattingInterface, SourceInterface } from "./Source";
-import { SerializationInterface } from "./utils";
+import { keyboardAction } from "./keyboardAction";
+import { getOptions, getTermIdAtEditorNavigation, Navigation, State } from "./State";
+import { SourceFacadeInterface, SourceFormattingInterface, SourceInterface } from "../Source";
+import { SerializationInterface } from "../utils";
 
 const shortIdLength = 5;
 
