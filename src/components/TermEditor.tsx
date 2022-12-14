@@ -1,17 +1,11 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React from "react";
 import { css } from "styled-components/macro";
+import { Navigation, State } from "./editor/EditorState";
 import { SourceFacadeInterface, SourceFormattingInterface, SourceInterface } from "./Source";
 import { SerializationInterface } from "./utils";
 
 const shortIdLength = 5;
-
-type EditorState<TermId> = {
-  hoveredTermId?: TermId;
-  navigation?: EditorNavigation<TermId>;
-  optionIndex?: number;
-  searchText?: string;
-};
 
 export function TermEditor<TermId, Source>({
   source,
@@ -28,7 +22,7 @@ export function TermEditor<TermId, Source>({
   termIdStringSerialization: SerializationInterface<TermId, string>;
   sourceFormattingImplementation: SourceFormattingInterface<TermId, Source>;
 }) {
-  const [editorState, setEditorState] = React.useState<EditorState<TermId>>({});
+  const [editorState, setEditorState] = React.useState<State<TermId>>({});
   const options = getOptions<TermId, Source>({ sourceImplementation, source, editorState, termIdStringSerialization });
   const selectOption = (selectedTermId: TermId | null) => {
     const navigation = editorState.navigation;
@@ -48,7 +42,7 @@ export function TermEditor<TermId, Source>({
           onSourceChange(newSource);
           setEditorState({
             ...editorState,
-            searchText: undefined,
+            text: undefined,
             navigation: { termId, part: "parameter", parameterIndex: termData.parameters.size },
           });
         }
@@ -120,7 +114,7 @@ export function TermEditor<TermId, Source>({
         break;
       }
     }
-    setEditorState((editorState) => ({ ...editorState, searchText: undefined, hoveredTermId: undefined, optionIndex: undefined }));
+    setEditorState((editorState) => ({ ...editorState, text: undefined, highlighted: undefined, optionIndex: undefined }));
     ref.current?.focus();
   };
   const ref = React.useRef<HTMLDivElement | null>(null);
@@ -138,9 +132,9 @@ export function TermEditor<TermId, Source>({
         setTimeout(() => {
           if (!ref.current?.contains(document.activeElement)) ref.current?.focus();
         });
-        const isOptionSelection = editorState.searchText !== undefined && editorState.navigation;
+        const isOptionSelection = editorState.text !== undefined && editorState.navigation;
         const setIndex = (index: number | undefined) => {
-          setEditorState({ ...editorState, optionIndex: index, hoveredTermId: index !== undefined ? options[index] : undefined });
+          setEditorState({ ...editorState, optionIndex: index, highlighted: index !== undefined ? options[index] : undefined });
         };
         if (isOptionSelection && (event.key === "ArrowDown" || event.key === "Tab")) {
           event.preventDefault();
@@ -158,8 +152,8 @@ export function TermEditor<TermId, Source>({
           event.preventDefault();
           if (editorState.optionIndex === undefined) {
             const [newSource, newTermId] = sourceFacadeImplementation.create(source);
-            const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.searchText ?? "");
-            const placed = ((source): { source: Source; navigation: EditorNavigation<TermId> } => {
+            const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.text ?? "");
+            const placed = ((source): { source: Source; navigation: Navigation<TermId> } => {
               const navigation = editorState.navigation!;
               if (!navigation) return { source, navigation };
               const termData = sourceImplementation.get(source, navigation.termId);
@@ -207,8 +201,8 @@ export function TermEditor<TermId, Source>({
             onSourceChange(placed.source);
             setEditorState({
               ...editorState,
-              hoveredTermId: undefined,
-              searchText: undefined,
+              highlighted: undefined,
+              text: undefined,
               navigation: placed.navigation,
               optionIndex: undefined,
             });
@@ -218,13 +212,13 @@ export function TermEditor<TermId, Source>({
         }
         if (isOptionSelection && event.key === "Escape") {
           event.preventDefault();
-          setEditorState({ ...editorState, searchText: undefined });
+          setEditorState({ ...editorState, text: undefined });
         }
         if (!editorState.navigation && event.key === "Enter") {
           const [newSource, newTermId] = sourceFacadeImplementation.create(source);
-          const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.searchText ?? "");
+          const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.text ?? "");
           onSourceChange(newSourceWithLabel);
-          setEditorState({ ...editorState, searchText: undefined, navigation: { termId: newTermId, part: "label" } });
+          setEditorState({ ...editorState, text: undefined, navigation: { termId: newTermId, part: "label" } });
         }
         const nav = (direction: NavigationDirection) => {
           event?.preventDefault();
@@ -294,7 +288,7 @@ export function TermEditor<TermId, Source>({
             }
             if (editorState.navigation.part === "parameters") {
               const [newSource, newTermId] = sourceFacadeImplementation.create(source);
-              const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.searchText ?? "");
+              const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.text ?? "");
               const newSourceWithPlacement = sourceFacadeImplementation.addParameter(
                 newSourceWithLabel,
                 editorState.navigation.termId,
@@ -303,15 +297,15 @@ export function TermEditor<TermId, Source>({
               onSourceChange(newSourceWithPlacement);
               setEditorState({
                 ...editorState,
-                searchText: undefined,
+                text: undefined,
                 navigation: { termId: newTermId, part: "annotation" },
               });
             }
           } else {
             const [newSource, newTermId] = sourceFacadeImplementation.create(source);
-            const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.searchText ?? "");
+            const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.text ?? "");
             onSourceChange(newSourceWithLabel);
-            setEditorState({ ...editorState, searchText: undefined, navigation: { termId: newTermId, part: "annotation" } });
+            setEditorState({ ...editorState, text: undefined, navigation: { termId: newTermId, part: "annotation" } });
           }
         }
         if (event.key === "(") {
@@ -334,19 +328,32 @@ export function TermEditor<TermId, Source>({
               onSourceChange(newSourceWithPlacement);
               setEditorState({
                 ...editorState,
-                searchText: undefined,
+                text: undefined,
                 navigation: { termId: newTermId, part: "label" },
               });
             }
           } else {
             const [newSource, newTermId] = sourceFacadeImplementation.create(source);
-            const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.searchText ?? "");
+            const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.text ?? "");
             onSourceChange(newSourceWithLabel);
-            setEditorState({ ...editorState, searchText: undefined, navigation: { termId: newTermId, part: "parameters" } });
+            setEditorState({ ...editorState, text: undefined, navigation: { termId: newTermId, part: "parameters" } });
           }
         }
         if (event.key === ")") {
           event.preventDefault();
+          if (editorState.navigation?.part === "label") {
+            const parentPosition = getParentPosition({
+              termId: editorState.navigation.termId,
+              source,
+              sourceFacadeImplementation,
+              sourceFormattingImplementation,
+              sourceImplementation,
+              termIdStringSerialization,
+            });
+            if (parentPosition) {
+              setEditorState({ ...editorState, navigation: parentPosition });
+            }
+          }
           if (editorState.navigation?.part === "parameter" || editorState.navigation?.part === "parameters") {
             setEditorState({ ...editorState, navigation: { termId: editorState.navigation.termId, part: "type" } });
           }
@@ -361,9 +368,9 @@ export function TermEditor<TermId, Source>({
               setEditorState({ ...editorState, navigation: { termId: editorState.navigation.termId, part: "reference" } });
             }
             if (editorState.navigation.part === "parameters") {
-              if (editorState.searchText) {
+              if (editorState.text) {
                 const [newSource, newTermId] = sourceFacadeImplementation.create(source);
-                const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.searchText);
+                const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.text);
                 const newSourceWithPlacement = sourceFacadeImplementation.addParameter(
                   newSourceWithLabel,
                   editorState.navigation.termId,
@@ -373,7 +380,7 @@ export function TermEditor<TermId, Source>({
               }
               setEditorState({
                 ...editorState,
-                searchText: undefined,
+                text: undefined,
                 navigation: { termId: editorState.navigation.termId, part: "reference" },
               });
             }
@@ -390,16 +397,16 @@ export function TermEditor<TermId, Source>({
             }
           } else {
             const [newSource, newTermId] = sourceFacadeImplementation.create(source);
-            const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.searchText ?? "");
+            const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.text ?? "");
             onSourceChange(newSourceWithLabel);
-            setEditorState({ ...editorState, searchText: undefined, navigation: { termId: newTermId, part: "reference" } });
+            setEditorState({ ...editorState, text: undefined, navigation: { termId: newTermId, part: "reference" } });
           }
         }
         if (event.key === ",") {
           event.preventDefault();
           if (editorState.navigation?.part === "parameters") {
             const [newSource, newTermId] = sourceFacadeImplementation.create(source);
-            const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.searchText ?? "");
+            const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, editorState.text ?? "");
             const newSourceWithPlacement = sourceFacadeImplementation.addParameter(
               newSourceWithLabel,
               editorState.navigation.termId,
@@ -408,7 +415,7 @@ export function TermEditor<TermId, Source>({
             onSourceChange(newSourceWithPlacement);
             setEditorState({
               ...editorState,
-              searchText: undefined,
+              text: undefined,
               navigation: { termId: editorState.navigation.termId, part: "parameters" },
             });
           }
@@ -519,8 +526,8 @@ const navigationSelectedStyle = css`
 type TermBaseProps<TermId, Source> = {
   source: Source;
   onSourceChange(source: Source): void;
-  editorState: EditorState<TermId>;
-  onEditorStateChange(editorState: EditorState<TermId>): void;
+  editorState: State<TermId>;
+  onEditorStateChange(editorState: State<TermId>): void;
   sourceImplementation: SourceInterface<TermId, Source>;
   sourceFacadeImplementation: SourceFacadeInterface<TermId, Source>;
   termIdStringSerialization: SerializationInterface<TermId, string>;
@@ -532,7 +539,7 @@ function Term<TermId, Source>({
   termId,
   navigation,
   ...baseProps
-}: { termId: TermId; navigation: EditorNavigation<TermId> | undefined } & TermBaseProps<TermId, Source>) {
+}: { termId: TermId; navigation: Navigation<TermId> | undefined } & TermBaseProps<TermId, Source>) {
   const {
     source,
     onSourceChange,
@@ -601,7 +608,7 @@ function Term<TermId, Source>({
   const labelNode = (
     <span
       css={css`
-        background-color: ${editorState.hoveredTermId === termId ? "var(--hover-background-color)" : ""};
+        background-color: ${editorState.highlighted === termId ? "var(--hover-background-color)" : ""};
         color: ${labelColor};
         ${ctrlIsPressed
           ? css`
@@ -613,10 +620,10 @@ function Term<TermId, Source>({
           : ""}
       `}
       onMouseEnter={() => {
-        onEditorStateChange({ ...editorState, hoveredTermId: termId });
+        onEditorStateChange({ ...editorState, highlighted: termId });
       }}
       onMouseLeave={() => {
-        onEditorStateChange({ ...editorState, hoveredTermId: undefined });
+        onEditorStateChange({ ...editorState, highlighted: undefined });
       }}
       onClick={(event) => {
         if (event.ctrlKey) {
@@ -643,7 +650,7 @@ function Term<TermId, Source>({
   return (
     <span
       css={css`
-        background-color: ${editorState.hoveredTermId === termId ? "var(--hover-background-color)" : ""};
+        background-color: ${editorState.highlighted === termId ? "var(--hover-background-color)" : ""};
         border-radius: 4px;
       `}
     >
@@ -671,10 +678,10 @@ function Term<TermId, Source>({
             updateLabel();
           }}
           onMouseEnter={() => {
-            onEditorStateChange({ ...editorState, hoveredTermId: termId });
+            onEditorStateChange({ ...editorState, highlighted: termId });
           }}
           onMouseLeave={() => {
-            onEditorStateChange({ ...editorState, hoveredTermId: undefined });
+            onEditorStateChange({ ...editorState, highlighted: undefined });
           }}
           onClick={() => {
             onEditorStateChange({ ...editorState, navigation: { termId, part: "label" } });
@@ -969,8 +976,8 @@ function Options<TermId, Source>({
   sourceFacadeImplementation,
   sourceFormattingImplementation,
   termIdStringSerialization,
-}: { label: string; navigation: EditorNavigation<TermId> | undefined } & TermBaseProps<TermId, Source>) {
-  const navigationEquals = (a: EditorNavigation<TermId>, b: EditorNavigation<TermId>) => {
+}: { label: string; navigation: Navigation<TermId> | undefined } & TermBaseProps<TermId, Source>) {
+  const navigationEquals = (a: Navigation<TermId>, b: Navigation<TermId>) => {
     if (a.termId !== b.termId) return false;
     if (a.part !== b.part) return false;
     if (a.part === "parameter" && b.part === "parameter" && a.parameterIndex !== b.parameterIndex) return false;
@@ -979,7 +986,7 @@ function Options<TermId, Source>({
   };
   const isAtPosition =
     navigation === editorState.navigation || (editorState.navigation && navigation && navigationEquals(navigation, editorState.navigation));
-  const isOpen = editorState.searchText !== undefined && isAtPosition && options.length > 0;
+  const isOpen = editorState.text !== undefined && isAtPosition && options.length > 0;
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   React.useLayoutEffect(() => {
     if (isAtPosition) inputRef.current?.focus();
@@ -1020,10 +1027,10 @@ function Options<TermId, Source>({
                   }
                 `}
                 onMouseEnter={() => {
-                  onEditorStateChange({ ...editorState, hoveredTermId: termId });
+                  onEditorStateChange({ ...editorState, highlighted: termId });
                 }}
                 onMouseLeave={() => {
-                  onEditorStateChange({ ...editorState, hoveredTermId: undefined });
+                  onEditorStateChange({ ...editorState, highlighted: undefined });
                 }}
               >
                 {termData.label || (
@@ -1046,7 +1053,7 @@ function Options<TermId, Source>({
           label="Remove term"
           onClick={() => {
             onSelectOption(null);
-            onEditorStateChange({ ...editorState, searchText: undefined });
+            onEditorStateChange({ ...editorState, text: undefined });
           }}
         />
       )}
@@ -1055,16 +1062,16 @@ function Options<TermId, Source>({
           icon={<FontAwesomeIcon icon="plus" style={{ visibility: "hidden" }} />}
           label={label}
           onClick={() => {
-            onEditorStateChange({ ...editorState, searchText: "", navigation });
+            onEditorStateChange({ ...editorState, text: "", navigation });
           }}
         />
       )}
       {isAtPosition && !value && (
         <input
           ref={inputRef}
-          value={editorState.searchText ?? ""}
+          value={editorState.text ?? ""}
           onChange={(event) => {
-            onEditorStateChange({ ...editorState, searchText: event.currentTarget.value, optionIndex: undefined });
+            onEditorStateChange({ ...editorState, text: event.currentTarget.value, optionIndex: undefined });
           }}
           css={css`
             background-color: transparent;
@@ -1074,7 +1081,7 @@ function Options<TermId, Source>({
             font-size: inherit;
             padding: 0;
             color: var(--text-color);
-            width: ${editorState.searchText?.length ? `${editorState.searchText.length}ch` : `1px`};
+            width: ${editorState.text?.length ? `${editorState.text.length}ch` : `1px`};
           `}
         />
       )}
@@ -1094,14 +1101,14 @@ function getOptions<TermId, Source>({
 }: {
   sourceImplementation: SourceInterface<TermId, Source>;
   source: Source;
-  editorState: EditorState<TermId>;
+  editorState: State<TermId>;
   termIdStringSerialization: SerializationInterface<TermId, string>;
 }) {
   return Array.from(sourceImplementation.all(source))
     .filter(([termId, termData]) => {
-      const isSearching = Boolean(editorState.searchText);
-      const matchesTermId = termIdStringSerialization.serialize(termId).includes(editorState.searchText?.toLowerCase() ?? "");
-      const matchesTermLabel = termData.label.toLowerCase().includes(editorState.searchText?.toLowerCase() ?? "");
+      const isSearching = Boolean(editorState.text);
+      const matchesTermId = termIdStringSerialization.serialize(termId).includes(editorState.text?.toLowerCase() ?? "");
+      const matchesTermLabel = termData.label.toLowerCase().includes(editorState.text?.toLowerCase() ?? "");
       if (isSearching && !(matchesTermId || matchesTermLabel)) return false;
       return true;
     })
@@ -1109,53 +1116,6 @@ function getOptions<TermId, Source>({
 }
 
 type NavigationDirection = "left" | "right" | "up" | "down";
-
-type EditorNavigation<TermId> =
-  | {
-      termId: TermId;
-      part: "label";
-    }
-  | {
-      termId: TermId;
-      part: "annotation";
-    }
-  | {
-      termId: TermId;
-      part: "parameters";
-    }
-  | {
-      termId: TermId;
-      part: "parameter";
-      parameterIndex: number;
-    }
-  | {
-      termId: TermId;
-      part: "type";
-    }
-  | {
-      termId: TermId;
-      part: "mode";
-    }
-  | {
-      termId: TermId;
-      part: "reference";
-    }
-  | {
-      termId: TermId;
-      part: "bindings";
-    }
-  | {
-      termId: TermId;
-      part: "binding";
-      bindingIndex: number;
-      subPart: "key";
-    }
-  | {
-      termId: TermId;
-      part: "binding";
-      bindingIndex: number;
-      subPart: "value";
-    };
 
 function editorNavigate<TermId, Source>({
   navigation,
@@ -1166,14 +1126,14 @@ function editorNavigate<TermId, Source>({
   sourceFormattingImplementation,
   termIdStringSerialization,
 }: {
-  navigation?: EditorNavigation<TermId>;
+  navigation?: Navigation<TermId>;
   direction: NavigationDirection;
   source: Source;
   sourceImplementation: SourceInterface<TermId, Source>;
   sourceFacadeImplementation: SourceFacadeInterface<TermId, Source>;
   termIdStringSerialization: SerializationInterface<TermId, string>;
   sourceFormattingImplementation: SourceFormattingInterface<TermId, Source>;
-}): EditorNavigation<TermId> | undefined {
+}): Navigation<TermId> | undefined {
   const roots = Array.from(sourceImplementation.all(source))
     .filter(([termId]) => sourceFormattingImplementation.isRoot(source, termId))
     .map(([termId]) => termId);
@@ -1186,7 +1146,7 @@ function editorNavigate<TermId, Source>({
     }
     return;
   }
-  const onceMore = (direction: NavigationDirection, navigation?: EditorNavigation<TermId>) =>
+  const onceMore = (direction: NavigationDirection, navigation?: Navigation<TermId>) =>
     editorNavigate({
       navigation,
       direction,
@@ -1386,7 +1346,7 @@ function getParentPosition<TermId, Source>({
   sourceFacadeImplementation: SourceFacadeInterface<TermId, Source>;
   termIdStringSerialization: SerializationInterface<TermId, string>;
   sourceFormattingImplementation: SourceFormattingInterface<TermId, Source>;
-}): EditorNavigation<TermId> | undefined {
+}): Navigation<TermId> | undefined {
   const isRoot = sourceFormattingImplementation.isRoot(source, termId);
   const referencesCount = sourceFormattingImplementation.getReferencesCount(source, termId);
   const parents = sourceFormattingImplementation.getParents(source, termId);
@@ -1414,7 +1374,7 @@ function getTermIdAtEditorNavigation<TermId, Source>({
   source,
   sourceImplementation,
 }: {
-  navigation: EditorNavigation<TermId>;
+  navigation: Navigation<TermId>;
   source: Source;
   sourceImplementation: SourceInterface<TermId, Source>;
 }): TermId | null {

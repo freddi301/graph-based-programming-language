@@ -1,3 +1,7 @@
+Store editor state for every commit and restore it
+Optionally hide structure
+Refactor keyboard interaction as (editorState) => Record<Key, {editorState: EditorState} | null>
+Indentation
 Add record/record type (when no reference but has bindings)
 Refactor purpose dei term + keyword viola (data type, constructor, parameter/attribute, function, lambda, variable, record, record type)
 Remove Term -> delete if no more occurences, and recursively for children
