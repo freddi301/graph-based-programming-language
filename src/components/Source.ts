@@ -1,4 +1,4 @@
-import { Brand, guard, HasEmptyIntance, JsonValue, SerializationInterface } from "./utils";
+import { Brand, EqualsInterface, guard, HasEmptyIntance, JsonValue, SerializationInterface } from "./utils";
 
 export type SourceInterface<TermId, Source> = {
   all(source: Source): IterableIterator<[TermId, TermData<TermId>]>;
@@ -177,26 +177,24 @@ export function createJsonValueSerializationFromSourceImplementation<TermId, Sou
   };
 }
 
-export function createJsMapSourceImplementation<TermId>(
-  termIdStringSerialization: SerializationInterface<TermId, string>
-): SourceInterface<TermId, Map<string, TermData<TermId>>> {
+export function createJsMapSourceImplementation<TermId>(): SourceInterface<TermId, Map<TermId, TermData<TermId>>> {
   return {
     *all(source) {
       for (const [key, value] of source) {
-        yield [termIdStringSerialization.deserialize(key), value] as [TermId, TermData<TermId>];
+        yield [key, value] as [TermId, TermData<TermId>];
       }
     },
     get(source, termId) {
-      return source.get(termIdStringSerialization.serialize(termId)) ?? createEmptyTermData();
+      return source.get(termId) ?? createEmptyTermData();
     },
     set(source, termId, termData) {
       const newMap = new Map(source);
-      newMap.set(termIdStringSerialization.serialize(termId), termData);
+      newMap.set(termId, termData);
       return newMap;
     },
     rem(source, termId) {
       const newMap = new Map(source);
-      newMap.delete(termIdStringSerialization.serialize(termId));
+      newMap.delete(termId);
       return newMap;
     },
   };
@@ -225,91 +223,115 @@ export const hexStringOf32ByteStringSerialization: SerializationInterface<HexStr
     return serialized as HexStringOf32Byte;
   },
 };
+export const hexStringOf32ByteEqualsImplementation: EqualsInterface<HexStringOf32Byte> = {
+  equals(a, b) {
+    return a === b;
+  },
+};
 
 export type SourceFormattingInterface<TermId, Source> = {
   isRoot(source: Source, termId: TermId): boolean;
-  getParents(source: Source, termId: TermId): Set<TermId>;
-  getReferencesCount(source: Source, termId: TermId): ReferenceCounts<TermId>;
+  getRoots(source: Source): Array<TermId>;
+  getReferences(source: Source, termId: TermId): References<TermId>;
+  getTermParameters(source: Source, termId: TermId): Array<TermId>;
+  getTermBindings(source: Source, termId: TermId): Array<{ key: TermId; value: TermId | null }>;
 };
 
-type ReferenceCounts<TermId> = {
-  asReference: number;
-  asBindingKey: number;
-  asBindingValue: number;
+type References<TermId> = {
+  all: Set<TermId>;
+  asReference: Set<TermId>;
+  asBindingKey: Set<TermId>;
+  asBindingValue: Map<TermId, TermId>;
   asParameter: Set<TermId>;
-  asAnnotation: number;
+  asAnnotation: Set<TermId>;
 };
 export function createSourceFormmattingImplementationFromSourceImplementation<TermId, Source>(
-  sourceImplementation: SourceInterface<TermId, Source>,
-  termIdStringSerialization: SerializationInterface<TermId, string>
+  sourceImplementation: SourceInterface<TermId, Source>
 ): SourceFormattingInterface<TermId, Source> {
   function getReferences(source: Source) {
-    const countByTermId = new Map<string, ReferenceCounts<TermId>>();
-    const parentsById = new Map<string, Set<TermId>>();
+    const referencesById = new Map<TermId, References<TermId>>();
     for (const [termId] of sourceImplementation.all(source)) {
-      const counts: ReferenceCounts<TermId> = {
-        asReference: 0,
-        asBindingKey: 0,
-        asBindingValue: 0,
+      const references: References<TermId> = {
+        all: new Set(),
+        asAnnotation: new Set(),
         asParameter: new Set(),
-        asAnnotation: 0,
+        asReference: new Set(),
+        asBindingKey: new Set(),
+        asBindingValue: new Map(),
       };
-      const parents = new Set<TermId>();
       for (const [parentTermId, { annotation, parameters, reference, bindings }] of sourceImplementation.all(source)) {
         if (annotation && annotation === termId) {
-          counts.asAnnotation += 1;
-          parents.add(parentTermId);
+          references.asAnnotation.add(parentTermId);
+          references.all.add(parentTermId);
         }
         for (const [val] of parameters.entries()) {
           if (val === termId) {
-            counts.asParameter.add(parentTermId);
-            parents.add(parentTermId);
+            references.asParameter.add(parentTermId);
+            references.all.add(parentTermId);
           }
         }
         if (reference && reference === termId) {
-          counts.asReference += 1;
-          parents.add(parentTermId);
+          references.asReference.add(parentTermId);
+          references.all.add(parentTermId);
         }
         for (const [key, val] of bindings.entries()) {
           if (key === termId) {
-            counts.asBindingKey += 1;
-            parents.add(parentTermId);
+            references.asBindingKey.add(parentTermId);
+            references.all.add(parentTermId);
           }
           if (val === termId) {
-            counts.asBindingValue += 1;
-            parents.add(parentTermId);
+            references.asBindingValue.set(key, parentTermId);
+            references.all.add(parentTermId);
           }
         }
-        countByTermId.set(termIdStringSerialization.serialize(termId), counts);
-        parentsById.set(termIdStringSerialization.serialize(termId), parents);
+        referencesById.set(termId, references);
       }
     }
-    return {
-      counts: countByTermId,
-      parents: parentsById,
-    };
+    return referencesById;
   }
   const implementation: SourceFormattingInterface<TermId, Source> = {
     isRoot(source, termId) {
       const term = sourceImplementation.get(source, termId);
-      const counts = getReferences(source).counts.get(termIdStringSerialization.serialize(termId))!;
+      const counts = getReferences(source).get(termId)!;
       const { label } = sourceImplementation.get(source, termId);
       if (counts.asParameter.size === 1) return false;
-      if (counts.asAnnotation === 1 && counts.asBindingValue + counts.asParameter.size + counts.asReference === 0 && !term.annotation)
-        return false;
-      if (counts.asReference + counts.asBindingValue === 1 && counts.asAnnotation + counts.asParameter.size === 0 && !label) return false;
       if (
-        counts.asAnnotation + counts.asParameter.size + counts.asReference + counts.asBindingKey + counts.asBindingValue === 1 &&
+        counts.asAnnotation.size === 1 &&
+        counts.asBindingValue.size + counts.asParameter.size + counts.asReference.size === 0 &&
+        !term.annotation
+      )
+        return false;
+      if (counts.asReference.size + counts.asBindingValue.size === 1 && counts.asAnnotation.size + counts.asParameter.size === 0 && !label)
+        return false;
+      if (
+        counts.asAnnotation.size +
+          counts.asParameter.size +
+          counts.asReference.size +
+          counts.asBindingKey.size +
+          counts.asBindingValue.size ===
+          1 &&
         !term.label
       )
         return false;
       return true;
     },
-    getParents(source, termId) {
-      return getReferences(source).parents.get(termIdStringSerialization.serialize(termId)) ?? new Set();
+    getRoots(source) {
+      const roots = Array.from(sourceImplementation.all(source))
+        .filter(([termId]) => this.isRoot(source, termId))
+        .map(([termId]) => termId);
+      // TODO order by bottom-up usage
+      return roots;
     },
-    getReferencesCount(source, termId) {
-      return getReferences(source).counts.get(termIdStringSerialization.serialize(termId))!;
+    getReferences(source, termId) {
+      return getReferences(source).get(termId)!;
+    },
+    getTermParameters(source, termId) {
+      // TODO order by bottom-up usage
+      return Array.from(sourceImplementation.get(source, termId).parameters.keys());
+    },
+    getTermBindings(source, termId) {
+      // TODO order by (decide what)
+      return Array.from(sourceImplementation.get(source, termId).bindings.entries()).map(([key, value]) => ({ key, value }));
     },
   };
   return implementation;

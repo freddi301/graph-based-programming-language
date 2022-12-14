@@ -221,13 +221,10 @@ export default function App() {
   type Source = Map<string, TermData<TermId>>;
   type Info = null;
   const termIdStringSerialization = hexStringOf32ByteStringSerialization;
-  const sourceImplementation = createJsMapSourceImplementation(hexStringOf32ByteStringSerialization);
+  const sourceImplementation = createJsMapSourceImplementation();
   const termIdImplementation = hexStringOf32ByteTermIdImplementation;
   const sourceFacadeImplementation = createSourceFacadeFromSourceInterface(sourceImplementation, termIdImplementation);
-  const sourceFormattingImplementation = createSourceFormmattingImplementationFromSourceImplementation(
-    sourceImplementation,
-    termIdStringSerialization
-  );
+  const sourceFormattingImplementation = createSourceFormmattingImplementationFromSourceImplementation(sourceImplementation);
   const sourceHasEmptyInstance = createJsMapHasEmptyInstance<TermId, TermData<TermId>>();
   const sourceJsonValueSerialization = createJsonValueSerializationFromSourceImplementation(
     sourceImplementation,

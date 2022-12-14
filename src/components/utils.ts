@@ -12,7 +12,7 @@ export function brand<T, B extends string>(value: T) {
 
 export type JsonValue = null | boolean | number | string | { [x: string]: JsonValue } | Array<JsonValue>;
 
-// SERIALIZTION
+// SERIALIZATION
 
 export type SerializationInterface<Deserialized, Serialized> = {
   serialize(deserialized: Deserialized): Serialized;
@@ -23,6 +23,12 @@ export type SerializationInterface<Deserialized, Serialized> = {
 
 export type HasEmptyIntance<T> = {
   empty(): T;
+};
+
+// EQUALS
+
+export type EqualsInterface<T> = {
+  equals(a: T, b: T): boolean;
 };
 
 // guard
