@@ -62,7 +62,7 @@ export const TermId = {
   },
   isValid(value: unknown): value is TermId {
     if (typeof value !== "string") return false;
-    return /^[0-0a-f]{64}$/.test(value);
+    return /^[0-9a-f]{64}$/.test(value);
   },
 };
 
@@ -190,7 +190,7 @@ export function createJsonValueSerializationFromSourceImplementation<Source>(
           bindings: new Map(
             Object.entries(termDataJsonValue.bindings).map(([k, v]) => {
               if (!TermId.isValid(k)) throw new Error();
-              if (v !== null || !TermId.isValid(v)) throw new Error();
+              if (v !== null && !TermId.isValid(v)) throw new Error();
               return [k, v];
             })
           ),
@@ -277,26 +277,23 @@ export function createSourceFormmattingImplementationFromSourceImplementation<So
   }
   const implementation: SourceFormattingInterface<Source> = {
     isRoot(source, termId) {
-      const term = sourceImplementation.get(source, termId);
-      const counts = getReferences(source).get(termId)!;
-      const { label } = sourceImplementation.get(source, termId);
-      if (counts.asParameter.size === 1) return false;
+      const termData = sourceImplementation.get(source, termId);
+      const references = getReferences(source).get(termId)!;
+      if (references.asParameter.size === 1) return false;
       if (
-        counts.asAnnotation.size === 1 &&
-        counts.asBindingValue.size + counts.asParameter.size + counts.asReference.size === 0 &&
-        !term.annotation
+        references.asAnnotation.size === 1 &&
+        references.asBindingKey.size + references.asBindingValue.size + references.asParameter.size + references.asReference.size === 0 &&
+        !termData.annotation
       )
         return false;
-      if (counts.asReference.size + counts.asBindingValue.size === 1 && counts.asAnnotation.size + counts.asParameter.size === 0 && !label)
-        return false;
       if (
-        counts.asAnnotation.size +
-          counts.asParameter.size +
-          counts.asReference.size +
-          counts.asBindingKey.size +
-          counts.asBindingValue.size ===
+        references.asAnnotation.size +
+          references.asParameter.size +
+          references.asReference.size +
+          references.asBindingKey.size +
+          references.asBindingValue.size ===
           1 &&
-        !term.label
+        !termData.label
       )
         return false;
       return true;

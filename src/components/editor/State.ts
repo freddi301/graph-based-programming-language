@@ -124,8 +124,7 @@ export function isInline<Source>({
   sourceFormattingImplementation: SourceFormattingInterface<Source>;
 }): boolean {
   const references = sourceFormattingImplementation.getReferences(source, termId);
-  if (navigation.part === "binding" && navigation.subPart === "key" && sourceImplementation.get(source, navigation.termId).mode === "match")
-    return true;
-  if (navigation.part === "parameter" && references.asParameter.size === 1) return true;
-  return false;
+  if (sourceFormattingImplementation.isRoot(source, termId)) return false;
+  if (navigation.part !== "parameter" && references.asParameter.size === 1) return false;
+  return true;
 }

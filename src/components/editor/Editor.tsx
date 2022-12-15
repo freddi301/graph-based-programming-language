@@ -246,6 +246,7 @@ function Term<Source>({
           value={labelText}
           onChange={(event) => {
             setLabelText(event.currentTarget.value);
+            onStateChange({ text: event.currentTarget.value, navigation: state.navigation });
           }}
           placeholder={termId}
           autoFocus={isLabelFocused}

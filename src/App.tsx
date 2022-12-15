@@ -68,6 +68,18 @@ function GenericApp<Source, CommitId, Repository>({
     repositoryImplementation,
     repositoryJsonValueSerialization,
   });
+  const [charWidth, setCharWidth] = React.useState(0);
+  const codeContainerRef = React.useRef<HTMLPreElement | null>(null);
+  React.useLayoutEffect(() => {
+    const onResize = () => {
+      if (codeContainerRef.current) {
+        setCharWidth(codeContainerRef.current.offsetWidth / 8);
+      }
+    };
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
   return (
     <React.Fragment>
       <GlobalStyle />
@@ -181,11 +193,13 @@ function GenericApp<Source, CommitId, Repository>({
           />
         }
         bottom={
-          <pre>
+          <pre ref={codeContainerRef}>
             {sourceFormattingImplementation
               .getRoots(source)
               .map((termId) => {
                 return format({
+                  level: 0,
+                  maxWidth: charWidth,
                   navigation: null,
                   termId,
                   source,

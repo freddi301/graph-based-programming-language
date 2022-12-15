@@ -16,7 +16,6 @@ export function keyboardAction<Source>({
   sourceFacadeImplementation: SourceFacadeInterface<Source>;
   sourceFormattingImplementation: SourceFormattingInterface<Source>;
 }): { state?: State; source?: Source } | undefined {
-  // #region Arrow navigation
   const roots = sourceFormattingImplementation.getRoots(source);
   const rootIndex = (state.navigation && roots.findIndex((ti) => ti === state.navigation!.termId)) ?? -1;
   const termData = state.navigation && sourceImplementation.get(source, state.navigation.termId);
@@ -30,154 +29,163 @@ export function keyboardAction<Source>({
       sourceFormattingImplementation,
       sourceImplementation,
     });
-  const onceMore = (navigation: Navigation, event: React.KeyboardEvent) =>
-    keyboardAction({
-      state: { ...state, navigation },
-      event,
-      source,
-      sourceImplementation,
-      sourceFacadeImplementation,
-      sourceFormattingImplementation,
+
+  // #region Arrow navigation
+  if (!state.text) {
+    const onceMore = (navigation: Navigation, event: React.KeyboardEvent) =>
+      keyboardAction({
+        state: { ...state, navigation },
+        event,
+        source,
+        sourceImplementation,
+        sourceFacadeImplementation,
+        sourceFormattingImplementation,
+      });
+    const navigate = (navigation: Navigation) => ({
+      state: { navigation },
     });
-  const navigate = (navigation: Navigation) => ({
-    state: { navigation },
-  });
-  if (!state.navigation && event.key === "ArrowUp" && roots.length) {
-    return navigate({ termId: roots[roots.length - 1], part: "label" });
-  }
-  if (state.navigation?.part === "label" && event.key === "ArrowRight") {
-    return navigate({ termId: state.navigation.termId, part: "annotation" });
-  }
-  if (state.navigation?.part === "label" && event.key === "ArrowLeft") {
-    if (!parentPosition) return navigate(state.navigation);
-    return onceMore(parentPosition, event);
-  }
-  if (state.navigation?.part === "label" && event.key === "ArrowUp") {
-    if (rootIndex === 0) return navigate(state.navigation);
-    if (rootIndex >= 0) return navigate({ termId: roots[rootIndex - 1], part: "label" });
-    if (parentPosition) return navigate(parentPosition);
-  }
-  if (state.navigation?.part === "label" && event.key === "ArrowDown") {
-    if (rootIndex >= 0 && roots[0] && !state.navigation) return navigate({ termId: roots[0], part: "label" });
-    if (rootIndex >= 0 && rootIndex < roots.length - 1) return navigate({ termId: roots[rootIndex + 1], part: "label" });
-    if (rootIndex >= roots.length - 1) return {};
-  }
-  if (state.navigation?.part === "annotation" && event.key === "ArrowRight") {
-    if (termParameters?.length === 0) return navigate({ termId: state.navigation.termId, part: "parameters" });
-    return navigate({ termId: state.navigation.termId, part: "parameter", parameterIndex: 0 });
-  }
-  if (state.navigation?.part === "annotation" && event.key === "ArrowLeft") {
-    return navigate({ termId: state.navigation.termId, part: "label" });
-  }
-  if (state.navigation?.part === "annotation" && event.key === "ArrowUp" && termData?.annotation) {
-    return navigate({ termId: termData.annotation, part: "label" });
-  }
-  if (state.navigation?.part === "parameters" && event.key === "ArrowRight") {
-    return navigate({ termId: state.navigation.termId, part: "type" });
-  }
-  if (state.navigation?.part === "parameters" && event.key === "ArrowLeft" && termParameters) {
-    if (termParameters.length === 0) return navigate({ termId: state.navigation.termId, part: "annotation" });
-    return navigate({ termId: state.navigation.termId, part: "parameter", parameterIndex: termParameters.length - 1 });
-  }
-  if (state.navigation?.part === "parameters" && event.key === "ArrowUp") {
-    return navigate({ termId: state.navigation.termId, part: "label" });
-  }
-  if (state.navigation?.part === "parameters" && event.key === "ArrowDown") {
-    return navigate({ termId: state.navigation.termId, part: "parameter", parameterIndex: 0 });
-  }
-  if (state.navigation?.part === "parameter" && event.key === "ArrowRight" && termParameters) {
-    if (state.navigation.parameterIndex >= termParameters?.length - 1)
+    if (!state.navigation && event.key === "ArrowUp" && roots.length) {
+      return navigate({ termId: roots[roots.length - 1], part: "label" });
+    }
+    if (state.navigation?.part === "label" && event.key === "ArrowRight") {
+      return navigate({ termId: state.navigation.termId, part: "annotation" });
+    }
+    if (state.navigation?.part === "label" && event.key === "ArrowLeft") {
+      if (!parentPosition) return navigate(state.navigation);
+      return onceMore(parentPosition, event);
+    }
+    if (state.navigation?.part === "label" && event.key === "ArrowUp") {
+      if (rootIndex === 0) return navigate(state.navigation);
+      if (rootIndex >= 0) return navigate({ termId: roots[rootIndex - 1], part: "label" });
+      if (parentPosition) return navigate(parentPosition);
+    }
+    if (state.navigation?.part === "label" && event.key === "ArrowDown") {
+      if (rootIndex >= 0 && roots[0] && !state.navigation) return navigate({ termId: roots[0], part: "label" });
+      if (rootIndex >= 0 && rootIndex < roots.length - 1) return navigate({ termId: roots[rootIndex + 1], part: "label" });
+      if (rootIndex >= roots.length - 1) return {};
+    }
+    if (state.navigation?.part === "annotation" && event.key === "ArrowRight") {
+      if (termParameters?.length === 0) return navigate({ termId: state.navigation.termId, part: "parameters" });
+      return navigate({ termId: state.navigation.termId, part: "parameter", parameterIndex: 0 });
+    }
+    if (state.navigation?.part === "annotation" && event.key === "ArrowLeft") {
+      return navigate({ termId: state.navigation.termId, part: "label" });
+    }
+    if (state.navigation?.part === "annotation" && event.key === "ArrowUp" && termData?.annotation) {
+      return navigate({ termId: termData.annotation, part: "label" });
+    }
+    if (state.navigation?.part === "parameters" && event.key === "ArrowRight") {
+      return navigate({ termId: state.navigation.termId, part: "type" });
+    }
+    if (state.navigation?.part === "parameters" && event.key === "ArrowLeft" && termParameters) {
+      if (termParameters.length === 0) return navigate({ termId: state.navigation.termId, part: "annotation" });
+      return navigate({ termId: state.navigation.termId, part: "parameter", parameterIndex: termParameters.length - 1 });
+    }
+    if (state.navigation?.part === "parameters" && event.key === "ArrowUp") {
+      return navigate({ termId: state.navigation.termId, part: "label" });
+    }
+    if (state.navigation?.part === "parameters" && event.key === "ArrowDown") {
+      return navigate({ termId: state.navigation.termId, part: "parameter", parameterIndex: 0 });
+    }
+    if (state.navigation?.part === "parameter" && event.key === "ArrowRight" && termParameters) {
+      if (state.navigation.parameterIndex >= termParameters?.length - 1)
+        return navigate({ termId: state.navigation.termId, part: "parameters" });
+      return navigate({ termId: state.navigation.termId, part: "parameter", parameterIndex: state.navigation.parameterIndex + 1 });
+    }
+    if (state.navigation?.part === "parameter" && event.key === "ArrowLeft") {
+      if (state.navigation.parameterIndex === 0) return navigate({ termId: state.navigation.termId, part: "annotation" });
+      return navigate({ termId: state.navigation.termId, part: "parameter", parameterIndex: state.navigation.parameterIndex - 1 });
+    }
+    if (state.navigation?.part === "parameter" && event.key === "ArrowUp") {
       return navigate({ termId: state.navigation.termId, part: "parameters" });
-    return navigate({ termId: state.navigation.termId, part: "parameter", parameterIndex: state.navigation.parameterIndex + 1 });
-  }
-  if (state.navigation?.part === "parameter" && event.key === "ArrowLeft") {
-    if (state.navigation.parameterIndex === 0) return navigate({ termId: state.navigation.termId, part: "annotation" });
-    return navigate({ termId: state.navigation.termId, part: "parameter", parameterIndex: state.navigation.parameterIndex - 1 });
-  }
-  if (state.navigation?.part === "parameter" && event.key === "ArrowUp") {
-    return navigate({ termId: state.navigation.termId, part: "parameters" });
-  }
-  if (state.navigation?.part === "parameter" && event.key === "ArrowDown" && termParameters) {
-    if (termParameters[state.navigation.parameterIndex])
-      return navigate({ termId: termParameters[state.navigation.parameterIndex], part: "label" });
-  }
-  if (state.navigation?.part === "type" && event.key === "ArrowRight") {
-    return navigate({ termId: state.navigation.termId, part: "mode" });
-  }
-  if (state.navigation?.part === "type" && event.key === "ArrowLeft") {
-    return navigate({ termId: state.navigation.termId, part: "parameters" });
-  }
-  if (state.navigation?.part === "type" && event.key === "ArrowUp") {
-    return navigate({ termId: state.navigation.termId, part: "label" });
-  }
-  if (state.navigation?.part === "mode" && event.key === "ArrowRight") {
-    return navigate({ termId: state.navigation.termId, part: "reference" });
-  }
-  if (state.navigation?.part === "mode" && event.key === "ArrowLeft") {
-    return navigate({ termId: state.navigation.termId, part: "type" });
-  }
-  if (state.navigation?.part === "mode" && event.key === "ArrowUp") {
-    return navigate({ termId: state.navigation.termId, part: "label" });
-  }
-  if (state.navigation?.part === "reference" && event.key === "ArrowRight") {
-    if (termBindings?.length === 0) return navigate({ termId: state.navigation.termId, part: "bindings" });
-    return navigate({ termId: state.navigation.termId, part: "binding", bindingIndex: 0, subPart: "key" });
-  }
-  if (state.navigation?.part === "reference" && event.key === "ArrowLeft") {
-    return navigate({ termId: state.navigation.termId, part: "mode" });
-  }
-  if (state.navigation?.part === "reference" && event.key === "ArrowUp") {
-    return navigate({ termId: state.navigation.termId, part: "label" });
-  }
-  if (state.navigation?.part === "reference" && event.key === "ArrowDown") {
-    if (termData?.reference) return navigate({ termId: termData.reference, part: "label" });
-  }
-  if (state.navigation?.part === "bindings" && event.key === "ArrowRight") {
-    if (!parentPosition) return navigate(state.navigation);
-    return onceMore(parentPosition, event);
-  }
-  if (state.navigation?.part === "bindings" && event.key === "ArrowLeft" && termBindings) {
-    if (termBindings.length === 0) return navigate({ termId: state.navigation.termId, part: "reference" });
-    return navigate({ termId: state.navigation.termId, part: "binding", bindingIndex: termBindings.length - 1, subPart: "value" });
-  }
-  if (state.navigation?.part === "bindings" && event.key === "ArrowUp") {
-    return navigate({ termId: state.navigation.termId, part: "label" });
-  }
-  if (state.navigation?.part === "bindings" && event.key === "ArrowDown") {
-    return navigate({ termId: state.navigation.termId, part: "binding", bindingIndex: 0, subPart: "key" });
-  }
-  if (state.navigation?.part === "binding" && state.navigation.subPart === "key" && event.key === "ArrowRight") {
-    return navigate({ termId: state.navigation.termId, part: "binding", bindingIndex: state.navigation.bindingIndex, subPart: "value" });
-  }
-  if (state.navigation?.part === "binding" && state.navigation.subPart === "key" && event.key === "ArrowLeft") {
-    if (state.navigation.bindingIndex === 0) return navigate({ termId: state.navigation.termId, part: "reference" });
-    return navigate({
-      termId: state.navigation.termId,
-      part: "binding",
-      bindingIndex: state.navigation.bindingIndex - 1,
-      subPart: "value",
-    });
-  }
-  if (state.navigation?.part === "binding" && state.navigation.subPart === "key" && event.key === "ArrowUp") {
-    return navigate({ termId: state.navigation.termId, part: "bindings" });
-  }
-  if (state.navigation?.part === "binding" && state.navigation.subPart === "key" && event.key === "ArrowDown") {
-    if (termBindings?.[state.navigation.bindingIndex]?.key)
-      return navigate({ termId: termBindings[state.navigation.bindingIndex].key, part: "label" });
-  }
-  if (state.navigation?.part === "binding" && state.navigation.subPart === "value" && event.key === "ArrowRight" && termBindings) {
-    if (state.navigation.bindingIndex >= termBindings.length - 1) return navigate({ termId: state.navigation.termId, part: "bindings" });
-    return navigate({ termId: state.navigation.termId, part: "binding", bindingIndex: state.navigation.bindingIndex + 1, subPart: "key" });
-  }
-  if (state.navigation?.part === "binding" && state.navigation.subPart === "value" && event.key === "ArrowLeft") {
-    return navigate({ termId: state.navigation.termId, part: "binding", bindingIndex: state.navigation.bindingIndex, subPart: "key" });
-  }
-  if (state.navigation?.part === "binding" && state.navigation.subPart === "value" && event.key === "ArrowUp") {
-    return navigate({ termId: state.navigation.termId, part: "bindings" });
-  }
-  if (state.navigation?.part === "binding" && state.navigation.subPart === "value" && event.key === "ArrowDown") {
-    if (termBindings?.[state.navigation.bindingIndex]?.value)
-      return navigate({ termId: termBindings[state.navigation.bindingIndex].value!, part: "label" });
+    }
+    if (state.navigation?.part === "parameter" && event.key === "ArrowDown" && termParameters) {
+      if (termParameters[state.navigation.parameterIndex])
+        return navigate({ termId: termParameters[state.navigation.parameterIndex], part: "label" });
+    }
+    if (state.navigation?.part === "type" && event.key === "ArrowRight") {
+      return navigate({ termId: state.navigation.termId, part: "mode" });
+    }
+    if (state.navigation?.part === "type" && event.key === "ArrowLeft") {
+      return navigate({ termId: state.navigation.termId, part: "parameters" });
+    }
+    if (state.navigation?.part === "type" && event.key === "ArrowUp") {
+      return navigate({ termId: state.navigation.termId, part: "label" });
+    }
+    if (state.navigation?.part === "mode" && event.key === "ArrowRight") {
+      return navigate({ termId: state.navigation.termId, part: "reference" });
+    }
+    if (state.navigation?.part === "mode" && event.key === "ArrowLeft") {
+      return navigate({ termId: state.navigation.termId, part: "type" });
+    }
+    if (state.navigation?.part === "mode" && event.key === "ArrowUp") {
+      return navigate({ termId: state.navigation.termId, part: "label" });
+    }
+    if (state.navigation?.part === "reference" && event.key === "ArrowRight") {
+      if (termBindings?.length === 0) return navigate({ termId: state.navigation.termId, part: "bindings" });
+      return navigate({ termId: state.navigation.termId, part: "binding", bindingIndex: 0, subPart: "key" });
+    }
+    if (state.navigation?.part === "reference" && event.key === "ArrowLeft") {
+      return navigate({ termId: state.navigation.termId, part: "mode" });
+    }
+    if (state.navigation?.part === "reference" && event.key === "ArrowUp") {
+      return navigate({ termId: state.navigation.termId, part: "label" });
+    }
+    if (state.navigation?.part === "reference" && event.key === "ArrowDown") {
+      if (termData?.reference) return navigate({ termId: termData.reference, part: "label" });
+    }
+    if (state.navigation?.part === "bindings" && event.key === "ArrowRight") {
+      if (!parentPosition) return navigate(state.navigation);
+      return onceMore(parentPosition, event);
+    }
+    if (state.navigation?.part === "bindings" && event.key === "ArrowLeft" && termBindings) {
+      if (termBindings.length === 0) return navigate({ termId: state.navigation.termId, part: "reference" });
+      return navigate({ termId: state.navigation.termId, part: "binding", bindingIndex: termBindings.length - 1, subPart: "value" });
+    }
+    if (state.navigation?.part === "bindings" && event.key === "ArrowUp") {
+      return navigate({ termId: state.navigation.termId, part: "label" });
+    }
+    if (state.navigation?.part === "bindings" && event.key === "ArrowDown") {
+      return navigate({ termId: state.navigation.termId, part: "binding", bindingIndex: 0, subPart: "key" });
+    }
+    if (state.navigation?.part === "binding" && state.navigation.subPart === "key" && event.key === "ArrowRight") {
+      return navigate({ termId: state.navigation.termId, part: "binding", bindingIndex: state.navigation.bindingIndex, subPart: "value" });
+    }
+    if (state.navigation?.part === "binding" && state.navigation.subPart === "key" && event.key === "ArrowLeft") {
+      if (state.navigation.bindingIndex === 0) return navigate({ termId: state.navigation.termId, part: "reference" });
+      return navigate({
+        termId: state.navigation.termId,
+        part: "binding",
+        bindingIndex: state.navigation.bindingIndex - 1,
+        subPart: "value",
+      });
+    }
+    if (state.navigation?.part === "binding" && state.navigation.subPart === "key" && event.key === "ArrowUp") {
+      return navigate({ termId: state.navigation.termId, part: "bindings" });
+    }
+    if (state.navigation?.part === "binding" && state.navigation.subPart === "key" && event.key === "ArrowDown") {
+      if (termBindings?.[state.navigation.bindingIndex]?.key)
+        return navigate({ termId: termBindings[state.navigation.bindingIndex].key, part: "label" });
+    }
+    if (state.navigation?.part === "binding" && state.navigation.subPart === "value" && event.key === "ArrowRight" && termBindings) {
+      if (state.navigation.bindingIndex >= termBindings.length - 1) return navigate({ termId: state.navigation.termId, part: "bindings" });
+      return navigate({
+        termId: state.navigation.termId,
+        part: "binding",
+        bindingIndex: state.navigation.bindingIndex + 1,
+        subPart: "key",
+      });
+    }
+    if (state.navigation?.part === "binding" && state.navigation.subPart === "value" && event.key === "ArrowLeft") {
+      return navigate({ termId: state.navigation.termId, part: "binding", bindingIndex: state.navigation.bindingIndex, subPart: "key" });
+    }
+    if (state.navigation?.part === "binding" && state.navigation.subPart === "value" && event.key === "ArrowUp") {
+      return navigate({ termId: state.navigation.termId, part: "bindings" });
+    }
+    if (state.navigation?.part === "binding" && state.navigation.subPart === "value" && event.key === "ArrowDown") {
+      if (termBindings?.[state.navigation.bindingIndex]?.value)
+        return navigate({ termId: termBindings[state.navigation.bindingIndex].value!, part: "label" });
+    }
   }
   // #endregion
 
@@ -453,7 +461,7 @@ export function keyboardAction<Source>({
     if (state.navigation.part === "label") {
       return {
         source: sourceFacadeImplementation.remove(source, state.navigation.termId),
-        state: {},
+        state: rootIndex >= 0 ? {} : { navigation: state.navigation },
       };
     }
     if (state.navigation.part === "annotation") {
