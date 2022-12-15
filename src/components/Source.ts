@@ -1,6 +1,8 @@
-import { Brand, EqualsInterface, guard, HasEmptyIntance, JsonValue, SerializationInterface } from "./utils";
+import { Brand, guard, HasEmptyIntance, JsonValue, SerializationInterface } from "./utils";
 
-export type TermData<TermId> = {
+export type TermId = Brand<string, "TermId as hex string of 32 bytes">;
+
+export type TermData = {
   label: string;
   annotation: TermId | null;
   parameters: Map<TermId, null>;
@@ -12,15 +14,15 @@ export type TermData<TermId> = {
 export type TermType = "lambda" | "pi";
 export type TermMode = "call" | "match";
 
-export type SourceInterface<TermId, Source> = {
-  all(source: Source): IterableIterator<[TermId, TermData<TermId>]>;
-  get(source: Source, termId: TermId): TermData<TermId>;
-  set(source: Source, termId: TermId, termData: TermData<TermId>): Source;
+export type SourceInterface<Source> = {
+  all(source: Source): IterableIterator<[TermId, TermData]>;
+  get(source: Source, termId: TermId): TermData;
+  set(source: Source, termId: TermId, termData: TermData): Source;
   rem(source: Source, termId: TermId): Source;
 };
 
 // TODO recursively remove embedded terms
-export type SourceFacadeInterface<TermId, Source> = {
+export type SourceFacadeInterface<Source> = {
   create(source: Source): [Source, TermId];
   remove(source: Source, termId: TermId): Source;
   setLabel(source: Source, termId: TermId, label: string): Source;
@@ -34,15 +36,15 @@ export type SourceFacadeInterface<TermId, Source> = {
   removeBinding(source: Source, termId: TermId, keyTermId: TermId): Source;
 };
 
-export type SourceFormattingInterface<TermId, Source> = {
+export type SourceFormattingInterface<Source> = {
   isRoot(source: Source, termId: TermId): boolean;
   getRoots(source: Source): Array<TermId>;
-  getReferences(source: Source, termId: TermId): References<TermId>;
+  getReferences(source: Source, termId: TermId): References;
   getTermParameters(source: Source, termId: TermId): Array<TermId>;
   getTermBindings(source: Source, termId: TermId): Array<{ key: TermId; value: TermId | null }>;
 };
 
-type References<TermId> = {
+type References = {
   all: Set<TermId>;
   asReference: Set<TermId>;
   asBindingKey: Set<TermId>;
@@ -51,7 +53,20 @@ type References<TermId> = {
   asAnnotation: Set<TermId>;
 };
 
-export function createEmptyTermData<TermId>(): TermData<TermId> {
+// eslint-disable-next-line
+export const TermId = {
+  create() {
+    return Array.from(crypto.getRandomValues(new Uint8Array(32)))
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("") as TermId;
+  },
+  isValid(value: unknown): value is TermId {
+    if (typeof value !== "string") return false;
+    return /^[0-0a-f]{64}$/.test(value);
+  },
+};
+
+export function createEmptyTermData(): TermData {
   return {
     label: "",
     annotation: null,
@@ -63,17 +78,12 @@ export function createEmptyTermData<TermId>(): TermData<TermId> {
   };
 }
 
-export type TermIdInterface<TermId> = {
-  create(): TermId;
-};
-
-export function createSourceFacadeFromSourceInterface<TermId, Source>(
-  sourceImplementation: SourceInterface<TermId, Source>,
-  termIdImplementation: TermIdInterface<TermId>
-): SourceFacadeInterface<TermId, Source> {
+export function createSourceFacadeFromSourceInterface<Source>(
+  sourceImplementation: SourceInterface<Source>
+): SourceFacadeInterface<Source> {
   return {
     create(source) {
-      const newTermId = termIdImplementation.create();
+      const newTermId = TermId.create();
       return [sourceImplementation.set(source, newTermId, createEmptyTermData()), newTermId] as [Source, TermId];
     },
     remove(source, termId) {
@@ -131,59 +141,57 @@ export function createSourceFacadeFromSourceInterface<TermId, Source>(
   };
 }
 
-export function createJsonValueSerializationFromSourceImplementation<TermId, Source>(
-  sourceImplementation: SourceInterface<TermId, Source>,
-  sourceHasEmptyIntance: HasEmptyIntance<Source>,
-  termIdStringSerialization: SerializationInterface<TermId, string>
+export function createJsonValueSerializationFromSourceImplementation<Source>(
+  sourceImplementation: SourceInterface<Source>,
+  sourceHasEmptyIntance: HasEmptyIntance<Source>
 ): SerializationInterface<Source, JsonValue> {
   return {
     serialize(source) {
       const result: JsonValue = {};
       for (const [termId, termData] of sourceImplementation.all(source)) {
-        result[termIdStringSerialization.serialize(termId)] = {
+        result[termId] = {
           label: termData.label,
-          annotation: termData.annotation && termIdStringSerialization.serialize(termData.annotation),
-          parameters: Object.fromEntries([...termData.parameters.entries()].map(([k]) => [termIdStringSerialization.serialize(k), null])),
+          annotation: termData.annotation && termData.annotation,
+          parameters: Object.fromEntries([...termData.parameters.entries()].map(([k]) => [k, null])),
           type: termData.type as string,
           mode: termData.mode as string,
-          reference: termData.reference && termIdStringSerialization.serialize(termData.reference),
-          bindings: Object.fromEntries(
-            [...termData.bindings.entries()].map(([k, v]) => [
-              termIdStringSerialization.serialize(k),
-              v && termIdStringSerialization.serialize(v),
-            ])
-          ),
+          reference: termData.reference && termData.reference,
+          bindings: Object.fromEntries([...termData.bindings.entries()].map(([k, v]) => [k, v])),
         };
       }
       return result;
     },
     deserialize(jsonValue) {
       if (!guard.isObject(jsonValue)) throw new Error();
-      return Object.entries(jsonValue).reduce((source, [termIdString, termDataJsonValue]) => {
-        const termId = termIdStringSerialization.deserialize(termIdString);
+      return Object.entries(jsonValue).reduce((source, [termId, termDataJsonValue]) => {
+        if (!TermId.isValid(termId)) throw new Error();
         if (!guard.isObject(termDataJsonValue)) throw new Error();
         if (!("label" in termDataJsonValue && guard.isString(termDataJsonValue.label))) throw new Error();
-        if (!("annotation" in termDataJsonValue && (guard.isString(termDataJsonValue.annotation) || termDataJsonValue.annotation === null)))
+        if (!("annotation" in termDataJsonValue && (TermId.isValid(termDataJsonValue.annotation) || termDataJsonValue.annotation === null)))
           throw new Error();
         if (!("parameters" in termDataJsonValue && guard.isObject(termDataJsonValue.parameters))) throw new Error();
         if (!("type" in termDataJsonValue && (termDataJsonValue.type === "lambda" || termDataJsonValue.type === "pi"))) throw new Error();
         if (!("mode" in termDataJsonValue && (termDataJsonValue.mode === "call" || termDataJsonValue.mode === "match"))) throw new Error();
-        if (!("reference" in termDataJsonValue && (guard.isString(termDataJsonValue.reference) || termDataJsonValue.reference === null)))
+        if (!("reference" in termDataJsonValue && (TermId.isValid(termDataJsonValue.reference) || termDataJsonValue.reference === null)))
           throw new Error();
         if (!("bindings" in termDataJsonValue && guard.isObject(termDataJsonValue.bindings))) throw new Error();
-        const termData: TermData<TermId> = {
+        const termData: TermData = {
           label: termDataJsonValue.label,
-          annotation: termDataJsonValue.annotation === null ? null : termIdStringSerialization.deserialize(termDataJsonValue.annotation),
+          annotation: termDataJsonValue.annotation,
           parameters: new Map(
-            Object.entries(termDataJsonValue.parameters).map(([k, v]) => [termIdStringSerialization.deserialize(k), null])
+            Object.entries(termDataJsonValue.parameters).map(([k, v]) => {
+              if (!TermId.isValid(k)) throw new Error();
+              return [k, null];
+            })
           ),
           type: termDataJsonValue.type,
           mode: termDataJsonValue.mode,
-          reference: termDataJsonValue.reference === null ? null : termIdStringSerialization.deserialize(termDataJsonValue.reference),
+          reference: termDataJsonValue.reference,
           bindings: new Map(
             Object.entries(termDataJsonValue.bindings).map(([k, v]) => {
-              if (!(guard.isString(v) || v === null)) throw new Error();
-              return [termIdStringSerialization.deserialize(k), v === null ? null : termIdStringSerialization.deserialize(v)];
+              if (!TermId.isValid(k)) throw new Error();
+              if (v !== null || !TermId.isValid(v)) throw new Error();
+              return [k, v];
             })
           ),
         };
@@ -193,11 +201,11 @@ export function createJsonValueSerializationFromSourceImplementation<TermId, Sou
   };
 }
 
-export function createJsMapSourceImplementation<TermId>(): SourceInterface<TermId, Map<TermId, TermData<TermId>>> {
+export function createJsMapSourceImplementation(): SourceInterface<Map<TermId, TermData>> {
   return {
     *all(source) {
       for (const [key, value] of source) {
-        yield [key, value] as [TermId, TermData<TermId>];
+        yield [key, value] as [TermId, TermData];
       }
     },
     get(source, termId) {
@@ -223,35 +231,13 @@ export function createJsMapHasEmptyInstance<K, V>(): HasEmptyIntance<Map<K, V>> 
   };
 }
 
-export type HexStringOf32Byte = Brand<string, "HexStringOf32Byte">;
-export const hexStringOf32ByteTermIdImplementation: TermIdInterface<HexStringOf32Byte> = {
-  create() {
-    return Array.from(crypto.getRandomValues(new Uint8Array(32)))
-      .map((byte) => byte.toString(16).padStart(2, "0"))
-      .join("") as HexStringOf32Byte;
-  },
-};
-export const hexStringOf32ByteStringSerialization: SerializationInterface<HexStringOf32Byte, string> = {
-  serialize(deserialized) {
-    return deserialized;
-  },
-  deserialize(serialized) {
-    return serialized as HexStringOf32Byte;
-  },
-};
-export const hexStringOf32ByteEqualsImplementation: EqualsInterface<HexStringOf32Byte> = {
-  equals(a, b) {
-    return a === b;
-  },
-};
-
-export function createSourceFormmattingImplementationFromSourceImplementation<TermId, Source>(
-  sourceImplementation: SourceInterface<TermId, Source>
-): SourceFormattingInterface<TermId, Source> {
+export function createSourceFormmattingImplementationFromSourceImplementation<Source>(
+  sourceImplementation: SourceInterface<Source>
+): SourceFormattingInterface<Source> {
   function getReferences(source: Source) {
-    const referencesById = new Map<TermId, References<TermId>>();
+    const referencesById = new Map<TermId, References>();
     for (const [termId] of sourceImplementation.all(source)) {
-      const references: References<TermId> = {
+      const references: References = {
         all: new Set(),
         asAnnotation: new Set(),
         asParameter: new Set(),
@@ -289,7 +275,7 @@ export function createSourceFormmattingImplementationFromSourceImplementation<Te
     }
     return referencesById;
   }
-  const implementation: SourceFormattingInterface<TermId, Source> = {
+  const implementation: SourceFormattingInterface<Source> = {
     isRoot(source, termId) {
       const term = sourceImplementation.get(source, termId);
       const counts = getReferences(source).get(termId)!;

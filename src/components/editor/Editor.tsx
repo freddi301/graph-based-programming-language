@@ -3,30 +3,27 @@ import React from "react";
 import { css } from "styled-components/macro";
 import { keyboardAction } from "./keyboardAction";
 import { getOptions, getTermIdAtEditorNavigation, isInline, Navigation, State } from "./State";
-import { SourceFacadeInterface, SourceFormattingInterface, SourceInterface } from "../Source";
-import { SerializationInterface } from "../utils";
+import { SourceFacadeInterface, SourceFormattingInterface, SourceInterface, TermId } from "../Source";
 
 const shortIdLength = 5;
 
-export function TermEditor<TermId, Source>({
+export function TermEditor<Source>({
   source,
   onSourceChange,
   sourceImplementation,
   sourceFacadeImplementation,
-  termIdStringSerialization,
   sourceFormattingImplementation,
 }: {
   source: Source;
   onSourceChange(source: Source): void;
-  sourceImplementation: SourceInterface<TermId, Source>;
-  sourceFacadeImplementation: SourceFacadeInterface<TermId, Source>;
-  termIdStringSerialization: SerializationInterface<TermId, string>;
-  sourceFormattingImplementation: SourceFormattingInterface<TermId, Source>;
+  sourceImplementation: SourceInterface<Source>;
+  sourceFacadeImplementation: SourceFacadeInterface<Source>;
+  sourceFormattingImplementation: SourceFormattingInterface<Source>;
 }) {
-  const [state, setState] = React.useState<State<TermId>>({});
-  const options = getOptions<TermId, Source>({ sourceImplementation, source, state: state, termIdStringSerialization });
+  const [state, setState] = React.useState<State>({});
+  const options = getOptions<Source>({ sourceImplementation, source, state: state });
   const ref = React.useRef<HTMLDivElement | null>(null);
-  const onKeyDownWithState = (state: State<TermId>, event: React.KeyboardEvent) => {
+  const onKeyDownWithState = (state: State, event: React.KeyboardEvent) => {
     setTimeout(() => {
       if (!ref.current?.contains(document.activeElement)) ref.current?.focus();
     });
@@ -37,7 +34,6 @@ export function TermEditor<TermId, Source>({
       sourceImplementation,
       sourceFacadeImplementation,
       sourceFormattingImplementation,
-      termIdStringSerialization,
     });
     if (changed) {
       event.preventDefault?.();
@@ -67,7 +63,7 @@ export function TermEditor<TermId, Source>({
       {sourceFormattingImplementation.getRoots(source).map((termId) => {
         return (
           <div
-            key={termIdStringSerialization.serialize(termId)}
+            key={termId}
             onClick={(event) => {
               if (event.target === event.currentTarget) {
                 setState({ navigation: { termId, part: "label" } });
@@ -81,7 +77,7 @@ export function TermEditor<TermId, Source>({
                 onKeyDownWithState({ navigation: { termId, part: "label" } }, { key: "Backspace" } as any);
               }}
             />
-            <Term<TermId, Source>
+            <Term<Source>
               termId={termId}
               navigation={undefined}
               source={source}
@@ -90,7 +86,6 @@ export function TermEditor<TermId, Source>({
               onStateChange={setState}
               sourceFacadeImplementation={sourceFacadeImplementation}
               sourceImplementation={sourceImplementation}
-              termIdStringSerialization={termIdStringSerialization}
               sourceFormattingImplementation={sourceFormattingImplementation}
               options={options}
               onKeyDownWithState={onKeyDownWithState}
@@ -108,7 +103,6 @@ export function TermEditor<TermId, Source>({
           onStateChange={setState}
           sourceFacadeImplementation={sourceFacadeImplementation}
           sourceImplementation={sourceImplementation}
-          termIdStringSerialization={termIdStringSerialization}
           sourceFormattingImplementation={sourceFormattingImplementation}
           options={options}
           onKeyDownWithState={onKeyDownWithState}
@@ -122,23 +116,22 @@ const navigationSelectedStyle = css`
   background-color: var(--selection-background-color);
 `;
 
-type TermBaseProps<TermId, Source> = {
+type TermBaseProps<Source> = {
   source: Source;
   onSourceChange(source: Source): void;
-  state: State<TermId>;
-  onStateChange(stete: State<TermId>): void;
-  sourceImplementation: SourceInterface<TermId, Source>;
-  sourceFacadeImplementation: SourceFacadeInterface<TermId, Source>;
-  termIdStringSerialization: SerializationInterface<TermId, string>;
-  sourceFormattingImplementation: SourceFormattingInterface<TermId, Source>;
+  state: State;
+  onStateChange(stete: State): void;
+  sourceImplementation: SourceInterface<Source>;
+  sourceFacadeImplementation: SourceFacadeInterface<Source>;
+  sourceFormattingImplementation: SourceFormattingInterface<Source>;
   options: Array<TermId>;
-  onKeyDownWithState(state: State<TermId>, event: React.KeyboardEvent): void;
+  onKeyDownWithState(state: State, event: React.KeyboardEvent): void;
 };
-function Term<TermId, Source>({
+function Term<Source>({
   termId,
   navigation,
   ...baseProps
-}: { termId: TermId; navigation: Navigation<TermId> | undefined } & TermBaseProps<TermId, Source>) {
+}: { termId: TermId; navigation: Navigation | undefined } & TermBaseProps<Source>) {
   const {
     source,
     onSourceChange,
@@ -146,7 +139,6 @@ function Term<TermId, Source>({
     onStateChange,
     sourceImplementation,
     sourceFacadeImplementation,
-    termIdStringSerialization,
     sourceFormattingImplementation,
     onKeyDownWithState,
   } = baseProps;
@@ -233,7 +225,7 @@ function Term<TermId, Source>({
         }
       }}
     >
-      {/* {labelText || termIdStringSerialization.serialize(termId).slice(0, shortIdLength)} */}
+      {/* {labelText || (termId).slice(0, shortIdLength)} */}
       {labelText}
     </span>
   );
@@ -255,7 +247,7 @@ function Term<TermId, Source>({
           onChange={(event) => {
             setLabelText(event.currentTarget.value);
           }}
-          placeholder={termIdStringSerialization.serialize(termId)}
+          placeholder={termId}
           autoFocus={isLabelFocused}
           css={css`
             background-color: transparent;
@@ -304,7 +296,7 @@ function Term<TermId, Source>({
       )}
       {sourceFormattingImplementation.getTermParameters(source, termId).map((parameterTermId, index, array) => {
         return (
-          <React.Fragment key={termIdStringSerialization.serialize(parameterTermId)}>
+          <React.Fragment key={parameterTermId}>
             <span
               css={css`
                 ${state.navigation?.termId === termId &&
@@ -409,7 +401,7 @@ function Term<TermId, Source>({
         .getTermBindings(source, termId)
         .map(({ key: bindingKeyTermId, value: bindingValueTermId }, index, array) => {
           return (
-            <span key={termIdStringSerialization.serialize(bindingKeyTermId)}>
+            <span key={bindingKeyTermId}>
               <span
                 css={css`
                   ${state.navigation?.termId === termId &&
@@ -536,7 +528,7 @@ function SmallButton({ icon, label, onClick }: { icon: React.ReactNode; label: R
   );
 }
 
-function Options<TermId, Source>({
+function Options<Source>({
   label,
   options,
   onKeyDownWithState,
@@ -546,9 +538,8 @@ function Options<TermId, Source>({
   sourceImplementation,
   onStateChange,
   sourceFormattingImplementation,
-  termIdStringSerialization,
-}: { label: string; navigation: Navigation<TermId> | undefined } & TermBaseProps<TermId, Source>) {
-  const navigationEquals = (a: Navigation<TermId>, b: Navigation<TermId>) => {
+}: { label: string; navigation: Navigation | undefined } & TermBaseProps<Source>) {
+  const navigationEquals = (a: Navigation, b: Navigation) => {
     if (a.termId !== b.termId) return false;
     if (a.part !== b.part) return false;
     if (a.part === "parameter" && b.part === "parameter" && a.parameterIndex !== b.parameterIndex) return false;
@@ -588,7 +579,7 @@ function Options<TermId, Source>({
             const termData = sourceImplementation.get(source, termId);
             return (
               <div
-                key={termIdStringSerialization.serialize(termId)}
+                key={termId}
                 onClick={() => {
                   onKeyDownWithState({ navigation, text: state.text, optionIndex: index }, { key: "Enter" } as any);
                 }}
@@ -612,7 +603,7 @@ function Options<TermId, Source>({
                       color: var(--text-color-comment);
                     `}
                   >
-                    {termIdStringSerialization.serialize(termId).slice(0, 5)}
+                    {termId.slice(0, 5)}
                   </span>
                 )}
               </div>

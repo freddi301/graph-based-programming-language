@@ -1,16 +1,16 @@
-import { SourceFormattingInterface, SourceInterface } from "../Source";
+import { SourceFormattingInterface, SourceInterface, TermId } from "../Source";
 import { isInline, Navigation } from "./State";
 
-export function format<TermId, Source>({
+export function format<Source>({
   termId,
   navigation,
   ...base
 }: {
-  navigation: Navigation<TermId> | null;
+  navigation: Navigation | null;
   termId: TermId;
   source: Source;
-  sourceImplementation: SourceInterface<TermId, Source>;
-  sourceFormattingImplementation: SourceFormattingInterface<TermId, Source>;
+  sourceImplementation: SourceInterface<Source>;
+  sourceFormattingImplementation: SourceFormattingInterface<Source>;
 }): string {
   const { source, sourceImplementation, sourceFormattingImplementation } = base;
   const termData = sourceImplementation.get(source, termId);

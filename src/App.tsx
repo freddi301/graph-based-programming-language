@@ -9,13 +9,11 @@ import {
   createJsonValueSerializationFromSourceImplementation,
   createSourceFacadeFromSourceInterface,
   createSourceFormmattingImplementationFromSourceImplementation,
-  HexStringOf32Byte,
-  hexStringOf32ByteStringSerialization,
-  hexStringOf32ByteTermIdImplementation,
   SourceFacadeInterface,
   SourceFormattingInterface,
   SourceInterface,
   TermData,
+  TermId,
 } from "./components/Source";
 import { HasEmptyIntance, JsonValue, SerializationInterface } from "./components/utils";
 import { HistoryGraph, useHistory } from "./components/version-control/HistoryGraph";
@@ -38,7 +36,7 @@ import { format } from "./components/editor/Formatting";
 
 library.add(fas);
 
-function GenericApp<TermId, Source, CommitId, Repository>({
+function GenericApp<Source, CommitId, Repository>({
   sourceImplementation,
   sourceHasEmptyInstance,
   sourceJsonValueSerialization,
@@ -48,11 +46,10 @@ function GenericApp<TermId, Source, CommitId, Repository>({
   repositoryJsonValueSerialization,
   commitIdStringSerialization,
   sourceFormattingImplementation,
-  termIdStringSerialization,
   sourceFacadeImplementation,
 }: {
-  sourceImplementation: SourceInterface<TermId, Source>;
-  sourceFacadeImplementation: SourceFacadeInterface<TermId, Source>;
+  sourceImplementation: SourceInterface<Source>;
+  sourceFacadeImplementation: SourceFacadeInterface<Source>;
   sourceHasEmptyInstance: HasEmptyIntance<Source>;
   sourceJsonValueSerialization: SerializationInterface<Source, JsonValue>;
   repositoryImplementation: RepositoryInterface<CommitId, Source, null, Repository>;
@@ -60,8 +57,7 @@ function GenericApp<TermId, Source, CommitId, Repository>({
   repositoryHasEmptyInstance: HasEmptyIntance<Repository>;
   repositoryJsonValueSerialization: SerializationInterface<Promise<Repository>, Promise<JsonValue>>;
   commitIdStringSerialization: SerializationInterface<CommitId, string>;
-  sourceFormattingImplementation: SourceFormattingInterface<TermId, Source>;
-  termIdStringSerialization: SerializationInterface<TermId, string>;
+  sourceFormattingImplementation: SourceFormattingInterface<Source>;
 }) {
   const [source, setSource] = React.useState(sourceHasEmptyInstance.empty());
   const history = useHistory({
@@ -173,7 +169,7 @@ function GenericApp<TermId, Source, CommitId, Repository>({
           />
         }
         center={
-          <TermEditor<TermId, Source>
+          <TermEditor<Source>
             source={source}
             onSourceChange={(source) => {
               setSource(source);
@@ -181,7 +177,6 @@ function GenericApp<TermId, Source, CommitId, Repository>({
             }}
             sourceImplementation={sourceImplementation}
             sourceFacadeImplementation={sourceFacadeImplementation}
-            termIdStringSerialization={termIdStringSerialization}
             sourceFormattingImplementation={sourceFormattingImplementation}
           />
         }
@@ -233,21 +228,14 @@ function GenericApp<TermId, Source, CommitId, Repository>({
 
 /** choose implementations */
 export default function App() {
-  type TermId = HexStringOf32Byte;
   type CommitId = HexSHA256;
-  type Source = Map<string, TermData<TermId>>;
+  type Source = Map<string, TermData>;
   type Info = null;
-  const termIdStringSerialization = hexStringOf32ByteStringSerialization;
   const sourceImplementation = createJsMapSourceImplementation();
-  const termIdImplementation = hexStringOf32ByteTermIdImplementation;
-  const sourceFacadeImplementation = createSourceFacadeFromSourceInterface(sourceImplementation, termIdImplementation);
+  const sourceFacadeImplementation = createSourceFacadeFromSourceInterface(sourceImplementation);
   const sourceFormattingImplementation = createSourceFormmattingImplementationFromSourceImplementation(sourceImplementation);
-  const sourceHasEmptyInstance = createJsMapHasEmptyInstance<TermId, TermData<TermId>>();
-  const sourceJsonValueSerialization = createJsonValueSerializationFromSourceImplementation(
-    sourceImplementation,
-    sourceHasEmptyInstance,
-    termIdStringSerialization
-  );
+  const sourceHasEmptyInstance = createJsMapHasEmptyInstance<TermId, TermData>();
+  const sourceJsonValueSerialization = createJsonValueSerializationFromSourceImplementation(sourceImplementation, sourceHasEmptyInstance);
   const commitIdStringSerialization = hexSHA256StringSerialization;
   const infoJsonValueSerialization: SerializationInterface<Info, JsonValue> = {
     serialize(deserialized) {
@@ -280,7 +268,6 @@ export default function App() {
       sourceFormattingImplementation={sourceFormattingImplementation}
       sourceHasEmptyInstance={sourceHasEmptyInstance}
       sourceImplementation={sourceImplementation}
-      termIdStringSerialization={termIdStringSerialization}
       sourceFacadeImplementation={sourceFacadeImplementation}
     />
   );

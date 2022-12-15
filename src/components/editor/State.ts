@@ -1,14 +1,13 @@
-import { SourceFormattingInterface, SourceInterface } from "../Source";
-import { SerializationInterface } from "../utils";
+import { SourceFormattingInterface, SourceInterface, TermId } from "../Source";
 
-export type State<TermId> = {
+export type State = {
   highlighted?: TermId;
-  navigation?: Navigation<TermId>;
+  navigation?: Navigation;
   optionIndex?: number;
   text?: string;
 };
 
-export type Navigation<TermId> =
+export type Navigation =
   | {
       termId: TermId;
       part: "label";
@@ -59,21 +58,19 @@ export type Navigation<TermId> =
 // - correct type terms
 // - in scope terms
 // - most recently used terms
-export function getOptions<TermId, Source>({
+export function getOptions<Source>({
   state,
   source,
   sourceImplementation,
-  termIdStringSerialization,
 }: {
-  state: State<TermId>;
+  state: State;
   source: Source;
-  sourceImplementation: SourceInterface<TermId, Source>;
-  termIdStringSerialization: SerializationInterface<TermId, string>;
+  sourceImplementation: SourceInterface<Source>;
 }) {
   return Array.from(sourceImplementation.all(source))
     .filter(([termId, termData]) => {
       const isSearching = Boolean(state.text);
-      const matchesTermId = termIdStringSerialization.serialize(termId).includes(state.text?.toLowerCase() ?? "");
+      const matchesTermId = termId.includes(state.text?.toLowerCase() ?? "");
       const matchesTermLabel = termData.label.toLowerCase().includes(state.text?.toLowerCase() ?? "");
       if (isSearching && !(matchesTermId || matchesTermLabel)) return false;
       return true;
@@ -81,16 +78,16 @@ export function getOptions<TermId, Source>({
     .map(([termId]) => termId);
 }
 
-export function getTermIdAtEditorNavigation<TermId, Source>({
+export function getTermIdAtEditorNavigation<Source>({
   navigation,
   source,
   sourceImplementation,
   sourceFormattingImplementation,
 }: {
-  navigation: Navigation<TermId>;
+  navigation: Navigation;
   source: Source;
-  sourceImplementation: SourceInterface<TermId, Source>;
-  sourceFormattingImplementation: SourceFormattingInterface<TermId, Source>;
+  sourceImplementation: SourceInterface<Source>;
+  sourceFormattingImplementation: SourceFormattingInterface<Source>;
 }): TermId | null {
   const termData = sourceImplementation.get(source, navigation.termId);
   switch (navigation.part) {
@@ -113,18 +110,18 @@ export function getTermIdAtEditorNavigation<TermId, Source>({
   }
 }
 
-export function isInline<TermId, Source>({
+export function isInline<Source>({
   termId,
   navigation,
   source,
   sourceImplementation,
   sourceFormattingImplementation,
 }: {
-  navigation: Navigation<TermId>;
+  navigation: Navigation;
   termId: TermId;
   source: Source;
-  sourceImplementation: SourceInterface<TermId, Source>;
-  sourceFormattingImplementation: SourceFormattingInterface<TermId, Source>;
+  sourceImplementation: SourceInterface<Source>;
+  sourceFormattingImplementation: SourceFormattingInterface<Source>;
 }): boolean {
   const references = sourceFormattingImplementation.getReferences(source, termId);
   if (navigation.part === "binding" && navigation.subPart === "key" && sourceImplementation.get(source, navigation.termId).mode === "match")

@@ -1,24 +1,21 @@
-import { SourceFacadeInterface, SourceFormattingInterface, SourceInterface } from "../Source";
-import { SerializationInterface } from "../utils";
+import { SourceFacadeInterface, SourceFormattingInterface, SourceInterface, TermId } from "../Source";
 import { getOptions, Navigation, State } from "./State";
 
-export function keyboardAction<TermId, Source>({
+export function keyboardAction<Source>({
   state,
   event,
   source,
   sourceImplementation,
   sourceFacadeImplementation,
   sourceFormattingImplementation,
-  termIdStringSerialization,
 }: {
-  state: State<TermId>;
+  state: State;
   event: React.KeyboardEvent;
   source: Source;
-  sourceImplementation: SourceInterface<TermId, Source>;
-  sourceFacadeImplementation: SourceFacadeInterface<TermId, Source>;
-  sourceFormattingImplementation: SourceFormattingInterface<TermId, Source>;
-  termIdStringSerialization: SerializationInterface<TermId, string>;
-}): { state?: State<TermId>; source?: Source } | undefined {
+  sourceImplementation: SourceInterface<Source>;
+  sourceFacadeImplementation: SourceFacadeInterface<Source>;
+  sourceFormattingImplementation: SourceFormattingInterface<Source>;
+}): { state?: State; source?: Source } | undefined {
   // #region Arrow navigation
   const roots = sourceFormattingImplementation.getRoots(source);
   const rootIndex = (state.navigation && roots.findIndex((ti) => ti === state.navigation!.termId)) ?? -1;
@@ -33,7 +30,7 @@ export function keyboardAction<TermId, Source>({
       sourceFormattingImplementation,
       sourceImplementation,
     });
-  const onceMore = (navigation: Navigation<TermId>, event: React.KeyboardEvent) =>
+  const onceMore = (navigation: Navigation, event: React.KeyboardEvent) =>
     keyboardAction({
       state: { ...state, navigation },
       event,
@@ -41,9 +38,8 @@ export function keyboardAction<TermId, Source>({
       sourceImplementation,
       sourceFacadeImplementation,
       sourceFormattingImplementation,
-      termIdStringSerialization,
     });
-  const navigate = (navigation: Navigation<TermId>) => ({
+  const navigate = (navigation: Navigation) => ({
     state: { navigation },
   });
   if (!state.navigation && event.key === "ArrowUp" && roots.length) {
@@ -186,7 +182,7 @@ export function keyboardAction<TermId, Source>({
   // #endregion
 
   // #region Option selection
-  const options = getOptions({ state, source, sourceImplementation, termIdStringSerialization });
+  const options = getOptions({ state, source, sourceImplementation });
   const setIndex = (index: number | undefined) => {
     return {
       state: {
@@ -209,7 +205,7 @@ export function keyboardAction<TermId, Source>({
       return setIndex(state.optionIndex - 1);
     }
     if (event.key === "Enter") {
-      const place = (source: Source, navigation: Navigation<TermId>) => {
+      const place = (source: Source, navigation: Navigation) => {
         return { source, state: { navigation } };
       };
       if (state.optionIndex === undefined) {
@@ -260,7 +256,7 @@ export function keyboardAction<TermId, Source>({
       }
       if (state.optionIndex !== undefined && state.optionIndex < options.length) {
         const selectedTermId = options[state.optionIndex];
-        const selectOption = (source: Source, navigation: Navigation<TermId>) => ({ source, state: { navigation } });
+        const selectOption = (source: Source, navigation: Navigation) => ({ source, state: { navigation } });
         switch (state.navigation.part) {
           case "annotation": {
             const newSource = sourceFacadeImplementation.setAnnotation(source, state.navigation.termId, selectedTermId);
@@ -514,7 +510,7 @@ export function keyboardAction<TermId, Source>({
   // #endregion
 }
 
-function getParentPosition<TermId, Source>({
+function getParentPosition<Source>({
   termId,
   source,
   sourceFormattingImplementation,
@@ -522,9 +518,9 @@ function getParentPosition<TermId, Source>({
 }: {
   termId: TermId;
   source: Source;
-  sourceImplementation: SourceInterface<TermId, Source>;
-  sourceFormattingImplementation: SourceFormattingInterface<TermId, Source>;
-}): Navigation<TermId> | undefined {
+  sourceImplementation: SourceInterface<Source>;
+  sourceFormattingImplementation: SourceFormattingInterface<Source>;
+}): Navigation | undefined {
   const isRoot = sourceFormattingImplementation.isRoot(source, termId);
   const references = sourceFormattingImplementation.getReferences(source, termId);
   const parentTermId = ((): TermId | undefined => {
