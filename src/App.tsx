@@ -34,6 +34,7 @@ import { Button } from "./components/Button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { TermEditor } from "./components/editor/Editor";
 import { LeftBar } from "./components/LeftBar";
+import { format } from "./components/editor/Formatting";
 
 library.add(fas);
 
@@ -184,7 +185,22 @@ function GenericApp<TermId, Source, CommitId, Repository>({
             sourceFormattingImplementation={sourceFormattingImplementation}
           />
         }
-        bottom={null}
+        bottom={
+          <pre>
+            {sourceFormattingImplementation
+              .getRoots(source)
+              .map((termId) => {
+                return format({
+                  navigation: null,
+                  termId,
+                  source,
+                  sourceImplementation,
+                  sourceFormattingImplementation,
+                });
+              })
+              .join("\n")}
+          </pre>
+        }
         right={
           <div
             css={css`

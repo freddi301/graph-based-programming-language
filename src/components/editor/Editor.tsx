@@ -2,7 +2,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React from "react";
 import { css } from "styled-components/macro";
 import { keyboardAction } from "./keyboardAction";
-import { getOptions, getTermIdAtEditorNavigation, Navigation, State } from "./State";
+import { getOptions, getTermIdAtEditorNavigation, isInline, Navigation, State } from "./State";
 import { SourceFacadeInterface, SourceFormattingInterface, SourceInterface } from "../Source";
 import { SerializationInterface } from "../utils";
 
@@ -78,8 +78,7 @@ export function TermEditor<TermId, Source>({
               icon={<FontAwesomeIcon icon="minus" />}
               label="Delete term"
               onClick={() => {
-                const newSource = sourceFacadeImplementation.remove(source, termId);
-                onSourceChange(newSource);
+                onKeyDownWithState({ navigation: { termId, part: "label" } }, { key: "Backspace" } as any);
               }}
             />
             <Term<TermId, Source>
@@ -149,6 +148,7 @@ function Term<TermId, Source>({
     sourceFacadeImplementation,
     termIdStringSerialization,
     sourceFormattingImplementation,
+    onKeyDownWithState,
   } = baseProps;
   const termData = sourceImplementation.get(source, termId);
   const [labelText, setLabelText] = React.useState(termData.label);
@@ -237,14 +237,7 @@ function Term<TermId, Source>({
       {labelText}
     </span>
   );
-  const parentTermData = navigation ? sourceImplementation.get(source, navigation.termId) : null;
-  const isPatternMatchLeftSide =
-    navigation && navigation.part === "binding" && navigation.subPart === "key" && parentTermData && parentTermData.mode === "match";
-  if (
-    (isRoot && navigation) ||
-    (!isRoot && referencesCount.asParameter.size === 1 && navigation?.part !== "parameter") ||
-    (navigation?.part === "binding" && navigation.subPart === "key" && !isPatternMatchLeftSide)
-  ) {
+  if (navigation && !isInline({ navigation, termId, source, sourceImplementation, sourceFormattingImplementation })) {
     return labelNode;
   }
   return (
@@ -288,7 +281,7 @@ function Term<TermId, Source>({
           }}
         />
       ) : (
-        !isPatternMatchLeftSide && labelNode
+        labelNode
       )}
       {showAnnotationToken && " : "}
       <span
@@ -347,18 +340,7 @@ function Term<TermId, Source>({
         {showArrowToken && (
           <span
             onClick={() => {
-              switch (termData.type) {
-                case "lambda": {
-                  const newSource = sourceFacadeImplementation.setType(source, termId, "pi");
-                  onSourceChange(newSource);
-                  break;
-                }
-                case "pi": {
-                  const newSource = sourceFacadeImplementation.setType(source, termId, "lambda");
-                  onSourceChange(newSource);
-                  break;
-                }
-              }
+              onKeyDownWithState({ navigation: { termId, part: "type" } }, { key: "Enter" } as any);
             }}
           >
             {(() => {
@@ -381,18 +363,7 @@ function Term<TermId, Source>({
         {showModeToken && (
           <span
             onClick={() => {
-              switch (termData.mode) {
-                case "call": {
-                  const newSource = sourceFacadeImplementation.setMode(source, termId, "match");
-                  onSourceChange(newSource);
-                  break;
-                }
-                case "match": {
-                  const newSource = sourceFacadeImplementation.setMode(source, termId, "call");
-                  onSourceChange(newSource);
-                  break;
-                }
-              }
+              onKeyDownWithState({ navigation: { termId, part: "mode" } }, { key: "Enter" } as any);
             }}
           >
             {(() => {
@@ -574,8 +545,6 @@ function Options<TermId, Source>({
   state,
   sourceImplementation,
   onStateChange,
-  onSourceChange,
-  sourceFacadeImplementation,
   sourceFormattingImplementation,
   termIdStringSerialization,
 }: { label: string; navigation: Navigation<TermId> | undefined } & TermBaseProps<TermId, Source>) {

@@ -112,3 +112,23 @@ export function getTermIdAtEditorNavigation<TermId, Source>({
       return null;
   }
 }
+
+export function isInline<TermId, Source>({
+  termId,
+  navigation,
+  source,
+  sourceImplementation,
+  sourceFormattingImplementation,
+}: {
+  navigation: Navigation<TermId>;
+  termId: TermId;
+  source: Source;
+  sourceImplementation: SourceInterface<TermId, Source>;
+  sourceFormattingImplementation: SourceFormattingInterface<TermId, Source>;
+}): boolean {
+  const references = sourceFormattingImplementation.getReferences(source, termId);
+  if (navigation.part === "binding" && navigation.subPart === "key" && sourceImplementation.get(source, navigation.termId).mode === "match")
+    return true;
+  if (navigation.part === "parameter" && references.asParameter.size === 1) return true;
+  return false;
+}

@@ -1,5 +1,17 @@
 import { Brand, EqualsInterface, guard, HasEmptyIntance, JsonValue, SerializationInterface } from "./utils";
 
+export type TermData<TermId> = {
+  label: string;
+  annotation: TermId | null;
+  parameters: Map<TermId, null>;
+  type: TermType;
+  mode: TermMode;
+  reference: TermId | null;
+  bindings: Map<TermId, TermId | null>;
+};
+export type TermType = "lambda" | "pi";
+export type TermMode = "call" | "match";
+
 export type SourceInterface<TermId, Source> = {
   all(source: Source): IterableIterator<[TermId, TermData<TermId>]>;
   get(source: Source, termId: TermId): TermData<TermId>;
@@ -22,17 +34,21 @@ export type SourceFacadeInterface<TermId, Source> = {
   removeBinding(source: Source, termId: TermId, keyTermId: TermId): Source;
 };
 
-export type TermType = "lambda" | "pi";
-export type TermMode = "call" | "match";
+export type SourceFormattingInterface<TermId, Source> = {
+  isRoot(source: Source, termId: TermId): boolean;
+  getRoots(source: Source): Array<TermId>;
+  getReferences(source: Source, termId: TermId): References<TermId>;
+  getTermParameters(source: Source, termId: TermId): Array<TermId>;
+  getTermBindings(source: Source, termId: TermId): Array<{ key: TermId; value: TermId | null }>;
+};
 
-export type TermData<TermId> = {
-  label: string;
-  annotation: TermId | null;
-  parameters: Map<TermId, null>;
-  type: TermType;
-  mode: TermMode;
-  reference: TermId | null;
-  bindings: Map<TermId, TermId | null>;
+type References<TermId> = {
+  all: Set<TermId>;
+  asReference: Set<TermId>;
+  asBindingKey: Set<TermId>;
+  asBindingValue: Map<TermId, TermId>;
+  asParameter: Set<TermId>;
+  asAnnotation: Set<TermId>;
 };
 
 export function createEmptyTermData<TermId>(): TermData<TermId> {
@@ -229,22 +245,6 @@ export const hexStringOf32ByteEqualsImplementation: EqualsInterface<HexStringOf3
   },
 };
 
-export type SourceFormattingInterface<TermId, Source> = {
-  isRoot(source: Source, termId: TermId): boolean;
-  getRoots(source: Source): Array<TermId>;
-  getReferences(source: Source, termId: TermId): References<TermId>;
-  getTermParameters(source: Source, termId: TermId): Array<TermId>;
-  getTermBindings(source: Source, termId: TermId): Array<{ key: TermId; value: TermId | null }>;
-};
-
-type References<TermId> = {
-  all: Set<TermId>;
-  asReference: Set<TermId>;
-  asBindingKey: Set<TermId>;
-  asBindingValue: Map<TermId, TermId>;
-  asParameter: Set<TermId>;
-  asAnnotation: Set<TermId>;
-};
 export function createSourceFormmattingImplementationFromSourceImplementation<TermId, Source>(
   sourceImplementation: SourceInterface<TermId, Source>
 ): SourceFormattingInterface<TermId, Source> {
