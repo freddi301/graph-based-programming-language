@@ -196,12 +196,10 @@ function GenericApp<Source, CommitId, Repository>({
           <pre ref={codeContainerRef}>
             {sourceFormattingImplementation
               .getRoots(source)
-              .map((termId) => {
+              .map((rootId) => {
                 return format({
-                  level: 0,
                   maxWidth: charWidth,
-                  navigation: null,
-                  termId,
+                  rootId,
                   source,
                   sourceImplementation,
                   sourceFormattingImplementation,
