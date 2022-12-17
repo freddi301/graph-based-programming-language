@@ -1,0 +1,46 @@
+funzioneNomeGrandissimo: typomoltolungo = (
+  parametroimpegnativo,
+  parametromoltoimpegnativo
+) => (
+  funzioneNomeGrandissimo : typomoltolungo  = (
+    parametroimpegnativo, 
+    parametromoltoimpegnativo
+  ) => variabileBellaMaLunga(
+    variabilissimavariante = versatileVersante, 
+    variabilissimavariante = versatileVersante
+  )
+)(
+  variabilissimavariante = versatileVersante, 
+  variabilissimavariante = versatileVersante
+)
+
+
+funzioneNomeGrandissimo: typomoltolungo = (
+  parametroimpegnativo,
+  parametromoltoimpegnativo
+) => (
+  variabileBellaMaLunga
+)(
+  variabilissimavariante = versatileVersante, 
+  variabilissimavariante = versatileVersante
+)
+
+
+funzioneNomeGrandissimo : (
+  typomoltolungo
+) = (
+  parametroimpegnativo,
+  parametromoltoimpegnativo
+) => (
+  variabileBellaMaLunga
+)(
+  variabilissimavariante = versatileVersante, 
+  variabilissimavariante = (
+    versatileVersante
+  ),
+  (
+    variabilissimavariante
+  ) = (
+    versatileVersante
+  )
+)

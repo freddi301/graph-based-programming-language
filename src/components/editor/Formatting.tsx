@@ -40,13 +40,15 @@ export function format<Source>({
       if (builder.column + inlineAnnotation.length <= maxWidth) {
         builder.append(inlineAnnotation);
       } else {
-        builder.append(" (");
+        builder.append("(");
         newline();
+        builder.append(indentation);
         multiline(level + 1, { termId, part: "annotation" }, termData.annotation, maxWidth, builder);
+        newline();
         builder.append(")");
       }
     }
-    if (termParameters.length > 0 || termData.reference || termBindings.length > 0) {
+    if (termData.label && (termParameters.length > 0 || termData.reference || termBindings.length > 0)) {
       builder.append(" = ");
     }
     if (termParameters.length > 0) {
@@ -60,6 +62,7 @@ export function format<Source>({
       } else {
         newline();
         termParameters.forEach((parameterTermId, parameterIndex) => {
+          builder.append(indentation);
           multiline(level + 1, { termId, part: "parameter", parameterIndex }, parameterTermId, maxWidth, builder);
           builder.append(",");
           newline();
@@ -88,6 +91,7 @@ export function format<Source>({
       } else {
         builder.append("(");
         newline();
+        builder.append(indentation);
         multiline(level + 1, { termId, part: "reference" }, termData.reference, maxWidth, builder);
         newline();
         builder.append(")");

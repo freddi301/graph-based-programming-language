@@ -69,7 +69,7 @@ function GenericApp<Source, CommitId, Repository>({
     repositoryJsonValueSerialization,
   });
   const [charWidth, setCharWidth] = React.useState(0);
-  const codeContainerRef = React.useRef<HTMLPreElement | null>(null);
+  const codeContainerRef = React.useRef<HTMLDivElement | null>(null);
   React.useLayoutEffect(() => {
     const onResize = () => {
       if (codeContainerRef.current) {
@@ -193,20 +193,33 @@ function GenericApp<Source, CommitId, Repository>({
           />
         }
         bottom={
-          <pre ref={codeContainerRef}>
-            {sourceFormattingImplementation
-              .getRoots(source)
-              .map((rootId) => {
-                return format({
-                  maxWidth: charWidth,
-                  rootId,
-                  source,
-                  sourceImplementation,
-                  sourceFormattingImplementation,
-                });
-              })
-              .join("\n")}
-          </pre>
+          <div
+            ref={codeContainerRef}
+            css={css`
+              position: relative;
+            `}
+          >
+            <div
+              css={css`
+                position: absolute;
+                white-space: pre;
+                padding: 1ch;
+              `}
+            >
+              {sourceFormattingImplementation
+                .getRoots(source)
+                .map((rootId) => {
+                  return format({
+                    maxWidth: charWidth,
+                    rootId,
+                    source,
+                    sourceImplementation,
+                    sourceFormattingImplementation,
+                  });
+                })
+                .join("\n")}
+            </div>
+          </div>
         }
         right={
           <div

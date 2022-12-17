@@ -43,70 +43,79 @@ export function TermEditor<Source>({
   };
   return (
     <div
-      ref={ref}
       css={css`
-        white-space: pre;
-        padding: 1ch;
+        position: relative;
         height: 100%;
-        box-sizing: border-box;
-        outline: none;
       `}
-      onKeyDown={(event) => onKeyDownWithState(state, event)}
-      tabIndex={0}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) {
-          ref.current?.focus();
-          setState({});
-        }
-      }}
     >
-      {sourceFormattingImplementation.getRoots(source).map((termId) => {
-        return (
-          <div
-            key={termId}
-            onClick={(event) => {
-              if (event.target === event.currentTarget) {
-                setState({ navigation: { termId, part: "label" } });
-              }
-            }}
-          >
-            <SmallButton
-              icon={<FontAwesomeIcon icon="minus" />}
-              label="Delete term"
-              onClick={() => {
-                onKeyDownWithState({ navigation: { termId, part: "label" } }, { key: "Backspace" } as any);
+      <div
+        ref={ref}
+        css={css`
+          position: absolute;
+          width: 100%;
+          white-space: pre;
+          padding: 1ch;
+          min-height: 100%;
+          box-sizing: border-box;
+          outline: none;
+        `}
+        onKeyDown={(event) => onKeyDownWithState(state, event)}
+        tabIndex={0}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) {
+            ref.current?.focus();
+            setState({});
+          }
+        }}
+      >
+        {sourceFormattingImplementation.getRoots(source).map((termId) => {
+          return (
+            <div
+              key={termId}
+              onClick={(event) => {
+                if (event.target === event.currentTarget) {
+                  setState({ navigation: { termId, part: "label" } });
+                }
               }}
-            />
-            <Term<Source>
-              termId={termId}
-              navigation={undefined}
-              source={source}
-              onSourceChange={onSourceChange}
-              state={state}
-              onStateChange={setState}
-              sourceFacadeImplementation={sourceFacadeImplementation}
-              sourceImplementation={sourceImplementation}
-              sourceFormattingImplementation={sourceFormattingImplementation}
-              options={options}
-              onKeyDownWithState={onKeyDownWithState}
-            />
-          </div>
-        );
-      })}
-      <div>
-        <Options
-          label="New term"
-          navigation={undefined}
-          source={source}
-          onSourceChange={onSourceChange}
-          state={state}
-          onStateChange={setState}
-          sourceFacadeImplementation={sourceFacadeImplementation}
-          sourceImplementation={sourceImplementation}
-          sourceFormattingImplementation={sourceFormattingImplementation}
-          options={options}
-          onKeyDownWithState={onKeyDownWithState}
-        />
+            >
+              <SmallButton
+                icon={<FontAwesomeIcon icon="minus" />}
+                label="Delete term"
+                onClick={() => {
+                  onKeyDownWithState({ navigation: { termId, part: "label" } }, { key: "Backspace" } as any);
+                }}
+              />
+              <Term<Source>
+                termId={termId}
+                navigation={undefined}
+                source={source}
+                onSourceChange={onSourceChange}
+                state={state}
+                onStateChange={setState}
+                sourceFacadeImplementation={sourceFacadeImplementation}
+                sourceImplementation={sourceImplementation}
+                sourceFormattingImplementation={sourceFormattingImplementation}
+                options={options}
+                onKeyDownWithState={onKeyDownWithState}
+              />
+            </div>
+          );
+        })}
+        <div>
+          <Options
+            label="New term"
+            navigation={undefined}
+            source={source}
+            onSourceChange={onSourceChange}
+            state={state}
+            onStateChange={setState}
+            sourceFacadeImplementation={sourceFacadeImplementation}
+            sourceImplementation={sourceImplementation}
+            sourceFormattingImplementation={sourceFormattingImplementation}
+            options={options}
+            onKeyDownWithState={onKeyDownWithState}
+          />
+        </div>
       </div>
     </div>
   );
