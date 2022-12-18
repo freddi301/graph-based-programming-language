@@ -160,18 +160,6 @@ function Term<Source>({
   const enclosingParenthesesStyle = css`
     background-color: ${showStructure ? "var(--selection-background-color)" : ""};
   `;
-  const [ctrlIsPressed, setCtrlIsPressed] = React.useState(false);
-  React.useLayoutEffect(() => {
-    const onKeyDownUp = (event: KeyboardEvent) => {
-      setCtrlIsPressed(event.ctrlKey);
-    };
-    document.addEventListener("keydown", onKeyDownUp);
-    document.addEventListener("keyup", onKeyDownUp);
-    return () => {
-      document.addEventListener("keydown", onKeyDownUp);
-      document.addEventListener("keyup", onKeyDownUp);
-    };
-  }, []);
   const updateLabel = React.useCallback(() => {
     if (labelText !== termData.label) {
       const newSource = insert.setLabel(source, termId, labelText);
@@ -187,39 +175,12 @@ function Term<Source>({
     if (isLabelFocused) labelInputRef.current?.focus();
     else labelInputRef.current?.blur();
   }, [isLabelFocused]);
-  const labelNode = (
-    <span
-      css={css`
-        background-color: ${state.highlighted === termId ? "var(--hover-background-color)" : ""};
-        ${ctrlIsPressed
-          ? css`
-              cursor: pointer;
-              :hover {
-                text-decoration: underline;
-              }
-            `
-          : ""}
-      `}
-      onMouseEnter={() => {
-        onStateChange({ ...state, highlighted: termId });
-      }}
-      onMouseLeave={() => {
-        onStateChange({ ...state, highlighted: undefined });
-      }}
-    >
-      {labelText}
-    </span>
-  );
+  const labelNode = <span>{labelText}</span>;
   if (navigation && !isInline({ navigation, termId, source, store, formatting })) {
     return labelNode;
   }
   return (
-    <span
-      css={css`
-        background-color: ${state.highlighted === termId ? "var(--hover-background-color)" : ""};
-        border-radius: 4px;
-      `}
-    >
+    <span>
       {showEnclosingParentheses && <span css={enclosingParenthesesStyle}>{"("}</span>}
       {showStructure ? (
         <input
@@ -241,12 +202,6 @@ function Term<Source>({
           `}
           onBlur={() => {
             updateLabel();
-          }}
-          onMouseEnter={() => {
-            onStateChange({ ...state, highlighted: termId });
-          }}
-          onMouseLeave={() => {
-            onStateChange({ ...state, highlighted: undefined });
           }}
           onClick={() => {
             onStateChange({ navigation: { termId, part: "label" } });
@@ -565,12 +520,6 @@ function Options<Source>({
                     user-select: none;
                   }
                 `}
-                onMouseEnter={() => {
-                  onStateChange({ ...state, highlighted: termId });
-                }}
-                onMouseLeave={() => {
-                  onStateChange({ ...state, highlighted: undefined });
-                }}
               >
                 {termData.label || (
                   <span

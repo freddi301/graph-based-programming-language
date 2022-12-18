@@ -34,6 +34,7 @@ import { TermEditor } from "./components/editor/Editor";
 import { LeftBar } from "./components/LeftBar";
 import { State } from "./components/editor/State";
 import { Editor2 } from "./components/editor/Editor2";
+import { reactPrinterFactory } from "./components/editor/Rendering";
 
 library.add(fas);
 
@@ -167,10 +168,53 @@ function GenericApp<Source, CommitId, Repository>({
                   },
                 ],
               },
+              {
+                label: "References",
+                icon: <FontAwesomeIcon icon="link" />,
+                sections: (() => {
+                  if (state.navigation?.part !== "label") return [];
+                  const references = formatting.getReferences(source, state.navigation.termId);
+                  function list(set: Set<TermId>) {
+                    return Array.from(set.keys()).map((termId) => {
+                      return (
+                        <div
+                          key={termId}
+                          css={css`
+                            padding: 0px 2ch;
+                          `}
+                        >
+                          {
+                            reactPrinterFactory({
+                              navigation: null,
+                              termId,
+                              source,
+                              store,
+                              formatting,
+                              state,
+                              onStateChange: setState,
+                            }).label().content
+                          }
+                        </div>
+                      );
+                    });
+                  }
+                  return [
+                    { title: `ALL (${references.all.size})`, content: list(references.all) },
+                    { title: `AS ANNOTATION (${references.asAnnotation.size})`, content: list(references.asAnnotation) },
+                    { title: `AS PARAMETER (${references.asParameter.size})`, content: list(references.asParameter) },
+                    { title: `AS REFERENCE (${references.asReference.size})`, content: list(references.asReference) },
+                    { title: `AS BINDING KEY (${references.asBindingKey.size})`, content: list(references.asBindingKey) },
+                    {
+                      title: `AS BINDING VALUE (${references.asBindingValue.size})`,
+                      content: list(new Set(references.asBindingValue.keys())),
+                    },
+                  ];
+                })(),
+              },
             ]}
           />
         }
-        center={<Editor2 onStateChange={setState} source={source} store={store} formatting={formatting} />}
+        center={<Editor2 state={state} onStateChange={setState} source={source} store={store} formatting={formatting} />}
         bottom={
           <TermEditor<Source>
             state={state}

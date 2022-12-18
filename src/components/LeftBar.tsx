@@ -156,7 +156,7 @@ function CollapsibleSection({ title, children }: { title: React.ReactNode; child
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 2ch;
+            width: 3ch;
           `}
         >
           <FontAwesomeIcon icon={isOpen ? "angle-down" : "angle-up"} />

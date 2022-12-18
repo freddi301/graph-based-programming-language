@@ -57,7 +57,7 @@ export function stringPrinterFactory<Source>({
       return "  ".repeat(level);
     },
     label() {
-      return termData.label;
+      return termData.label || termId;
     },
     annotationStart() {
       return " : ";
@@ -150,19 +150,21 @@ export function reactBuilderFactory(): Builder<{ content: React.ReactNode; width
 }
 
 export function reactPrinterFactory<Source>({
-  termId,
   navigation,
+  termId,
+  state,
   source,
+  onStateChange,
   store,
   formatting,
-  onStateChange,
 }: {
-  termId: TermId;
   navigation: Navigation | null;
+  termId: TermId;
+  state: State;
+  onStateChange(state: State): void;
   source: Source;
   store: SourceStore<Source>;
   formatting: SourceFormatting<Source>;
-  onStateChange(state: State): void;
 }): Printer<{ content: React.ReactNode; width: number }> {
   const termData = store.get(source, termId);
   const termParameters = formatting.getTermParameters(source, termId);
@@ -215,8 +217,16 @@ export function reactPrinterFactory<Source>({
         content: (
           <span
             onClick={onClickSelectTerm}
+            onMouseEnter={() => {
+              onStateChange({ ...state, highlighted: termId });
+            }}
+            onMouseLeave={() => {
+              onStateChange({ ...state, highlighted: undefined });
+            }}
+            className="term-label"
             css={css`
               color: ${labelColor};
+              background-color: ${state.highlighted === termId ? "var(--hover-background-color)" : ""};
             `}
           >
             {print.label()}

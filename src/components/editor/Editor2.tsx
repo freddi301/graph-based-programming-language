@@ -6,16 +6,19 @@ import { reactBuilderFactory, reactPrinterFactory } from "./Rendering";
 import { State } from "./State";
 
 export function Editor2<Source>({
+  state,
   onStateChange,
   source,
   store,
   formatting,
 }: {
+  state: State;
   onStateChange(state: State): void;
   source: Source;
   store: SourceStore<Source>;
   formatting: SourceFormatting<Source>;
 }) {
+  // #region resizing
   const [charWidth, setCharWidth] = React.useState(0);
   const codeContainerRef = React.useRef<HTMLDivElement | null>(null);
   React.useLayoutEffect(() => {
@@ -28,11 +31,35 @@ export function Editor2<Source>({
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
+  // #endregion
+  // #region keyboard based styles
+  const [ctrlIsPressed, setCtrlIsPressed] = React.useState(false);
+  React.useLayoutEffect(() => {
+    const onKeyDownUp = (event: KeyboardEvent) => {
+      setCtrlIsPressed(event.ctrlKey);
+    };
+    document.addEventListener("keydown", onKeyDownUp);
+    document.addEventListener("keyup", onKeyDownUp);
+    return () => {
+      document.addEventListener("keydown", onKeyDownUp);
+      document.addEventListener("keyup", onKeyDownUp);
+    };
+  }, []);
+  // #endregion
   return (
     <div
       ref={codeContainerRef}
       css={css`
         position: relative;
+        ${ctrlIsPressed &&
+        css`
+          .term-label {
+            cursor: pointer;
+            :hover {
+              text-decoration: underline;
+            }
+          }
+        `}
       `}
     >
       <div
@@ -58,7 +85,7 @@ export function Editor2<Source>({
                   formatting,
                   builderFactory: reactBuilderFactory,
                   printerFactory({ navigation, termId, source, store, formatting }) {
-                    return reactPrinterFactory({ navigation, termId, source, store, formatting, onStateChange });
+                    return reactPrinterFactory({ navigation, termId, source, store, formatting, state, onStateChange });
                   },
                 }).result().content
               }
