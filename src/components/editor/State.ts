@@ -1,4 +1,4 @@
-import { SourceFormattingInterface, SourceInterface, TermId } from "../Source";
+import { SourceFormatting, SourceStore, TermId } from "../Source";
 
 export type State = {
   highlighted?: TermId;
@@ -58,16 +58,8 @@ export type Navigation =
 // - correct type terms
 // - in scope terms
 // - most recently used terms
-export function getOptions<Source>({
-  state,
-  source,
-  sourceImplementation,
-}: {
-  state: State;
-  source: Source;
-  sourceImplementation: SourceInterface<Source>;
-}) {
-  return Array.from(sourceImplementation.all(source))
+export function getOptions<Source>({ state, source, store }: { state: State; source: Source; store: SourceStore<Source> }) {
+  return Array.from(store.all(source))
     .filter(([termId, termData]) => {
       const isSearching = Boolean(state.text);
       const matchesTermId = termId.includes(state.text?.toLowerCase() ?? "");
@@ -81,28 +73,28 @@ export function getOptions<Source>({
 export function getTermIdAtEditorNavigation<Source>({
   navigation,
   source,
-  sourceImplementation,
-  sourceFormattingImplementation,
+  store,
+  formatting,
 }: {
   navigation: Navigation;
   source: Source;
-  sourceImplementation: SourceInterface<Source>;
-  sourceFormattingImplementation: SourceFormattingInterface<Source>;
+  store: SourceStore<Source>;
+  formatting: SourceFormatting<Source>;
 }): TermId | null {
-  const termData = sourceImplementation.get(source, navigation.termId);
+  const termData = store.get(source, navigation.termId);
   switch (navigation.part) {
     case "annotation":
       return termData.annotation;
     case "parameter":
-      return sourceFormattingImplementation.getTermParameters(source, navigation.termId).at(navigation.parameterIndex) ?? null;
+      return formatting.getTermParameters(source, navigation.termId).at(navigation.parameterIndex) ?? null;
     case "reference":
       return termData.reference;
     case "binding":
       switch (navigation.subPart) {
         case "key":
-          return sourceFormattingImplementation.getTermBindings(source, navigation.termId).at(navigation.bindingIndex)?.key ?? null;
+          return formatting.getTermBindings(source, navigation.termId).at(navigation.bindingIndex)?.key ?? null;
         case "value":
-          return sourceFormattingImplementation.getTermBindings(source, navigation.termId).at(navigation.bindingIndex)?.value ?? null;
+          return formatting.getTermBindings(source, navigation.termId).at(navigation.bindingIndex)?.value ?? null;
       }
       break;
     default:
@@ -114,17 +106,17 @@ export function isInline<Source>({
   termId,
   navigation,
   source,
-  sourceImplementation,
-  sourceFormattingImplementation,
+  store,
+  formatting,
 }: {
   navigation: Navigation;
   termId: TermId;
   source: Source;
-  sourceImplementation: SourceInterface<Source>;
-  sourceFormattingImplementation: SourceFormattingInterface<Source>;
+  store: SourceStore<Source>;
+  formatting: SourceFormatting<Source>;
 }): boolean {
-  const references = sourceFormattingImplementation.getReferences(source, termId);
-  if (sourceFormattingImplementation.isRoot(source, termId)) return false;
+  const references = formatting.getReferences(source, termId);
+  if (formatting.isRoot(source, termId)) return false;
   if (navigation.part !== "parameter" && references.asParameter.size === 1) return false;
   return true;
 }

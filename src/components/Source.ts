@@ -14,7 +14,7 @@ export type TermData = {
 export type TermType = "lambda" | "pi";
 export type TermMode = "call" | "match";
 
-export type SourceInterface<Source> = {
+export type SourceStore<Source> = {
   all(source: Source): IterableIterator<[TermId, TermData]>;
   get(source: Source, termId: TermId): TermData;
   set(source: Source, termId: TermId, termData: TermData): Source;
@@ -22,7 +22,7 @@ export type SourceInterface<Source> = {
 };
 
 // TODO recursively remove embedded terms
-export type SourceFacadeInterface<Source> = {
+export type SourceInsert<Source> = {
   create(source: Source): [Source, TermId];
   remove(source: Source, termId: TermId): Source;
   setLabel(source: Source, termId: TermId, label: string): Source;
@@ -36,7 +36,7 @@ export type SourceFacadeInterface<Source> = {
   removeBinding(source: Source, termId: TermId, keyTermId: TermId): Source;
 };
 
-export type SourceFormattingInterface<Source> = {
+export type SourceFormatting<Source> = {
   isRoot(source: Source, termId: TermId): boolean;
   getRoots(source: Source): Array<TermId>;
   getReferences(source: Source, termId: TermId): References;
@@ -78,17 +78,15 @@ export function createEmptyTermData(): TermData {
   };
 }
 
-export function createSourceFacadeFromSourceInterface<Source>(
-  sourceImplementation: SourceInterface<Source>
-): SourceFacadeInterface<Source> {
+export function createSourceInsertFromSourceStore<Source>(store: SourceStore<Source>): SourceInsert<Source> {
   return {
     create(source) {
       const newTermId = TermId.create();
-      return [sourceImplementation.set(source, newTermId, createEmptyTermData()), newTermId] as [Source, TermId];
+      return [store.set(source, newTermId, createEmptyTermData()), newTermId] as [Source, TermId];
     },
     remove(source, termId) {
-      source = sourceImplementation.rem(source, termId);
-      for (const [id, termData] of sourceImplementation.all(source)) {
+      source = store.rem(source, termId);
+      for (const [id, termData] of store.all(source)) {
         if (termData.annotation === termId) source = this.setAnnotation(source, id, null);
         if (termData.parameters.has(termId)) source = this.removeParameter(source, id, termId);
         if (termData.reference === termId) source = this.setReference(source, id, null);
@@ -100,55 +98,55 @@ export function createSourceFacadeFromSourceInterface<Source>(
       return source;
     },
     setLabel(source, termId, label) {
-      return sourceImplementation.set(source, termId, { ...sourceImplementation.get(source, termId), label });
+      return store.set(source, termId, { ...store.get(source, termId), label });
     },
     setAnnotation(source, termId, annotationTermId) {
-      return sourceImplementation.set(source, termId, { ...sourceImplementation.get(source, termId), annotation: annotationTermId });
+      return store.set(source, termId, { ...store.get(source, termId), annotation: annotationTermId });
     },
     addParameter(source, termId, parameterTermId) {
-      const termData = sourceImplementation.get(source, termId);
+      const termData = store.get(source, termId);
       const parameters = new Map(termData.parameters);
       parameters.set(parameterTermId, null);
-      return sourceImplementation.set(source, termId, { ...sourceImplementation.get(source, termId), parameters });
+      return store.set(source, termId, { ...store.get(source, termId), parameters });
     },
     removeParameter(source, termId, parameterTermId) {
-      const termData = sourceImplementation.get(source, termId);
+      const termData = store.get(source, termId);
       const parameters = new Map(termData.parameters);
       parameters.delete(parameterTermId);
-      return sourceImplementation.set(source, termId, { ...sourceImplementation.get(source, termId), parameters });
+      return store.set(source, termId, { ...store.get(source, termId), parameters });
     },
     setType(source, termId, type) {
-      return sourceImplementation.set(source, termId, { ...sourceImplementation.get(source, termId), type });
+      return store.set(source, termId, { ...store.get(source, termId), type });
     },
     setMode(source, termId, mode) {
-      return sourceImplementation.set(source, termId, { ...sourceImplementation.get(source, termId), mode });
+      return store.set(source, termId, { ...store.get(source, termId), mode });
     },
     setReference(source, termId, referenceTermId) {
-      return sourceImplementation.set(source, termId, { ...sourceImplementation.get(source, termId), reference: referenceTermId });
+      return store.set(source, termId, { ...store.get(source, termId), reference: referenceTermId });
     },
     setBinding(source, termId, keyTermId, valueTermId) {
-      const termData = sourceImplementation.get(source, termId);
+      const termData = store.get(source, termId);
       const bindings = new Map(termData.bindings);
       bindings.set(keyTermId, valueTermId);
-      return sourceImplementation.set(source, termId, { ...sourceImplementation.get(source, termId), bindings });
+      return store.set(source, termId, { ...store.get(source, termId), bindings });
     },
     removeBinding(source, termId, keyTermId) {
-      const termData = sourceImplementation.get(source, termId);
+      const termData = store.get(source, termId);
       const bindings = new Map(termData.bindings);
       bindings.delete(keyTermId);
-      return sourceImplementation.set(source, termId, { ...sourceImplementation.get(source, termId), bindings });
+      return store.set(source, termId, { ...store.get(source, termId), bindings });
     },
   };
 }
 
-export function createJsonValueSerializationFromSourceImplementation<Source>(
-  sourceImplementation: SourceInterface<Source>,
+export function createJsonValueSerializationFromSourceStore<Source>(
+  store: SourceStore<Source>,
   sourceHasEmptyIntance: HasEmptyIntance<Source>
 ): SerializationInterface<Source, JsonValue> {
   return {
     serialize(source) {
       const result: JsonValue = {};
-      for (const [termId, termData] of sourceImplementation.all(source)) {
+      for (const [termId, termData] of store.all(source)) {
         result[termId] = {
           label: termData.label,
           annotation: termData.annotation && termData.annotation,
@@ -195,13 +193,13 @@ export function createJsonValueSerializationFromSourceImplementation<Source>(
             })
           ),
         };
-        return sourceImplementation.set(source, termId, termData);
+        return store.set(source, termId, termData);
       }, sourceHasEmptyIntance.empty());
     },
   };
 }
 
-export function createJsMapSourceImplementation(): SourceInterface<Map<TermId, TermData>> {
+export function createJsMapSourceStore(): SourceStore<Map<TermId, TermData>> {
   return {
     *all(source) {
       for (const [key, value] of source) {
@@ -231,12 +229,10 @@ export function createJsMapHasEmptyInstance<K, V>(): HasEmptyIntance<Map<K, V>> 
   };
 }
 
-export function createSourceFormmattingImplementationFromSourceImplementation<Source>(
-  sourceImplementation: SourceInterface<Source>
-): SourceFormattingInterface<Source> {
+export function createSourceFormmattingFromSourceStore<Source>(store: SourceStore<Source>): SourceFormatting<Source> {
   function getReferences(source: Source) {
     const referencesById = new Map<TermId, References>();
-    for (const [termId] of sourceImplementation.all(source)) {
+    for (const [termId] of store.all(source)) {
       const references: References = {
         all: new Set(),
         asAnnotation: new Set(),
@@ -245,7 +241,7 @@ export function createSourceFormmattingImplementationFromSourceImplementation<So
         asBindingKey: new Set(),
         asBindingValue: new Map(),
       };
-      for (const [parentTermId, { annotation, parameters, reference, bindings }] of sourceImplementation.all(source)) {
+      for (const [parentTermId, { annotation, parameters, reference, bindings }] of store.all(source)) {
         if (annotation && annotation === termId) {
           references.asAnnotation.add(parentTermId);
           references.all.add(parentTermId);
@@ -275,9 +271,9 @@ export function createSourceFormmattingImplementationFromSourceImplementation<So
     }
     return referencesById;
   }
-  const implementation: SourceFormattingInterface<Source> = {
+  const implementation: SourceFormatting<Source> = {
     isRoot(source, termId) {
-      const termData = sourceImplementation.get(source, termId);
+      const termData = store.get(source, termId);
       const references = getReferences(source).get(termId)!;
       if (references.asParameter.size === 1) return false;
       if (
@@ -299,7 +295,7 @@ export function createSourceFormmattingImplementationFromSourceImplementation<So
       return true;
     },
     getRoots(source) {
-      const roots = Array.from(sourceImplementation.all(source))
+      const roots = Array.from(store.all(source))
         .filter(([termId]) => this.isRoot(source, termId))
         .map(([termId]) => termId);
       // TODO order by bottom-up usage
@@ -310,11 +306,11 @@ export function createSourceFormmattingImplementationFromSourceImplementation<So
     },
     getTermParameters(source, termId) {
       // TODO order by bottom-up usage
-      return Array.from(sourceImplementation.get(source, termId).parameters.keys());
+      return Array.from(store.get(source, termId).parameters.keys());
     },
     getTermBindings(source, termId) {
       // TODO order by (decide what)
-      return Array.from(sourceImplementation.get(source, termId).bindings.entries()).map(([key, value]) => ({ key, value }));
+      return Array.from(store.get(source, termId).bindings.entries()).map(([key, value]) => ({ key, value }));
     },
   };
   return implementation;

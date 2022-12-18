@@ -5,13 +5,13 @@ import { fas } from "@fortawesome/free-solid-svg-icons";
 import { AppLayout } from "./components/AppLayout";
 import {
   createJsMapHasEmptyInstance,
-  createJsMapSourceImplementation,
-  createJsonValueSerializationFromSourceImplementation,
-  createSourceFacadeFromSourceInterface,
-  createSourceFormmattingImplementationFromSourceImplementation,
-  SourceFacadeInterface,
-  SourceFormattingInterface,
-  SourceInterface,
+  createJsMapSourceStore,
+  createJsonValueSerializationFromSourceStore,
+  createSourceInsertFromSourceStore,
+  createSourceFormmattingFromSourceStore,
+  SourceInsert,
+  SourceFormatting,
+  SourceStore,
   TermData,
   TermId,
 } from "./components/Source";
@@ -32,12 +32,12 @@ import { Button } from "./components/Button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { TermEditor } from "./components/editor/Editor";
 import { LeftBar } from "./components/LeftBar";
-import { format } from "./components/editor/Formatting";
+import { format, stringBuilderFactory, stringPrinterFactory } from "./components/editor/Formatting";
 
 library.add(fas);
 
 function GenericApp<Source, CommitId, Repository>({
-  sourceImplementation,
+  store,
   sourceHasEmptyInstance,
   sourceJsonValueSerialization,
   repositoryFacadeImplementation,
@@ -45,19 +45,19 @@ function GenericApp<Source, CommitId, Repository>({
   repositoryImplementation,
   repositoryJsonValueSerialization,
   commitIdStringSerialization,
-  sourceFormattingImplementation,
-  sourceFacadeImplementation,
+  formatting,
+  insert,
 }: {
-  sourceImplementation: SourceInterface<Source>;
-  sourceFacadeImplementation: SourceFacadeInterface<Source>;
+  store: SourceStore<Source>;
+  insert: SourceInsert<Source>;
   sourceHasEmptyInstance: HasEmptyIntance<Source>;
+  formatting: SourceFormatting<Source>;
   sourceJsonValueSerialization: SerializationInterface<Source, JsonValue>;
   repositoryImplementation: RepositoryInterface<CommitId, Source, null, Repository>;
   repositoryFacadeImplementation: RepositoryFacadeInterface<CommitId, Source, null, Repository>;
   repositoryHasEmptyInstance: HasEmptyIntance<Repository>;
   repositoryJsonValueSerialization: SerializationInterface<Promise<Repository>, Promise<JsonValue>>;
   commitIdStringSerialization: SerializationInterface<CommitId, string>;
-  sourceFormattingImplementation: SourceFormattingInterface<Source>;
 }) {
   const [source, setSource] = React.useState(sourceHasEmptyInstance.empty());
   const history = useHistory({
@@ -187,9 +187,9 @@ function GenericApp<Source, CommitId, Repository>({
               setSource(source);
               history.change(source);
             }}
-            sourceImplementation={sourceImplementation}
-            sourceFacadeImplementation={sourceFacadeImplementation}
-            sourceFormattingImplementation={sourceFormattingImplementation}
+            store={store}
+            insert={insert}
+            formatting={formatting}
           />
         }
         bottom={
@@ -202,22 +202,29 @@ function GenericApp<Source, CommitId, Repository>({
             <div
               css={css`
                 position: absolute;
-                white-space: pre;
-                padding: 1ch;
               `}
             >
-              {sourceFormattingImplementation
-                .getRoots(source)
-                .map((rootId) => {
-                  return format({
-                    maxWidth: charWidth,
-                    rootId,
-                    source,
-                    sourceImplementation,
-                    sourceFormattingImplementation,
-                  });
-                })
-                .join("\n")}
+              {formatting.getRoots(source).map((rootId) => {
+                return (
+                  <div
+                    key={rootId}
+                    css={css`
+                      white-space: pre;
+                      padding: 0px 1ch;
+                    `}
+                  >
+                    {format({
+                      maxWidth: charWidth,
+                      rootId,
+                      source,
+                      store,
+                      formatting,
+                      builderFactory: stringBuilderFactory,
+                      printerFactory: stringPrinterFactory,
+                    }).result()}
+                  </div>
+                );
+              })}
             </div>
           </div>
         }
@@ -256,11 +263,11 @@ export default function App() {
   type CommitId = HexSHA256;
   type Source = Map<string, TermData>;
   type Info = null;
-  const sourceImplementation = createJsMapSourceImplementation();
-  const sourceFacadeImplementation = createSourceFacadeFromSourceInterface(sourceImplementation);
-  const sourceFormattingImplementation = createSourceFormmattingImplementationFromSourceImplementation(sourceImplementation);
+  const store = createJsMapSourceStore();
+  const insert = createSourceInsertFromSourceStore(store);
+  const formatting = createSourceFormmattingFromSourceStore(store);
   const sourceHasEmptyInstance = createJsMapHasEmptyInstance<TermId, TermData>();
-  const sourceJsonValueSerialization = createJsonValueSerializationFromSourceImplementation(sourceImplementation, sourceHasEmptyInstance);
+  const sourceJsonValueSerialization = createJsonValueSerializationFromSourceStore(store, sourceHasEmptyInstance);
   const commitIdStringSerialization = hexSHA256StringSerialization;
   const infoJsonValueSerialization: SerializationInterface<Info, JsonValue> = {
     serialize(deserialized) {
@@ -290,10 +297,10 @@ export default function App() {
       repositoryImplementation={repositoryImplementation}
       repositoryJsonValueSerialization={repositoryJsonValueSerialization}
       sourceJsonValueSerialization={sourceJsonValueSerialization}
-      sourceFormattingImplementation={sourceFormattingImplementation}
+      formatting={formatting}
       sourceHasEmptyInstance={sourceHasEmptyInstance}
-      sourceImplementation={sourceImplementation}
-      sourceFacadeImplementation={sourceFacadeImplementation}
+      store={store}
+      insert={insert}
     />
   );
 }

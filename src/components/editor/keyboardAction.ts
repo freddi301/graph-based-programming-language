@@ -1,33 +1,33 @@
-import { SourceFacadeInterface, SourceFormattingInterface, SourceInterface, TermId } from "../Source";
+import { SourceInsert, SourceFormatting, SourceStore, TermId } from "../Source";
 import { getOptions, Navigation, State } from "./State";
 
 export function keyboardAction<Source>({
   state,
   event,
   source,
-  sourceImplementation,
-  sourceFacadeImplementation,
-  sourceFormattingImplementation,
+  store,
+  insert,
+  formatting,
 }: {
   state: State;
   event: React.KeyboardEvent;
   source: Source;
-  sourceImplementation: SourceInterface<Source>;
-  sourceFacadeImplementation: SourceFacadeInterface<Source>;
-  sourceFormattingImplementation: SourceFormattingInterface<Source>;
+  store: SourceStore<Source>;
+  insert: SourceInsert<Source>;
+  formatting: SourceFormatting<Source>;
 }): { state?: State; source?: Source } | undefined {
-  const roots = sourceFormattingImplementation.getRoots(source);
+  const roots = formatting.getRoots(source);
   const rootIndex = (state.navigation && roots.findIndex((ti) => ti === state.navigation!.termId)) ?? -1;
-  const termData = state.navigation && sourceImplementation.get(source, state.navigation.termId);
-  const termParameters = state.navigation && sourceFormattingImplementation.getTermParameters(source, state.navigation.termId);
-  const termBindings = state.navigation && sourceFormattingImplementation.getTermBindings(source, state.navigation.termId);
+  const termData = state.navigation && store.get(source, state.navigation.termId);
+  const termParameters = state.navigation && formatting.getTermParameters(source, state.navigation.termId);
+  const termBindings = state.navigation && formatting.getTermBindings(source, state.navigation.termId);
   const parentPosition =
     state.navigation &&
     getParentPosition({
       termId: state.navigation.termId,
       source,
-      sourceFormattingImplementation,
-      sourceImplementation,
+      formatting,
+      store,
     });
 
   // #region Arrow navigation
@@ -37,9 +37,9 @@ export function keyboardAction<Source>({
         state: { ...state, navigation },
         event,
         source,
-        sourceImplementation,
-        sourceFacadeImplementation,
-        sourceFormattingImplementation,
+        store,
+        insert,
+        formatting,
       });
     const navigate = (navigation: Navigation) => ({
       state: { navigation },
@@ -190,7 +190,7 @@ export function keyboardAction<Source>({
   // #endregion
 
   // #region Option selection
-  const options = getOptions({ state, source, sourceImplementation });
+  const options = getOptions({ state, source, store });
   const setIndex = (index: number | undefined) => {
     return {
       state: {
@@ -217,24 +217,21 @@ export function keyboardAction<Source>({
         return { source, state: { navigation } };
       };
       if (state.optionIndex === undefined) {
-        const [newSource, newTermId] = sourceFacadeImplementation.create(source);
-        const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, state.text);
+        const [newSource, newTermId] = insert.create(source);
+        const newSourceWithLabel = insert.setLabel(newSource, newTermId, state.text);
         switch (state.navigation.part) {
           case "annotation":
-            return place(
-              sourceFacadeImplementation.setAnnotation(newSourceWithLabel, state.navigation.termId, newTermId),
-              state.navigation
-            );
+            return place(insert.setAnnotation(newSourceWithLabel, state.navigation.termId, newTermId), state.navigation);
           case "parameters":
-            return place(sourceFacadeImplementation.addParameter(newSourceWithLabel, state.navigation.termId, newTermId), {
+            return place(insert.addParameter(newSourceWithLabel, state.navigation.termId, newTermId), {
               termId: state.navigation.termId,
               part: "parameter",
               parameterIndex: termParameters.length,
             });
           case "reference":
-            return place(sourceFacadeImplementation.setReference(newSourceWithLabel, state.navigation.termId, newTermId), state.navigation);
+            return place(insert.setReference(newSourceWithLabel, state.navigation.termId, newTermId), state.navigation);
           case "bindings":
-            return place(sourceFacadeImplementation.setBinding(newSourceWithLabel, state.navigation.termId, newTermId, null), {
+            return place(insert.setBinding(newSourceWithLabel, state.navigation.termId, newTermId, null), {
               termId: state.navigation.termId,
               part: "binding",
               bindingIndex: termBindings.length,
@@ -244,7 +241,7 @@ export function keyboardAction<Source>({
             switch (state.navigation.subPart) {
               case "value":
                 return place(
-                  sourceFacadeImplementation.setBinding(
+                  insert.setBinding(
                     newSourceWithLabel,
                     state.navigation.termId,
                     termBindings.at(state.navigation.bindingIndex)!.key,
@@ -267,11 +264,11 @@ export function keyboardAction<Source>({
         const selectOption = (source: Source, navigation: Navigation) => ({ source, state: { navigation } });
         switch (state.navigation.part) {
           case "annotation": {
-            const newSource = sourceFacadeImplementation.setAnnotation(source, state.navigation.termId, selectedTermId);
+            const newSource = insert.setAnnotation(source, state.navigation.termId, selectedTermId);
             return selectOption(newSource, state.navigation);
           }
           case "parameters": {
-            const newSource = sourceFacadeImplementation.addParameter(source, state.navigation.termId, selectedTermId);
+            const newSource = insert.addParameter(source, state.navigation.termId, selectedTermId);
             return selectOption(newSource, {
               termId: state.navigation.termId,
               part: "parameter",
@@ -279,11 +276,11 @@ export function keyboardAction<Source>({
             });
           }
           case "reference": {
-            const newSource = sourceFacadeImplementation.setReference(source, state.navigation.termId, selectedTermId);
+            const newSource = insert.setReference(source, state.navigation.termId, selectedTermId);
             return selectOption(newSource, state.navigation);
           }
           case "bindings": {
-            const newSource = sourceFacadeImplementation.setBinding(source, state.navigation.termId, selectedTermId, null);
+            const newSource = insert.setBinding(source, state.navigation.termId, selectedTermId, null);
             return selectOption(newSource, {
               termId: state.navigation.termId,
               part: "binding",
@@ -294,7 +291,7 @@ export function keyboardAction<Source>({
           case "binding": {
             switch (state.navigation.subPart) {
               case "value": {
-                const newSource = sourceFacadeImplementation.setBinding(
+                const newSource = insert.setBinding(
                   source,
                   state.navigation.termId,
                   termBindings.at(state.navigation.bindingIndex)!.key,
@@ -315,15 +312,15 @@ export function keyboardAction<Source>({
   // #endregion
 
   // #region Shorcuts
-  const references = state.navigation && sourceFormattingImplementation.getReferences(source, state.navigation.termId);
+  const references = state.navigation && formatting.getReferences(source, state.navigation.termId);
 
   if (!state.navigation && event.key === "Enter" && state.text) {
-    const [newSource, newTermId] = sourceFacadeImplementation.create(source);
-    const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSource, newTermId, state.text);
+    const [newSource, newTermId] = insert.create(source);
+    const newSourceWithLabel = insert.setLabel(newSource, newTermId, state.text);
     return { source: newSourceWithLabel, state: { navigation: { termId: newTermId, part: "label" } } };
   }
   if (state.navigation?.part === "type" && event.key === "Enter") {
-    const termData = sourceImplementation.get(source, state.navigation.termId);
+    const termData = store.get(source, state.navigation.termId);
     const newType = (() => {
       switch (termData.type) {
         case "lambda":
@@ -332,11 +329,11 @@ export function keyboardAction<Source>({
           return "lambda";
       }
     })();
-    const newSource = sourceFacadeImplementation.setType(source, state.navigation.termId, newType);
+    const newSource = insert.setType(source, state.navigation.termId, newType);
     return { source: newSource };
   }
   if (state.navigation?.part === "mode" && event.key === "Enter") {
-    const termData = sourceImplementation.get(source, state.navigation.termId);
+    const termData = store.get(source, state.navigation.termId);
     const newMode = (() => {
       switch (termData.mode) {
         case "call":
@@ -345,14 +342,14 @@ export function keyboardAction<Source>({
           return "call";
       }
     })();
-    const newSource = sourceFacadeImplementation.setMode(source, state.navigation.termId, newMode);
+    const newSource = insert.setMode(source, state.navigation.termId, newMode);
     return { source: newSource };
   }
   if (event.key === "Escape") {
     return { state: {} };
   }
-  const [newSourceWithTerm, newTermId] = sourceFacadeImplementation.create(source);
-  const newSourceWithLabel = sourceFacadeImplementation.setLabel(newSourceWithTerm, newTermId, state.text ?? "");
+  const [newSourceWithTerm, newTermId] = insert.create(source);
+  const newSourceWithLabel = insert.setLabel(newSourceWithTerm, newTermId, state.text ?? "");
   if (event.key === ":") {
     if (!state.navigation) {
       return { source: newSourceWithLabel, state: { navigation: { termId: newTermId, part: "annotation" } } };
@@ -361,7 +358,7 @@ export function keyboardAction<Source>({
       return { state: { navigation: { termId: state.navigation.termId, part: "annotation" } } };
     }
     if (state.navigation.part === "parameters") {
-      const newSourceWithPlacement = sourceFacadeImplementation.addParameter(newSourceWithLabel, state.navigation.termId, newTermId);
+      const newSourceWithPlacement = insert.addParameter(newSourceWithLabel, state.navigation.termId, newTermId);
       return { source: newSourceWithPlacement, state: { navigation: { termId: newTermId, part: "annotation" } } };
     }
   }
@@ -376,7 +373,7 @@ export function keyboardAction<Source>({
       return { state: { navigation: { termId: state.navigation.termId, part: "bindings" } } };
     }
     if (state.navigation.part === "bindings") {
-      const newSourceWithPlacement = sourceFacadeImplementation.setBinding(newSourceWithTerm, state.navigation.termId, newTermId, null);
+      const newSourceWithPlacement = insert.setBinding(newSourceWithTerm, state.navigation.termId, newTermId, null);
       return { source: newSourceWithPlacement, state: { navigation: { termId: newTermId, part: "label" } } };
     }
   }
@@ -400,7 +397,7 @@ export function keyboardAction<Source>({
     }
     if (state.navigation.part === "parameters") {
       if (state.text) {
-        const newSourceWithPlacement = sourceFacadeImplementation.addParameter(newSourceWithLabel, state.navigation.termId, newTermId);
+        const newSourceWithPlacement = insert.addParameter(newSourceWithLabel, state.navigation.termId, newTermId);
         return { source: newSourceWithPlacement, state: { navigation: { termId: state.navigation.termId, part: "reference" } } };
       } else {
         return { state: { navigation: { termId: state.navigation.termId, part: "reference" } } };
@@ -421,7 +418,7 @@ export function keyboardAction<Source>({
   }
   if (event.key === ",") {
     if (state.navigation?.part === "parameters") {
-      const newSourceWithPlacement = sourceFacadeImplementation.addParameter(newSourceWithLabel, state.navigation.termId, newTermId);
+      const newSourceWithPlacement = insert.addParameter(newSourceWithLabel, state.navigation.termId, newTermId);
       return { source: newSourceWithPlacement, state: { navigation: { termId: state.navigation.termId, part: "parameters" } } };
     }
     if (state.navigation?.part === "parameter") {
@@ -460,22 +457,18 @@ export function keyboardAction<Source>({
   if (event.key === "Backspace" && !state.text && state.navigation && termParameters && termBindings) {
     if (state.navigation.part === "label") {
       return {
-        source: sourceFacadeImplementation.remove(source, state.navigation.termId),
+        source: insert.remove(source, state.navigation.termId),
         state: rootIndex >= 0 ? {} : { navigation: state.navigation },
       };
     }
     if (state.navigation.part === "annotation") {
       return {
-        source: sourceFacadeImplementation.setAnnotation(source, state.navigation.termId, null),
+        source: insert.setAnnotation(source, state.navigation.termId, null),
       };
     }
     if (state.navigation.part === "parameter") {
       return {
-        source: sourceFacadeImplementation.removeParameter(
-          source,
-          state.navigation.termId,
-          termParameters.at(state.navigation.parameterIndex)!
-        ),
+        source: insert.removeParameter(source, state.navigation.termId, termParameters.at(state.navigation.parameterIndex)!),
         state: {
           navigation:
             state.navigation.parameterIndex > 0
@@ -486,16 +479,12 @@ export function keyboardAction<Source>({
     }
     if (state.navigation.part === "reference") {
       return {
-        source: sourceFacadeImplementation.setReference(source, state.navigation.termId, null),
+        source: insert.setReference(source, state.navigation.termId, null),
       };
     }
     if (state.navigation.part === "binding" && state.navigation.subPart === "key") {
       return {
-        source: sourceFacadeImplementation.removeBinding(
-          source,
-          state.navigation.termId,
-          termBindings.at(state.navigation.bindingIndex)!.key
-        ),
+        source: insert.removeBinding(source, state.navigation.termId, termBindings.at(state.navigation.bindingIndex)!.key),
         state: {
           navigation:
             state.navigation.bindingIndex > 0
@@ -506,12 +495,7 @@ export function keyboardAction<Source>({
     }
     if (state.navigation.part === "binding" && state.navigation.subPart === "value") {
       return {
-        source: sourceFacadeImplementation.setBinding(
-          source,
-          state.navigation.termId,
-          termBindings.at(state.navigation.bindingIndex)!.key,
-          null
-        ),
+        source: insert.setBinding(source, state.navigation.termId, termBindings.at(state.navigation.bindingIndex)!.key, null),
       };
     }
   }
@@ -521,29 +505,29 @@ export function keyboardAction<Source>({
 function getParentPosition<Source>({
   termId,
   source,
-  sourceFormattingImplementation,
-  sourceImplementation,
+  formatting,
+  store,
 }: {
   termId: TermId;
   source: Source;
-  sourceImplementation: SourceInterface<Source>;
-  sourceFormattingImplementation: SourceFormattingInterface<Source>;
+  store: SourceStore<Source>;
+  formatting: SourceFormatting<Source>;
 }): Navigation | undefined {
-  const isRoot = sourceFormattingImplementation.isRoot(source, termId);
-  const references = sourceFormattingImplementation.getReferences(source, termId);
+  const isRoot = formatting.isRoot(source, termId);
+  const references = formatting.getReferences(source, termId);
   const parentTermId = ((): TermId | undefined => {
     if (references.all.size === 1) return getOne(references.all);
     if (!isRoot && references.asParameter.size === 1) return getOne(references.asParameter);
   })();
-  const parentTermData = parentTermId ? sourceImplementation.get(source, parentTermId) : null;
+  const parentTermData = parentTermId ? store.get(source, parentTermId) : null;
   if (!parentTermData || !parentTermId) return;
   if (parentTermData.annotation === termId) return { termId: parentTermId, part: "annotation" };
-  const parameters = sourceFormattingImplementation.getTermParameters(source, parentTermId);
+  const parameters = formatting.getTermParameters(source, parentTermId);
   for (let parameterIndex = 0; parameterIndex < parameters.length; parameterIndex++) {
     if (parameters[parameterIndex] === termId) return { termId: parentTermId, part: "parameter", parameterIndex };
   }
   if (parentTermData.reference === termId) return { termId: parentTermId, part: "reference" };
-  const bindings = sourceFormattingImplementation.getTermBindings(source, parentTermId);
+  const bindings = formatting.getTermBindings(source, parentTermId);
   for (let bindingIndex = 0; bindingIndex < bindings.length; bindingIndex++) {
     if (bindings[bindingIndex].key === termId) return { termId: parentTermId, part: "binding", bindingIndex, subPart: "key" };
     if (bindings[bindingIndex].value === termId) return { termId: parentTermId, part: "binding", bindingIndex, subPart: "value" };

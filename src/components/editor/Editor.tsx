@@ -3,25 +3,25 @@ import React from "react";
 import { css } from "styled-components/macro";
 import { keyboardAction } from "./keyboardAction";
 import { getOptions, getTermIdAtEditorNavigation, isInline, Navigation, State } from "./State";
-import { SourceFacadeInterface, SourceFormattingInterface, SourceInterface, TermId } from "../Source";
+import { SourceInsert, SourceFormatting, SourceStore, TermId } from "../Source";
 
 const shortIdLength = 5;
 
 export function TermEditor<Source>({
   source,
   onSourceChange,
-  sourceImplementation,
-  sourceFacadeImplementation,
-  sourceFormattingImplementation,
+  store,
+  insert,
+  formatting,
 }: {
   source: Source;
   onSourceChange(source: Source): void;
-  sourceImplementation: SourceInterface<Source>;
-  sourceFacadeImplementation: SourceFacadeInterface<Source>;
-  sourceFormattingImplementation: SourceFormattingInterface<Source>;
+  store: SourceStore<Source>;
+  insert: SourceInsert<Source>;
+  formatting: SourceFormatting<Source>;
 }) {
   const [state, setState] = React.useState<State>({});
-  const options = getOptions<Source>({ sourceImplementation, source, state: state });
+  const options = getOptions<Source>({ store, source, state: state });
   const ref = React.useRef<HTMLDivElement | null>(null);
   const onKeyDownWithState = (state: State, event: React.KeyboardEvent) => {
     setTimeout(() => {
@@ -31,9 +31,9 @@ export function TermEditor<Source>({
       state,
       event,
       source,
-      sourceImplementation,
-      sourceFacadeImplementation,
-      sourceFormattingImplementation,
+      store,
+      insert,
+      formatting,
     });
     if (changed) {
       event.preventDefault?.();
@@ -68,7 +68,7 @@ export function TermEditor<Source>({
           }
         }}
       >
-        {sourceFormattingImplementation.getRoots(source).map((termId) => {
+        {formatting.getRoots(source).map((termId) => {
           return (
             <div
               key={termId}
@@ -92,9 +92,9 @@ export function TermEditor<Source>({
                 onSourceChange={onSourceChange}
                 state={state}
                 onStateChange={setState}
-                sourceFacadeImplementation={sourceFacadeImplementation}
-                sourceImplementation={sourceImplementation}
-                sourceFormattingImplementation={sourceFormattingImplementation}
+                insert={insert}
+                store={store}
+                formatting={formatting}
                 options={options}
                 onKeyDownWithState={onKeyDownWithState}
               />
@@ -109,9 +109,9 @@ export function TermEditor<Source>({
             onSourceChange={onSourceChange}
             state={state}
             onStateChange={setState}
-            sourceFacadeImplementation={sourceFacadeImplementation}
-            sourceImplementation={sourceImplementation}
-            sourceFormattingImplementation={sourceFormattingImplementation}
+            insert={insert}
+            store={store}
+            formatting={formatting}
             options={options}
             onKeyDownWithState={onKeyDownWithState}
           />
@@ -130,9 +130,9 @@ type TermBaseProps<Source> = {
   onSourceChange(source: Source): void;
   state: State;
   onStateChange(stete: State): void;
-  sourceImplementation: SourceInterface<Source>;
-  sourceFacadeImplementation: SourceFacadeInterface<Source>;
-  sourceFormattingImplementation: SourceFormattingInterface<Source>;
+  store: SourceStore<Source>;
+  insert: SourceInsert<Source>;
+  formatting: SourceFormatting<Source>;
   options: Array<TermId>;
   onKeyDownWithState(state: State, event: React.KeyboardEvent): void;
 };
@@ -141,17 +141,8 @@ function Term<Source>({
   navigation,
   ...baseProps
 }: { termId: TermId; navigation: Navigation | undefined } & TermBaseProps<Source>) {
-  const {
-    source,
-    onSourceChange,
-    state,
-    onStateChange,
-    sourceImplementation,
-    sourceFacadeImplementation,
-    sourceFormattingImplementation,
-    onKeyDownWithState,
-  } = baseProps;
-  const termData = sourceImplementation.get(source, termId);
+  const { source, onSourceChange, state, onStateChange, store, insert, formatting, onKeyDownWithState } = baseProps;
+  const termData = store.get(source, termId);
   const [labelText, setLabelText] = React.useState(termData.label);
   React.useLayoutEffect(() => {
     setLabelText(termData.label);
@@ -165,8 +156,8 @@ function Term<Source>({
   const showArrowToken = showStructure || termData.parameters.size > 0;
   const showModeToken = showStructure || termData.mode === "match";
   const showBindingsParentheses = showStructure || termData.bindings.size > 0;
-  const isRoot = sourceFormattingImplementation.isRoot(source, termId);
-  const referencesCount = sourceFormattingImplementation.getReferences(source, termId);
+  const isRoot = formatting.isRoot(source, termId);
+  const referencesCount = formatting.getReferences(source, termId);
   const labelColor = (() => {
     if (!termData.label) return "var(--text-color-comment)";
     if (navigation?.part === "binding" && navigation.subPart === "key") return "var(--text-color-binding)";
@@ -193,10 +184,10 @@ function Term<Source>({
   }, []);
   const updateLabel = React.useCallback(() => {
     if (labelText !== termData.label) {
-      const newSource = sourceFacadeImplementation.setLabel(source, termId, labelText);
+      const newSource = insert.setLabel(source, termId, labelText);
       onSourceChange(newSource);
     }
-  }, [labelText, onSourceChange, source, sourceFacadeImplementation, termData.label, termId]);
+  }, [labelText, onSourceChange, source, insert, termData.label, termId]);
   React.useLayoutEffect(() => {
     if (!showStructure) updateLabel();
   }, [showStructure, updateLabel]);
@@ -238,7 +229,7 @@ function Term<Source>({
       {labelText}
     </span>
   );
-  if (navigation && !isInline({ navigation, termId, source, sourceImplementation, sourceFormattingImplementation })) {
+  if (navigation && !isInline({ navigation, termId, source, store, formatting })) {
     return labelNode;
   }
   return (
@@ -304,7 +295,7 @@ function Term<Source>({
           {"("}
         </span>
       )}
-      {sourceFormattingImplementation.getTermParameters(source, termId).map((parameterTermId, index, array) => {
+      {formatting.getTermParameters(source, termId).map((parameterTermId, index, array) => {
         return (
           <React.Fragment key={parameterTermId}>
             <span
@@ -407,63 +398,61 @@ function Term<Source>({
           {termData.mode === "match" && " "}
         </React.Fragment>
       )}
-      {sourceFormattingImplementation
-        .getTermBindings(source, termId)
-        .map(({ key: bindingKeyTermId, value: bindingValueTermId }, index, array) => {
-          return (
-            <span key={bindingKeyTermId}>
-              <span
-                css={css`
-                  ${state.navigation?.termId === termId &&
-                  state.navigation.part === "binding" &&
-                  state.navigation.subPart === "key" &&
-                  index === state.navigation.bindingIndex &&
-                  navigationSelectedStyle};
-                `}
-              >
-                {showStructure && (
-                  <Options
-                    label="Select binding key"
-                    navigation={{ termId, part: "binding", bindingIndex: index, subPart: "key" }}
-                    {...baseProps}
-                  />
-                )}
-                <Term
-                  termId={bindingKeyTermId}
+      {formatting.getTermBindings(source, termId).map(({ key: bindingKeyTermId, value: bindingValueTermId }, index, array) => {
+        return (
+          <span key={bindingKeyTermId}>
+            <span
+              css={css`
+                ${state.navigation?.termId === termId &&
+                state.navigation.part === "binding" &&
+                state.navigation.subPart === "key" &&
+                index === state.navigation.bindingIndex &&
+                navigationSelectedStyle};
+              `}
+            >
+              {showStructure && (
+                <Options
+                  label="Select binding key"
                   navigation={{ termId, part: "binding", bindingIndex: index, subPart: "key" }}
                   {...baseProps}
                 />
-              </span>
-              {" = "}
-              <span
-                css={css`
-                  ${state.navigation?.termId === termId &&
-                  state.navigation.part === "binding" &&
-                  state.navigation.subPart === "value" &&
-                  index === state.navigation.bindingIndex &&
-                  navigationSelectedStyle};
-                `}
-              >
-                {showStructure && (
-                  <Options
-                    label="Select binding value"
-                    navigation={{ termId, part: "binding", bindingIndex: index, subPart: "value" }}
-                    {...baseProps}
-                  />
-                )}
-                {bindingValueTermId && (
-                  <Term
-                    navigation={{ termId, part: "binding", bindingIndex: index, subPart: "value" }}
-                    termId={bindingValueTermId}
-                    {...baseProps}
-                  />
-                )}
-              </span>
-              {termData.mode === "match" && "; "}
-              {termData.mode === "call" && (showStructure || index < array.length - 1) && ", "}
+              )}
+              <Term
+                termId={bindingKeyTermId}
+                navigation={{ termId, part: "binding", bindingIndex: index, subPart: "key" }}
+                {...baseProps}
+              />
             </span>
-          );
-        })}
+            {" = "}
+            <span
+              css={css`
+                ${state.navigation?.termId === termId &&
+                state.navigation.part === "binding" &&
+                state.navigation.subPart === "value" &&
+                index === state.navigation.bindingIndex &&
+                navigationSelectedStyle};
+              `}
+            >
+              {showStructure && (
+                <Options
+                  label="Select binding value"
+                  navigation={{ termId, part: "binding", bindingIndex: index, subPart: "value" }}
+                  {...baseProps}
+                />
+              )}
+              {bindingValueTermId && (
+                <Term
+                  navigation={{ termId, part: "binding", bindingIndex: index, subPart: "value" }}
+                  termId={bindingValueTermId}
+                  {...baseProps}
+                />
+              )}
+            </span>
+            {termData.mode === "match" && "; "}
+            {termData.mode === "call" && (showStructure || index < array.length - 1) && ", "}
+          </span>
+        );
+      })}
       {showStructure && <Options label="Select binding key to add" navigation={{ termId, part: "bindings" }} {...baseProps} />}
       {showBindingsParentheses && (
         <span
@@ -545,9 +534,9 @@ function Options<Source>({
   navigation,
   source,
   state,
-  sourceImplementation,
+  store,
   onStateChange,
-  sourceFormattingImplementation,
+  formatting,
 }: { label: string; navigation: Navigation | undefined } & TermBaseProps<Source>) {
   const navigationEquals = (a: Navigation, b: Navigation) => {
     if (a.termId !== b.termId) return false;
@@ -563,9 +552,7 @@ function Options<Source>({
   React.useLayoutEffect(() => {
     if (isAtPosition) inputRef.current?.focus();
   }, [isAtPosition, state]);
-  const value = navigation
-    ? getTermIdAtEditorNavigation({ navigation, source, sourceImplementation, sourceFormattingImplementation })
-    : null;
+  const value = navigation ? getTermIdAtEditorNavigation({ navigation, source, store, formatting }) : null;
   return (
     <span
       css={css`
@@ -586,7 +573,7 @@ function Options<Source>({
           `}
         >
           {options.map((termId, index) => {
-            const termData = sourceImplementation.get(source, termId);
+            const termData = store.get(source, termId);
             return (
               <div
                 key={termId}
