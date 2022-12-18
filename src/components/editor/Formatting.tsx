@@ -39,14 +39,14 @@ export function format<Source, Chunk>({
       builder.append(printer.annotationStart());
       const inlineAnnotation = builderFactory();
       multiline(NaN, { termId, part: "annotation" }, termData.annotation, Infinity, inlineAnnotation);
-      if (builder.column() + inlineAnnotation.size().columns <= maxWidth) {
+      if (builder.x() + inlineAnnotation.width() <= maxWidth && inlineAnnotation.height() === 1) {
         builder.append(inlineAnnotation.result());
       } else {
         builder.append(printer.termStart());
-        builder.append(printer.newLine());
+        builder.newLine();
         builder.append(printer.indentation(level + 1));
         multiline(level + 1, { termId, part: "annotation" }, termData.annotation, maxWidth, builder);
-        builder.append(printer.newLine());
+        builder.newLine();
         builder.append(printer.indentation(level));
         builder.append(printer.termEnd());
       }
@@ -55,22 +55,22 @@ export function format<Source, Chunk>({
       builder.append(printer.rightHandSideStart());
     }
     if (termParameters.length > 0) {
-      builder.append(printer.termStart());
       const inlineParameters = builderFactory();
       termParameters.forEach((parameterTermId, parameterIndex) => {
         multiline(NaN, { termId, part: "parameter", parameterIndex }, parameterTermId, Infinity, inlineParameters);
         if (parameterIndex < termParameters.length - 1) inlineParameters.append(printer.parametersSeparator());
       });
-      if (builder.column() + inlineParameters.size().columns <= maxWidth) {
+      builder.append(printer.termStart());
+      if (builder.x() + inlineParameters.width() <= maxWidth && inlineParameters.height() === 1) {
         builder.append(inlineParameters.result());
         builder.append(printer.parametersEnd());
       } else {
-        builder.append(printer.newLine());
+        builder.newLine();
         termParameters.forEach((parameterTermId, parameterIndex) => {
           builder.append(printer.indentation(level + 1));
           multiline(level + 1, { termId, part: "parameter", parameterIndex }, parameterTermId, maxWidth, builder);
-          builder.append(printer.parametersSeparator());
-          if (parameterIndex < termParameters.length - 1) builder.append(printer.newLine());
+          if (parameterIndex < termParameters.length - 1) builder.append(printer.parametersSeparator());
+          builder.newLine();
         });
         builder.append(printer.parametersEnd());
       }
@@ -84,20 +84,19 @@ export function format<Source, Chunk>({
     if (termData.reference) {
       const inlineReference = builderFactory();
       multiline(NaN, { termId, part: "reference" }, termData.reference, Infinity, inlineReference);
-      if (builder.column() + inlineReference.size().columns <= maxWidth) {
+      if (builder.x() + inlineReference.width() <= maxWidth && inlineReference.height() === 1) {
         builder.append(inlineReference.result());
       } else {
         builder.append(printer.termStart());
-        builder.append(printer.newLine());
+        builder.newLine();
         builder.append(printer.indentation(level + 1));
         multiline(level + 1, { termId, part: "reference" }, termData.reference, maxWidth, builder);
-        builder.append(printer.newLine());
+        builder.newLine();
         builder.append(printer.indentation(level));
         builder.append(printer.termEnd());
       }
     }
     if (termBindings.length > 0) {
-      builder.append(printer.bindingsStart());
       const inlineBindings = builderFactory();
       termBindings.forEach((binding, bindingIndex) => {
         multiline(NaN, { termId, part: "binding", bindingIndex, subPart: "key" }, binding.key, Infinity, inlineBindings);
@@ -106,11 +105,12 @@ export function format<Source, Chunk>({
           multiline(NaN, { termId, part: "binding", bindingIndex, subPart: "value" }, binding.value, Infinity, inlineBindings);
         if (bindingIndex < termBindings.length - 1) inlineBindings.append(printer.bindingSeparator());
       });
-      if (builder.column() + inlineBindings.size().columns <= maxWidth && termData.mode !== "match") {
+      builder.append(printer.bindingsStart());
+      if (builder.x() + inlineBindings.width() <= maxWidth && termData.mode !== "match" && inlineBindings.height() === 1) {
         builder.append(inlineBindings.result());
         builder.append(printer.bindingsEnd());
       } else {
-        builder.append(printer.newLine());
+        builder.newLine();
         termBindings.forEach((binding, bindingIndex) => {
           builder.append(printer.indentation(level + 1));
           multiline(level + 1, { termId, part: "binding", bindingIndex, subPart: "key" }, binding.key, maxWidth, builder);
@@ -118,8 +118,9 @@ export function format<Source, Chunk>({
           if (binding.value)
             multiline(level + 1, { termId, part: "binding", bindingIndex, subPart: "value" }, binding.value, maxWidth, builder);
           if (bindingIndex < termBindings.length - 1) builder.append(printer.bindingSeparator());
-          builder.append(printer.newLine());
+          builder.newLine();
         });
+        builder.append(printer.indentation(level));
         builder.append(printer.termEnd());
       }
     }
@@ -129,8 +130,7 @@ export function format<Source, Chunk>({
   return builder;
 }
 
-type Printer<Chunk> = {
-  newLine(): Chunk;
+export type Printer<Chunk> = {
   indentation(level: number): Chunk;
   termStart(): Chunk;
   label(): Chunk;
@@ -148,122 +148,12 @@ type Printer<Chunk> = {
   termEnd(): Chunk;
 };
 
-type Builder<Chunk> = {
-  result(): Chunk;
-  line(): number;
-  column(): number;
+export type Builder<Chunk> = {
+  y(): number;
+  x(): number;
   append(chunk: Chunk): void;
-  size(): { lines: number; columns: number };
+  newLine(): void;
+  width(): number;
+  height(): number;
+  result(): Chunk;
 };
-
-export function stringBuilderFactory(): Builder<string> {
-  let result = "";
-  let line = 0;
-  let column = 0;
-  let maxColumn = 0;
-  return {
-    result() {
-      return result;
-    },
-    line() {
-      return line;
-    },
-    column() {
-      return column;
-    },
-    append(chunk: string) {
-      const lines = chunk.split("\n");
-      if (lines.length === 1) {
-        result += chunk;
-        column += chunk.length;
-      } else {
-        result += chunk;
-        line = lines.length - 1;
-        column = lines.at(-1)!.length;
-        maxColumn = Math.max(column + lines.at(0)!.length, ...lines.map((line) => line.length));
-      }
-    },
-    size() {
-      return {
-        lines: line + 1,
-        columns: maxColumn,
-      };
-    },
-  };
-}
-
-export function stringPrinterFactory<Source>({
-  termId,
-  source,
-  store,
-  formatting,
-}: {
-  termId: TermId;
-  source: Source;
-  store: SourceStore<Source>;
-  formatting: SourceFormatting<Source>;
-}): Printer<string> {
-  const termData = store.get(source, termId);
-  const termParameters = formatting.getTermParameters(source, termId);
-  const termBindings = formatting.getTermBindings(source, termId);
-  return {
-    newLine() {
-      return "\n";
-    },
-    indentation(level) {
-      return "  ".repeat(level);
-    },
-    label() {
-      return termData.label;
-    },
-    annotationStart() {
-      return " : ";
-    },
-    termStart() {
-      return "(";
-    },
-    termEnd() {
-      return ")";
-    },
-    rightHandSideStart() {
-      return " = ";
-    },
-    termType() {
-      switch (termData.type) {
-        case "lambda":
-          return " => ";
-        case "pi":
-          return " -> ";
-        default:
-          throw new Error();
-      }
-    },
-    bindingAssignment() {
-      return " = ";
-    },
-    bindingsStart() {
-      return "(";
-    },
-    bindingsEnd() {
-      return ")";
-    },
-    bindingSeparator() {
-      return ", ";
-    },
-    parametersEnd() {
-      return ")";
-    },
-    parametersSeparator() {
-      return ", ";
-    },
-    parametersStart() {
-      return "(";
-    },
-    termMode() {
-      if (termData.mode === "match") {
-        return "match ";
-      }
-      return "";
-    },
-  };
-}

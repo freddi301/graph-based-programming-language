@@ -32,7 +32,8 @@ import { Button } from "./components/Button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { TermEditor } from "./components/editor/Editor";
 import { LeftBar } from "./components/LeftBar";
-import { format, stringBuilderFactory, stringPrinterFactory } from "./components/editor/Formatting";
+import { format } from "./components/editor/Formatting";
+import { reactBuilderFactory, reactPrinterFactory } from "./components/editor/Rendering";
 
 library.add(fas);
 
@@ -213,15 +214,17 @@ function GenericApp<Source, CommitId, Repository>({
                       padding: 0px 1ch;
                     `}
                   >
-                    {format({
-                      maxWidth: charWidth,
-                      rootId,
-                      source,
-                      store,
-                      formatting,
-                      builderFactory: stringBuilderFactory,
-                      printerFactory: stringPrinterFactory,
-                    }).result()}
+                    {
+                      format({
+                        maxWidth: charWidth,
+                        rootId,
+                        source,
+                        store,
+                        formatting,
+                        builderFactory: reactBuilderFactory,
+                        printerFactory: reactPrinterFactory,
+                      }).result().content
+                    }
                   </div>
                 );
               })}
