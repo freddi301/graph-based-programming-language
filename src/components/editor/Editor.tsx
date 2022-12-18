@@ -5,22 +5,23 @@ import { keyboardAction } from "./keyboardAction";
 import { getOptions, getTermIdAtEditorNavigation, isInline, Navigation, State } from "./State";
 import { SourceInsert, SourceFormatting, SourceStore, TermId } from "../Source";
 
-const shortIdLength = 5;
-
 export function TermEditor<Source>({
+  state,
+  onStateChange,
   source,
   onSourceChange,
   store,
   insert,
   formatting,
 }: {
+  state: State;
+  onStateChange(state: State): void;
   source: Source;
   onSourceChange(source: Source): void;
   store: SourceStore<Source>;
   insert: SourceInsert<Source>;
   formatting: SourceFormatting<Source>;
 }) {
-  const [state, setState] = React.useState<State>({});
   const options = getOptions<Source>({ store, source, state: state });
   const ref = React.useRef<HTMLDivElement | null>(null);
   const onKeyDownWithState = (state: State, event: React.KeyboardEvent) => {
@@ -37,7 +38,7 @@ export function TermEditor<Source>({
     });
     if (changed) {
       event.preventDefault?.();
-      if (changed.state) setState(changed.state);
+      if (changed.state) onStateChange(changed.state);
       if (changed.source) onSourceChange(changed.source);
     }
   };
@@ -64,7 +65,7 @@ export function TermEditor<Source>({
         onClick={(event) => {
           if (event.target === event.currentTarget) {
             ref.current?.focus();
-            setState({});
+            onStateChange({});
           }
         }}
       >
@@ -74,7 +75,7 @@ export function TermEditor<Source>({
               key={termId}
               onClick={(event) => {
                 if (event.target === event.currentTarget) {
-                  setState({ navigation: { termId, part: "label" } });
+                  onStateChange({ navigation: { termId, part: "label" } });
                 }
               }}
             >
@@ -91,7 +92,7 @@ export function TermEditor<Source>({
                 source={source}
                 onSourceChange={onSourceChange}
                 state={state}
-                onStateChange={setState}
+                onStateChange={onStateChange}
                 insert={insert}
                 store={store}
                 formatting={formatting}
@@ -108,7 +109,7 @@ export function TermEditor<Source>({
             source={source}
             onSourceChange={onSourceChange}
             state={state}
-            onStateChange={setState}
+            onStateChange={onStateChange}
             insert={insert}
             store={store}
             formatting={formatting}
@@ -156,17 +157,6 @@ function Term<Source>({
   const showArrowToken = showStructure || termData.parameters.size > 0;
   const showModeToken = showStructure || termData.mode === "match";
   const showBindingsParentheses = showStructure || termData.bindings.size > 0;
-  const isRoot = formatting.isRoot(source, termId);
-  const referencesCount = formatting.getReferences(source, termId);
-  const labelColor = (() => {
-    if (!termData.label) return "var(--text-color-comment)";
-    if (navigation?.part === "binding" && navigation.subPart === "key") return "var(--text-color-binding)";
-    if (termData.type === "lambda" && termData.parameters.size > 0) return "var(--text-color-lambda)";
-    if (termData.type === "pi" && termData.parameters.size > 0) return "var(--text-color-pi)";
-    if (referencesCount.asAnnotation) return "var(--text-color-type)";
-    if (isRoot && termData.annotation && !termData.reference) return "var(--text-color-constructor)";
-    return "var(--text-color)";
-  })();
   const enclosingParenthesesStyle = css`
     background-color: ${showStructure ? "var(--selection-background-color)" : ""};
   `;
@@ -201,7 +191,6 @@ function Term<Source>({
     <span
       css={css`
         background-color: ${state.highlighted === termId ? "var(--hover-background-color)" : ""};
-        color: ${labelColor};
         ${ctrlIsPressed
           ? css`
               cursor: pointer;
@@ -217,15 +206,7 @@ function Term<Source>({
       onMouseLeave={() => {
         onStateChange({ ...state, highlighted: undefined });
       }}
-      onClick={(event) => {
-        if (event.ctrlKey) {
-          onStateChange({ navigation: { termId, part: "label" } });
-        } else {
-          onStateChange({ navigation: navigation || { termId, part: "label" } });
-        }
-      }}
     >
-      {/* {labelText || (termId).slice(0, shortIdLength)} */}
       {labelText}
     </span>
   );
@@ -248,7 +229,6 @@ function Term<Source>({
             setLabelText(event.currentTarget.value);
             onStateChange({ text: event.currentTarget.value, navigation: state.navigation });
           }}
-          placeholder={termId}
           autoFocus={isLabelFocused}
           css={css`
             background-color: transparent;
@@ -257,8 +237,7 @@ function Term<Source>({
             font-family: inherit;
             font-size: inherit;
             padding: 0;
-            color: ${labelColor};
-            width: ${labelText.length ? `${labelText.length}ch` : `${shortIdLength}ch`};
+            width: ${labelText.length ? `${labelText.length}ch` : `1px`};
           `}
           onBlur={() => {
             updateLabel();
@@ -349,7 +328,6 @@ function Term<Source>({
       </span>
       <span
         css={css`
-          color: var(--text-color-keyword);
           ${state.navigation?.termId === termId && state.navigation.part === "mode" && navigationSelectedStyle};
         `}
       >

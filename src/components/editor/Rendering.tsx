@@ -1,6 +1,8 @@
 import { SourceFormatting, SourceStore, TermId } from "../Source";
-import { Builder, Printer } from "./Formatting";
+import { Builder, getRole, Printer } from "./Formatting";
 import React from "react";
+import { Navigation, State } from "./State";
+import { css } from "styled-components/macro";
 
 export function stringBuilderFactory(): Builder<string> {
   let result = "";
@@ -149,19 +151,36 @@ export function reactBuilderFactory(): Builder<{ content: React.ReactNode; width
 
 export function reactPrinterFactory<Source>({
   termId,
+  navigation,
   source,
   store,
   formatting,
+  onStateChange,
 }: {
   termId: TermId;
+  navigation: Navigation | null;
   source: Source;
   store: SourceStore<Source>;
   formatting: SourceFormatting<Source>;
+  onStateChange(state: State): void;
 }): Printer<{ content: React.ReactNode; width: number }> {
   const termData = store.get(source, termId);
   const termParameters = formatting.getTermParameters(source, termId);
   const termBindings = formatting.getTermBindings(source, termId);
   const print = stringPrinterFactory({ termId, source, store, formatting });
+  const onClickSelectTerm = (event: React.MouseEvent) => {
+    if (event.ctrlKey) {
+      onStateChange({ navigation: { termId, part: "label" } });
+    } else {
+      onStateChange({ navigation: navigation || { termId, part: "label" } });
+    }
+  };
+  const onClickSelectParameters = (event: React.MouseEvent) => {
+    onStateChange({ navigation: { termId, part: "parameters" } });
+  };
+  const onClickSelectBindings = (event: React.MouseEvent) => {
+    onStateChange({ navigation: { termId, part: "bindings" } });
+  };
   return {
     indentation(level) {
       return {
@@ -171,13 +190,38 @@ export function reactPrinterFactory<Source>({
     },
     termStart() {
       return {
-        content: <span>{print.termStart()}</span>,
+        content: <span onClick={onClickSelectTerm}>{print.termStart()}</span>,
         width: print.termStart().length,
       };
     },
     label() {
+      const labelColor = (() => {
+        switch (getRole({ navigation, termId, source, store, formatting })) {
+          case "lambda":
+            return "var(--text-color-lambda)";
+          case "pi":
+            return "var(--text-color-pi)";
+          case "type":
+            return "var(--text-color-type)";
+          case "constructor":
+            return "var(--text-color-constructor)";
+          case "binding":
+            return "var(--text-color-binding)";
+          case "regular":
+            return "var(--text-color)";
+        }
+      })();
       return {
-        content: <span>{print.label()}</span>,
+        content: (
+          <span
+            onClick={onClickSelectTerm}
+            css={css`
+              color: ${labelColor};
+            `}
+          >
+            {print.label()}
+          </span>
+        ),
         width: print.label().length,
       };
     },
@@ -189,7 +233,7 @@ export function reactPrinterFactory<Source>({
     },
     parametersStart() {
       return {
-        content: <span>{print.parametersStart()}</span>,
+        content: <span onClick={onClickSelectParameters}>{print.parametersStart()}</span>,
         width: print.parametersStart().length,
       };
     },
@@ -201,7 +245,7 @@ export function reactPrinterFactory<Source>({
     },
     parametersEnd() {
       return {
-        content: <span>{print.parametersEnd()}</span>,
+        content: <span onClick={onClickSelectParameters}>{print.parametersEnd()}</span>,
         width: print.parametersEnd().length,
       };
     },
@@ -219,13 +263,21 @@ export function reactPrinterFactory<Source>({
     },
     termMode() {
       return {
-        content: <span>{print.termMode()}</span>,
+        content: (
+          <span
+            css={css`
+              color: var(--text-color-keyword);
+            `}
+          >
+            {print.termMode()}
+          </span>
+        ),
         width: print.termMode().length,
       };
     },
     bindingsStart() {
       return {
-        content: <span>{print.bindingsStart()}</span>,
+        content: <span onClick={onClickSelectBindings}>{print.bindingsStart()}</span>,
         width: print.bindingsStart().length,
       };
     },
@@ -243,13 +295,13 @@ export function reactPrinterFactory<Source>({
     },
     bindingsEnd() {
       return {
-        content: <span>{print.bindingsEnd()}</span>,
+        content: <span onClick={onClickSelectBindings}>{print.bindingsEnd()}</span>,
         width: print.bindingsEnd().length,
       };
     },
     termEnd() {
       return {
-        content: <span>{print.termEnd()}</span>,
+        content: <span onClick={onClickSelectTerm}>{print.termEnd()}</span>,
         width: print.termEnd().length,
       };
     },

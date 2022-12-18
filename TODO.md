@@ -1,10 +1,7 @@
-Add record/record type (when no reference but has bindings)
-Refactor purpose dei term + keyword viola (data type, constructor, parameter/attribute, function, lambda, variable, record, record type)
 Order roots as bottom-up usage
 Remove Term -> delete if no more occurences, and recursively for children
-Refactor Term to formatting
 Store editor state for every commit and restore it
-Optionally hide structure
+Normalize values
 If focus in label input do not navigate on left/right arrow
 Positional arguments
 Binary operator (with relative precedence, left-roght associativity)
@@ -35,3 +32,9 @@ Options subpanels (left right arrows)
 - any type + alphabetical order
 
 Esempi con più implementazioni: map, set, list (to left, to right), vector, number, natural, natural signed, Boolean, byte, string, functor, monad, monoid
+
+- pattern matching
+- interface/implementation pair
+- datatype/instance pair
+- anonymous record, tuple
+- dot operator (read attribute)

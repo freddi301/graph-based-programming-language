@@ -16,6 +16,7 @@ export function format<Source, Chunk>({
   store: SourceStore<Source>;
   formatting: SourceFormatting<Source>;
   printerFactory(params: {
+    navigation: Navigation | null;
     termId: TermId;
     source: Source;
     store: SourceStore<Source>;
@@ -24,7 +25,7 @@ export function format<Source, Chunk>({
   builderFactory(): Builder<Chunk>;
 }) {
   const multiline = (level: number, navigation: Navigation | null, termId: TermId, maxWidth: number, builder: Builder<Chunk>) => {
-    const printer = printerFactory({ termId, source, store, formatting });
+    const printer = printerFactory({ navigation, termId, source, store, formatting });
     const termData = store.get(source, termId);
     const termParameters = formatting.getTermParameters(source, termId);
     const termBindings = formatting.getTermBindings(source, termId);
@@ -60,7 +61,7 @@ export function format<Source, Chunk>({
         multiline(NaN, { termId, part: "parameter", parameterIndex }, parameterTermId, Infinity, inlineParameters);
         if (parameterIndex < termParameters.length - 1) inlineParameters.append(printer.parametersSeparator());
       });
-      builder.append(printer.termStart());
+      builder.append(printer.parametersStart());
       if (builder.x() + inlineParameters.width() <= maxWidth && inlineParameters.height() === 1) {
         builder.append(inlineParameters.result());
         builder.append(printer.parametersEnd());
@@ -157,3 +158,29 @@ export type Builder<Chunk> = {
   height(): number;
   result(): Chunk;
 };
+
+type TermRole = "lambda" | "pi" | "type" | "constructor" | "binding" | "regular";
+
+export function getRole<Source>({
+  navigation,
+  termId,
+  source,
+  store,
+  formatting,
+}: {
+  navigation: Navigation | null;
+  termId: TermId;
+  source: Source;
+  store: SourceStore<Source>;
+  formatting: SourceFormatting<Source>;
+}): TermRole {
+  const termData = store.get(source, termId);
+  const references = formatting.getReferences(source, termId);
+  const isRoot = formatting.isRoot(source, termId);
+  if (navigation?.part === "binding" && navigation.subPart === "key") return "binding";
+  if (termData.type === "lambda" && termData.parameters.size > 0) return "lambda";
+  if (termData.type === "pi" && termData.parameters.size > 0) return "pi";
+  if (references.asAnnotation.size > 0) return "type";
+  if (isRoot && termData.annotation && !termData.reference) return "constructor";
+  return "regular";
+}

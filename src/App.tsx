@@ -32,8 +32,8 @@ import { Button } from "./components/Button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { TermEditor } from "./components/editor/Editor";
 import { LeftBar } from "./components/LeftBar";
-import { format } from "./components/editor/Formatting";
-import { reactBuilderFactory, reactPrinterFactory } from "./components/editor/Rendering";
+import { State } from "./components/editor/State";
+import { Editor2 } from "./components/editor/Editor2";
 
 library.add(fas);
 
@@ -69,18 +69,7 @@ function GenericApp<Source, CommitId, Repository>({
     repositoryImplementation,
     repositoryJsonValueSerialization,
   });
-  const [charWidth, setCharWidth] = React.useState(0);
-  const codeContainerRef = React.useRef<HTMLDivElement | null>(null);
-  React.useLayoutEffect(() => {
-    const onResize = () => {
-      if (codeContainerRef.current) {
-        setCharWidth(codeContainerRef.current.offsetWidth / 8);
-      }
-    };
-    onResize();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
+  const [state, setState] = React.useState<State>({});
   return (
     <React.Fragment>
       <GlobalStyle />
@@ -181,8 +170,11 @@ function GenericApp<Source, CommitId, Repository>({
             ]}
           />
         }
-        center={
+        center={<Editor2 onStateChange={setState} source={source} store={store} formatting={formatting} />}
+        bottom={
           <TermEditor<Source>
+            state={state}
+            onStateChange={setState}
             source={source}
             onSourceChange={(source) => {
               setSource(source);
@@ -192,44 +184,6 @@ function GenericApp<Source, CommitId, Repository>({
             insert={insert}
             formatting={formatting}
           />
-        }
-        bottom={
-          <div
-            ref={codeContainerRef}
-            css={css`
-              position: relative;
-            `}
-          >
-            <div
-              css={css`
-                position: absolute;
-              `}
-            >
-              {formatting.getRoots(source).map((rootId) => {
-                return (
-                  <div
-                    key={rootId}
-                    css={css`
-                      white-space: pre;
-                      padding: 0px 1ch;
-                    `}
-                  >
-                    {
-                      format({
-                        maxWidth: charWidth,
-                        rootId,
-                        source,
-                        store,
-                        formatting,
-                        builderFactory: reactBuilderFactory,
-                        printerFactory: reactPrinterFactory,
-                      }).result().content
-                    }
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         }
         right={
           <div

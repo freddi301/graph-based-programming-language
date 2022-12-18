@@ -32,6 +32,3 @@ xnor = (x, y) = not(x = xor(x = x, y = y))
 
 DeMorgan1 : Equality(not(x = and(x = a, y = b)), or(x = not(x = a), not(x = x))) = ???
 DeMorgan2 : Equality(not(or(a, b)), and(not(a), not(b))) = ???
-AndIsCommutative : Equality(and(a, b), and(b, a)) = ???
-OrIsCommutative : Equality(or(a, b), or(b, a)) = ???
-XorIsCommutative : Equality(xor(a, b), xor(b, a)) = ???
