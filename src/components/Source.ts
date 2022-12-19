@@ -230,7 +230,7 @@ export function createJsMapHasEmptyInstance<K, V>(): HasEmptyIntance<Map<K, V>> 
 }
 
 export function createSourceFormmattingFromSourceStore<Source>(store: SourceStore<Source>): SourceFormatting<Source> {
-  function getReferences(source: Source) {
+  function getReferences(source: Source, except: Set<TermId>) {
     const referencesById = new Map<TermId, References>();
     for (const [termId] of store.all(source)) {
       const references: References = {
@@ -242,6 +242,7 @@ export function createSourceFormmattingFromSourceStore<Source>(store: SourceStor
         asBindingValue: new Map(),
       };
       for (const [parentTermId, { annotation, parameters, reference, bindings }] of store.all(source)) {
+        if (except.has(parentTermId)) continue;
         if (annotation && annotation === termId) {
           references.asAnnotation.add(parentTermId);
           references.all.add(parentTermId);
@@ -274,7 +275,7 @@ export function createSourceFormmattingFromSourceStore<Source>(store: SourceStor
   const implementation: SourceFormatting<Source> = {
     isRoot(source, termId) {
       const termData = store.get(source, termId);
-      const references = getReferences(source).get(termId)!;
+      const references = getReferences(source, new Set()).get(termId)!;
       if (references.asParameter.size === 1) return false;
       if (
         references.asAnnotation.size === 1 &&
@@ -295,14 +296,36 @@ export function createSourceFormmattingFromSourceStore<Source>(store: SourceStor
       return true;
     },
     getRoots(source) {
-      const roots = Array.from(store.all(source))
-        .filter(([termId]) => this.isRoot(source, termId))
-        .map(([termId]) => termId);
-      // TODO order by bottom-up usage
-      return roots;
+      const remainingRoots = new Set<TermId>();
+      const except = new Set<TermId>();
+      const orderedRoots: Array<TermId> = [];
+      for (const [termId] of store.all(source)) {
+        if (this.isRoot(source, termId)) {
+          remainingRoots.add(termId);
+        } else {
+          except.add(termId);
+        }
+      }
+      while (true) {
+        const startRemainingSize = remainingRoots.size;
+        const references = getReferences(source, new Set(except));
+        for (const termId of Array.from(remainingRoots)) {
+          if (references.get(termId)!.all.size === 0) {
+            orderedRoots.push(termId);
+            remainingRoots.delete(termId);
+            except.add(termId);
+          }
+        }
+        const endReminingSize = remainingRoots.size;
+        if (startRemainingSize === endReminingSize) break;
+      }
+      for (const termId of remainingRoots) {
+        orderedRoots.unshift(termId);
+      }
+      return orderedRoots.reverse();
     },
     getReferences(source, termId) {
-      return getReferences(source).get(termId)!;
+      return getReferences(source, new Set()).get(termId)!;
     },
     getTermParameters(source, termId) {
       // TODO order by bottom-up usage

@@ -1,4 +1,3 @@
-Order roots as bottom-up usage
 Remove Term -> delete if no more occurences, and recursively for children
 Normalize values
 Positional arguments
