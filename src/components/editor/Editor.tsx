@@ -1,6 +1,8 @@
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import React from "react";
 import { css } from "styled-components/macro";
-import { SourceFormatting, SourceInsert, SourceStore } from "../Source";
+import { evaluate } from "../runtime/evaluate";
+import { SourceFormatting, SourceInsert, SourceStore, TermId } from "../Source";
 import { format } from "./Formatting";
 import { keyboardAction } from "./keyboardAction";
 import { navigationSelectedStyle, Options, reactBuilderFactory, reactPrinterFactory } from "./Rendering";
@@ -27,10 +29,12 @@ export function Editor<Source>({
   const contentRef = React.useRef<HTMLDivElement | null>(null);
   // #region resizing
   const [maxWidth, setMaxWidth] = React.useState(0);
+  const [height, setHeight] = React.useState(0);
   React.useLayoutEffect(() => {
     const onResize = () => {
       if (containerRef.current) {
         setMaxWidth(Math.trunc(containerRef.current.offsetWidth / 9));
+        setHeight(containerRef.current.offsetHeight);
       }
     };
     onResize();
@@ -73,6 +77,8 @@ export function Editor<Source>({
   };
   // #endregion
   const options = getOptions<Source>({ store, source, state });
+  const evaluated = evaluate({ source, store, formatting });
+  const [running, setRunning] = React.useState<Record<TermId, boolean>>({});
   return (
     <div
       ref={containerRef}
@@ -103,7 +109,8 @@ export function Editor<Source>({
           min-width: 100%;
           min-height: 100%;
           outline: none;
-          padding: 1ch;
+          padding-top: calc(${height}px - 2ch);
+          padding-bottom: calc(${height}px - 4ch);
           box-sizing: border-box;
         `}
         tabIndex={0}
@@ -115,48 +122,113 @@ export function Editor<Source>({
         }}
       >
         {formatting.getRoots(source).map((termId) => {
+          const evaluatedTermId = evaluated.results.get(termId);
+          const isRunning = running[termId];
           return (
             <div
               key={termId}
               css={css`
-                white-space: pre;
+                display: grid;
+                grid-template-columns: 3ch 1fr;
+                grid-template-rows: max-content max-content;
+                grid-template-areas: "control source" "white result";
               `}
-              onClick={(event) => {
-                if (event.target === event.currentTarget) {
-                  onStateChange({ navigation: { termId, part: "label" } });
-                }
-              }}
             >
-              {
-                format({
-                  maxWidth,
-                  termId,
-                  source,
-                  store,
-                  formatting,
-                  builderFactory: reactBuilderFactory,
-                  printerFactory({ navigation, termId, source, store, formatting, navigationPaths }) {
-                    return reactPrinterFactory({
-                      navigation,
-                      termId,
-                      state,
-                      onStateChange,
+              <div
+                css={css`
+                  grid-area: control;
+                  padding: 0px 1ch;
+                `}
+              >
+                {isRunning ? (
+                  <FontAwesomeIcon icon="pause" onClick={() => setRunning({ ...running, [termId]: false })} />
+                ) : (
+                  <FontAwesomeIcon icon="play" onClick={() => setRunning({ ...running, [termId]: true })} />
+                )}
+              </div>
+              <div
+                css={css`
+                  grid-area: source;
+                  white-space: pre;
+                  padding: 0px 0px;
+                `}
+                onClick={(event) => {
+                  if (event.target === event.currentTarget) {
+                    onStateChange({ navigation: { termId, part: "label" } });
+                  }
+                }}
+              >
+                {
+                  format({
+                    maxWidth,
+                    termId,
+                    source,
+                    store,
+                    formatting,
+                    builderFactory: reactBuilderFactory,
+                    printerFactory({ navigation, termId, source, store, formatting, navigationPaths }) {
+                      return reactPrinterFactory({
+                        navigation,
+                        termId,
+                        state,
+                        onStateChange,
+                        source,
+                        onSourceChange,
+                        store,
+                        insert,
+                        formatting,
+                        onKeyDownWithState,
+                        options,
+                        navigationPaths,
+                      });
+                    },
+                  }).result().content
+                }
+              </div>
+              {evaluatedTermId && running[termId] && (
+                <div
+                  css={css`
+                    grid-area: result;
+                    border: 2px dashed var(--border-color-secondary);
+                    padding: 0px 0px;
+                  `}
+                >
+                  {
+                    format({
+                      maxWidth,
+                      termId: evaluatedTermId,
                       source,
-                      onSourceChange,
                       store,
-                      insert,
                       formatting,
-                      onKeyDownWithState,
-                      options,
-                      navigationPaths,
-                    });
-                  },
-                }).result().content
-              }
+                      builderFactory: reactBuilderFactory,
+                      printerFactory({ navigation, termId, source, store, formatting, navigationPaths }) {
+                        return reactPrinterFactory({
+                          navigation,
+                          termId,
+                          source,
+                          store,
+                          formatting,
+                          navigationPaths,
+                          insert,
+                          state,
+                          options: [],
+                          onStateChange,
+                          onKeyDownWithState(state, event) {},
+                          onSourceChange(source) {},
+                        });
+                      },
+                    }).result().content
+                  }
+                </div>
+              )}
             </div>
           );
         })}
-        <div>
+        <div
+          css={css`
+            padding: 0px 1ch;
+          `}
+        >
           <Options
             navigation={undefined}
             source={source}
