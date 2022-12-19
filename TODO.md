@@ -1,6 +1,5 @@
 Order roots as bottom-up usage
 Remove Term -> delete if no more occurences, and recursively for children
-Store editor state for every commit and restore it
 Normalize values
 Positional arguments
 Binary operator (with relative precedence, left-roght associativity)

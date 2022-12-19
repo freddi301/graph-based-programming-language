@@ -6,7 +6,7 @@ import { keyboardAction } from "./keyboardAction";
 import { Options, reactBuilderFactory, reactPrinterFactory } from "./Rendering";
 import { getOptions, State } from "./State";
 
-export function Editor2<Source>({
+export function Editor<Source>({
   state,
   onStateChange,
   source,
@@ -26,11 +26,11 @@ export function Editor2<Source>({
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const contentRef = React.useRef<HTMLDivElement | null>(null);
   // #region resizing
-  const [charWidth, setCharWidth] = React.useState(0);
+  const [maxWidth, setMaxWidth] = React.useState(0);
   React.useLayoutEffect(() => {
     const onResize = () => {
       if (containerRef.current) {
-        setCharWidth(containerRef.current.offsetWidth / 8);
+        setMaxWidth(Math.trunc(containerRef.current.offsetWidth / 9));
       }
     };
     onResize();
@@ -80,6 +80,7 @@ export function Editor2<Source>({
         width: 100%;
         height: 100%;
         position: relative;
+        overflow: auto;
         ${ctrlIsPressed &&
         css`
           .term-label {
@@ -100,6 +101,7 @@ export function Editor2<Source>({
           min-height: 100%;
           outline: none;
           padding: 1ch;
+          box-sizing: border-box;
         `}
         tabIndex={0}
         onClick={(event) => {
@@ -124,7 +126,7 @@ export function Editor2<Source>({
             >
               {
                 format({
-                  maxWidth: charWidth,
+                  maxWidth,
                   termId,
                   source,
                   store,

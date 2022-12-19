@@ -32,7 +32,7 @@ import { Button } from "./components/Button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { LeftBar } from "./components/LeftBar";
 import { State } from "./components/editor/State";
-import { Editor2 } from "./components/editor/Editor2";
+import { Editor } from "./components/editor/Editor";
 import { reactPrinterFactory } from "./components/editor/Rendering";
 
 library.add(fas);
@@ -121,6 +121,7 @@ function GenericApp<Source, CommitId, Repository>({
                                   try {
                                     const source = sourceJsonValueSerialization.deserialize(JSON.parse(reader.result as string));
                                     history.goto(null);
+                                    history.change(source);
                                     setSource(source);
                                   } catch (error) {
                                     console.error(error);
@@ -173,6 +174,7 @@ function GenericApp<Source, CommitId, Repository>({
                 sections: (() => {
                   if (state.navigation?.part !== "label") return [];
                   const references = formatting.getReferences(source, state.navigation.termId);
+                  if (!references) return [];
                   function list(set: Set<TermId>) {
                     return Array.from(set.keys()).map((termId) => {
                       return (
@@ -218,7 +220,7 @@ function GenericApp<Source, CommitId, Repository>({
           />
         }
         center={
-          <Editor2
+          <Editor
             state={state}
             onStateChange={setState}
             source={source}

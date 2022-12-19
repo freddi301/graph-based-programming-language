@@ -30,7 +30,7 @@ export function stringBuilderFactory(): Builder<string> {
       maxColumn = Math.max(maxColumn, column);
     },
     width() {
-      return maxColumn;
+      return Math.max(maxColumn, column);
     },
     height() {
       return line + 1;
@@ -125,7 +125,7 @@ export function reactBuilderFactory(): Builder<{ content: React.ReactNode; width
   let maxColumn = 0;
   return {
     result() {
-      return { content: result, width: maxColumn };
+      return { content: result, width: this.width() };
     },
     y() {
       return line;
@@ -148,7 +148,7 @@ export function reactBuilderFactory(): Builder<{ content: React.ReactNode; width
       maxColumn = Math.max(maxColumn, column);
     },
     width() {
-      return maxColumn;
+      return Math.max(maxColumn, column);
     },
     height() {
       return line + 1;
