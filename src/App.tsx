@@ -257,6 +257,8 @@ function GenericApp<Source, CommitId, Repository>({
             ( to declare or set parameters
             <br />= to asign
             <br />) to close current parentheses
+            <br /> Ctrl + z to undo
+            <br /> Ctrl + Shift + z to redo
             {/* <pre>{JSON.stringify(state, null, 2)}</pre> */}
           </div>
         }

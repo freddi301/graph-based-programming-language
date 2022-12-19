@@ -541,6 +541,12 @@ export function Options<Source>({
     navigation === state.navigation || (state.navigation && navigation && navigationEquals(navigation, state.navigation));
   const isOpen = state.text !== undefined && isAtPosition && options.length > 0 && navigation;
   const value = navigation ? getTermIdAtEditorNavigation({ navigation, source, store, formatting }) : null;
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+  React.useLayoutEffect(() => {
+    if (isAtPosition) {
+      inputRef.current?.focus();
+    }
+  }, [isAtPosition, state]);
   return (
     <span
       css={css`
@@ -592,11 +598,11 @@ export function Options<Source>({
       )}
       {isAtPosition && !value && (
         <input
+          ref={inputRef}
           value={state.text ?? ""}
           onChange={(event) => {
             onStateChange({ navigation: state.navigation, text: event.currentTarget.value });
           }}
-          autoFocus={true}
           css={css`
             background-color: transparent;
             outline: none;
