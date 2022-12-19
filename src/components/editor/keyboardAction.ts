@@ -202,7 +202,7 @@ export function keyboardAction<Source>({
     };
   };
   if (state.text !== undefined && state.navigation && termData && termParameters && termBindings) {
-    if (event.key === "ArrowDown" || event.key === "Tab") {
+    if (event.key === "ArrowDown" || (event.key === "Tab" && !event.shiftKey)) {
       if (state.optionIndex === options.length - 1) return setIndex(undefined);
       if (state.optionIndex === undefined) return setIndex(0);
       return setIndex(state.optionIndex + 1);

@@ -54,6 +54,14 @@ export type Navigation =
       subPart: "value";
     };
 
+export const navigationEquals = (a: Navigation, b: Navigation) => {
+  if (a.termId !== b.termId) return false;
+  if (a.part !== b.part) return false;
+  if (a.part === "parameter" && b.part === "parameter" && a.parameterIndex !== b.parameterIndex) return false;
+  if (a.part === "binding" && b.part === "binding" && (a.bindingIndex !== b.bindingIndex || a.subPart !== b.subPart)) return false;
+  return true;
+};
+
 // TODO sort options by
 // - correct type terms
 // - in scope terms
@@ -67,6 +75,7 @@ export function getOptions<Source>({ state, source, store }: { state: State; sou
       if (isSearching && !(matchesTermId || matchesTermLabel)) return false;
       return true;
     })
+    .sort(([x, a], [y, b]) => a.label.localeCompare(b.label))
     .map(([termId]) => termId);
 }
 

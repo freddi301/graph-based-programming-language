@@ -30,7 +30,6 @@ import {
 import { css } from "styled-components/macro";
 import { Button } from "./components/Button";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { TermEditor } from "./components/editor/Editor";
 import { LeftBar } from "./components/LeftBar";
 import { State } from "./components/editor/State";
 import { Editor2 } from "./components/editor/Editor2";
@@ -192,6 +191,10 @@ function GenericApp<Source, CommitId, Repository>({
                               formatting,
                               state,
                               onStateChange: setState,
+                              onKeyDownWithState(state, event) {},
+                              options: [],
+                              insert,
+                              onSourceChange() {},
                             }).label().content
                           }
                         </div>
@@ -214,9 +217,8 @@ function GenericApp<Source, CommitId, Repository>({
             ]}
           />
         }
-        center={<Editor2 state={state} onStateChange={setState} source={source} store={store} formatting={formatting} />}
-        bottom={
-          <TermEditor<Source>
+        center={
+          <Editor2
             state={state}
             onStateChange={setState}
             source={source}
@@ -229,6 +231,7 @@ function GenericApp<Source, CommitId, Repository>({
             formatting={formatting}
           />
         }
+        bottom={null}
         right={
           <div
             css={css`
@@ -252,6 +255,7 @@ function GenericApp<Source, CommitId, Repository>({
             ( to declare or set parameters
             <br />= to asign
             <br />) to close current parentheses
+            {/* <pre>{JSON.stringify(state, null, 2)}</pre> */}
           </div>
         }
       />

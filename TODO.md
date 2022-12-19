@@ -2,7 +2,6 @@ Order roots as bottom-up usage
 Remove Term -> delete if no more occurences, and recursively for children
 Store editor state for every commit and restore it
 Normalize values
-If focus in label input do not navigate on left/right arrow
 Positional arguments
 Binary operator (with relative precedence, left-roght associativity)
 
