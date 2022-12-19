@@ -3,6 +3,7 @@ import { Builder, getRole, Printer } from "./Formatting";
 import React from "react";
 import { getTermIdAtEditorNavigation, isInline, Navigation, navigationEquals, State } from "./State";
 import { css } from "styled-components/macro";
+import { navigationToCssClass } from "./Editor";
 
 export function stringBuilderFactory(): Builder<string> {
   let result = "";
@@ -158,6 +159,7 @@ export function reactBuilderFactory(): Builder<{ content: React.ReactNode; width
 
 export function reactPrinterFactory<Source>({
   navigation,
+  navigationPaths,
   termId,
   state,
   onStateChange,
@@ -170,6 +172,7 @@ export function reactPrinterFactory<Source>({
   options,
 }: {
   navigation: Navigation | null;
+  navigationPaths: Array<Navigation>;
   termId: TermId;
   state: State;
   onStateChange(state: State): void;
@@ -206,22 +209,27 @@ export function reactPrinterFactory<Source>({
       termData.reference ||
       termBindings.length > 0 ||
       (state.navigation?.part === "parameters" && termId === state.navigation.termId) ||
-      (state.navigation?.part === "reference" && termId === state.navigation.termId));
+      (state.navigation?.part === "reference" && termId === state.navigation.termId) ||
+      (state.navigation?.part === "bindings" && termId === state.navigation.termId));
   const showParameters = termData.parameters.size > 0 || (state.navigation?.part === "parameters" && termId === state.navigation.termId);
   const showTermType = termData.parameters.size > 0 || (state.navigation?.part === "parameters" && termId === state.navigation.termId);
-  const showTermMode =
-    termData.mode === "match" || (termId === state.navigation?.termId && (termData.reference || termData.bindings.size > 0));
+  const showTermMode = termData.mode === "match" || (state.navigation?.part === "mode" && termId === state.navigation.termId);
   const showBindings = termData.bindings.size > 0 || (state.navigation?.part === "bindings" && termId === state.navigation.termId);
+  const navigationClassNames = [...navigationPaths, navigation].map(navigationToCssClass).join(" ");
   return {
     indentation(level) {
       return {
-        content: <span>{print.indentation(level)}</span>,
+        content: <span className={navigationClassNames}>{print.indentation(level)}</span>,
         width: print.indentation(level).length,
       };
     },
     termStart() {
       return {
-        content: <span onClick={onClickSelectTerm}>{print.termStart()}</span>,
+        content: (
+          <span onClick={onClickSelectTerm} className={navigationClassNames}>
+            {print.termStart()}
+          </span>
+        ),
         width: print.termStart().length,
       };
     },
@@ -249,6 +257,7 @@ export function reactPrinterFactory<Source>({
       return {
         content: (
           <span
+            className={navigationClassNames}
             css={css`
               color: ${labelColor};
               background-color: ${state.highlighted === termId ? "var(--hover-background-color)" : ""};
@@ -286,7 +295,7 @@ export function reactPrinterFactory<Source>({
     annotationStart() {
       return {
         content: showAnnotationStart && (
-          <span>
+          <span className={navigationClassNames}>
             {print.annotationStart()}
             <Options navigation={{ termId, part: "annotation" }} {...baseProps} />
           </span>
@@ -299,6 +308,7 @@ export function reactPrinterFactory<Source>({
         content: showParameters && (
           <span
             onClick={onClickSelectParameters}
+            className={navigationClassNames}
             css={css`
               ${state.navigation?.termId === termId && state.navigation.part === "parameters" && navigationSelectedStyle};
             `}
@@ -313,7 +323,7 @@ export function reactPrinterFactory<Source>({
       const showParameterSeparator =
         parameterIndex < termParameters.length - 1 || (state.navigation?.part === "parameters" && termId === state.navigation.termId);
       return {
-        content: showParameterSeparator && <span>{print.parametersSeparator(parameterIndex)}</span>,
+        content: showParameterSeparator && <span className={navigationClassNames}>{print.parametersSeparator(parameterIndex)}</span>,
         width: showParameterSeparator ? print.parametersSeparator(parameterIndex).length : 0,
       };
     },
@@ -322,6 +332,7 @@ export function reactPrinterFactory<Source>({
         content: showParameters && (
           <span
             onClick={onClickSelectParameters}
+            className={navigationClassNames}
             css={css`
               ${state.navigation?.termId === termId && state.navigation.part === "parameters" && navigationSelectedStyle};
             `}
@@ -335,7 +346,7 @@ export function reactPrinterFactory<Source>({
     },
     rightHandSideStart() {
       return {
-        content: showRightHandStart && <span>{print.rightHandSideStart()}</span>,
+        content: showRightHandStart && <span className={navigationClassNames}>{print.rightHandSideStart()}</span>,
         width: showRightHandStart ? print.rightHandSideStart().length : 0,
       };
     },
@@ -347,6 +358,7 @@ export function reactPrinterFactory<Source>({
               onKeyDownWithState({ navigation: { termId, part: "type" } }, { key: "Enter" } as any);
               onStateChange({ navigation: { termId, part: "type" } });
             }}
+            className={navigationClassNames}
           >
             {print.termType()}
           </span>
@@ -361,6 +373,7 @@ export function reactPrinterFactory<Source>({
             css={css`
               color: var(--text-color-keyword);
             `}
+            className={navigationClassNames}
             onClick={() => {
               onKeyDownWithState({ navigation: { termId, part: "mode" } }, { key: "Enter" } as any);
               onStateChange({ navigation: { termId, part: "mode" } });
@@ -375,7 +388,7 @@ export function reactPrinterFactory<Source>({
     referenceStart() {
       return {
         content: state.navigation?.part === "reference" && termId === state.navigation.termId && (
-          <span>
+          <span className={navigationClassNames}>
             <Options navigation={{ termId, part: "reference" }} {...baseProps} />
           </span>
         ),
@@ -387,6 +400,7 @@ export function reactPrinterFactory<Source>({
         content: showBindings && (
           <span
             onClick={onClickSelectBindings}
+            className={navigationClassNames}
             css={css`
               ${state.navigation?.termId === termId && state.navigation.part === "bindings" && navigationSelectedStyle};
             `}
@@ -400,7 +414,7 @@ export function reactPrinterFactory<Source>({
     bindingAssignment(bindingIndex) {
       return {
         content: (
-          <span>
+          <span className={navigationClassNames}>
             {print.bindingAssignment(bindingIndex)}
             <Options navigation={{ termId, part: "binding", bindingIndex, subPart: "value" }} {...baseProps} />
           </span>
@@ -412,7 +426,7 @@ export function reactPrinterFactory<Source>({
       const showBindingSeparator =
         bindingIndex < termBindings.length - 1 || (state.navigation?.part === "bindings" && termId === state.navigation.termId);
       return {
-        content: showBindingSeparator && <span>{print.bindingSeparator(bindingIndex)}</span>,
+        content: showBindingSeparator && <span className={navigationClassNames}>{print.bindingSeparator(bindingIndex)}</span>,
         width: showBindingSeparator ? print.bindingSeparator(bindingIndex).length : 0,
       };
     },
@@ -421,6 +435,7 @@ export function reactPrinterFactory<Source>({
         content: showBindings && (
           <span
             onClick={onClickSelectBindings}
+            className={navigationClassNames}
             css={css`
               ${state.navigation?.termId === termId && state.navigation.part === "bindings" && navigationSelectedStyle};
             `}
@@ -434,14 +449,18 @@ export function reactPrinterFactory<Source>({
     },
     termEnd() {
       return {
-        content: <span onClick={onClickSelectTerm}>{print.termEnd()}</span>,
+        content: (
+          <span onClick={onClickSelectTerm} className={navigationClassNames}>
+            {print.termEnd()}
+          </span>
+        ),
         width: print.termEnd().length,
       };
     },
   };
 }
 
-const navigationSelectedStyle = css`
+export const navigationSelectedStyle = css`
   background-color: var(--selection-background-color);
 `;
 

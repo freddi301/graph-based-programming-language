@@ -3,8 +3,8 @@ import { css } from "styled-components/macro";
 import { SourceFormatting, SourceInsert, SourceStore } from "../Source";
 import { format } from "./Formatting";
 import { keyboardAction } from "./keyboardAction";
-import { Options, reactBuilderFactory, reactPrinterFactory } from "./Rendering";
-import { getOptions, State } from "./State";
+import { navigationSelectedStyle, Options, reactBuilderFactory, reactPrinterFactory } from "./Rendering";
+import { getOptions, Navigation, State } from "./State";
 
 export function Editor<Source>({
   state,
@@ -90,6 +90,9 @@ export function Editor<Source>({
             }
           }
         `}
+        .${navigationToCssClass(state.navigation)} {
+          ${navigationSelectedStyle}
+        }
       `}
       onKeyDown={(event) => onKeyDownWithState(state, event)}
     >
@@ -132,7 +135,7 @@ export function Editor<Source>({
                   store,
                   formatting,
                   builderFactory: reactBuilderFactory,
-                  printerFactory({ navigation, termId, source, store, formatting }) {
+                  printerFactory({ navigation, termId, source, store, formatting, navigationPaths }) {
                     return reactPrinterFactory({
                       navigation,
                       termId,
@@ -145,6 +148,7 @@ export function Editor<Source>({
                       formatting,
                       onKeyDownWithState,
                       options,
+                      navigationPaths,
                     });
                   },
                 }).result().content
@@ -169,41 +173,25 @@ export function Editor<Source>({
   );
 }
 
-// css={css`
-//   ${state.navigation?.termId === termId &&
-//   state.navigation.part === "binding" &&
-//   state.navigation.subPart === "value" &&
-//   index === state.navigation.bindingIndex &&
-//   navigationSelectedStyle};
-// `}
-
-// css={css`
-//   ${state.navigation?.termId === termId &&
-//   state.navigation.part === "binding" &&
-//   state.navigation.subPart === "key" &&
-//   index === state.navigation.bindingIndex &&
-//   navigationSelectedStyle};
-// `}
-
-// css={css`
-//   ${state.navigation?.termId === termId && state.navigation.part === "reference" && navigationSelectedStyle};
-// `}
-
-// css={css`
-//   ${state.navigation?.termId === termId && state.navigation.part === "mode" && navigationSelectedStyle};
-// `}
-
-// css={css`
-//   ${state.navigation?.termId === termId && state.navigation.part === "type" && navigationSelectedStyle};
-// `}
-
-// css={css`
-//   ${state.navigation?.termId === termId &&
-//   state.navigation.part === "parameter" &&
-//   index === state.navigation.parameterIndex &&
-//   navigationSelectedStyle};
-// `}
-
-// css={css`
-//   ${state.navigation?.termId === termId && state.navigation.part === "annotation" && navigationSelectedStyle};
-// `}
+export function navigationToCssClass(navigation: Navigation | null | undefined) {
+  switch (navigation?.part) {
+    case "annotation":
+      return `navigation-${navigation.termId}-annotation`;
+    case "parameter":
+      return `navigation-${navigation.termId}-parameter-${navigation.parameterIndex}`;
+    case "type":
+      return `navigation-${navigation.termId}-type`;
+    case "mode":
+      return `navigation-${navigation.termId}-mode`;
+    case "reference":
+      return `navigation-${navigation.termId}-reference`;
+    case "binding":
+      switch (navigation.subPart) {
+        case "key":
+          return `navigation-${navigation.termId}-binding-${navigation.bindingIndex}-key`;
+        case "value":
+          return `navigation-${navigation.termId}-binding-${navigation.bindingIndex}-value`;
+      }
+  }
+  return "";
+}

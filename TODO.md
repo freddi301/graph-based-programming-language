@@ -2,7 +2,7 @@ Order roots as bottom-up usage
 Remove Term -> delete if no more occurences, and recursively for children
 Normalize values
 Positional arguments
-Binary operator (with relative precedence, left-roght associativity)
+Binary operator (with relative precedence, left-right associativity)
 
 Filesystem api (current directory)
 

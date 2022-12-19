@@ -197,6 +197,7 @@ function GenericApp<Source, CommitId, Repository>({
                               options: [],
                               insert,
                               onSourceChange() {},
+                              navigationPaths: [],
                             }).label().content
                           }
                         </div>
