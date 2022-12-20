@@ -313,12 +313,15 @@ export function keyboardAction<Source>({
 
   // #region Shorcuts
   const references = state.navigation && formatting.getReferences(source, state.navigation.termId);
+  const [newSourceWithTerm, newTermId] = insert.create(source);
+  const newSourceWithLabel = insert.setLabel(newSourceWithTerm, newTermId, state.text ?? "");
+  const newSourceWithLabelAndOrdering = state.navigation
+    ? newSourceWithLabel
+    : store.setOrdering(newSourceWithLabel, [...store.getOrdering(newSourceWithLabel), newTermId]);
 
   if (event.key === "Enter") {
     if (!state.navigation && state.text) {
-      const [newSource, newTermId] = insert.create(source);
-      const newSourceWithLabel = insert.setLabel(newSource, newTermId, state.text);
-      return { source: newSourceWithLabel, state: { navigation: { termId: newTermId, part: "label" } } };
+      return { source: newSourceWithLabelAndOrdering, state: { navigation: { termId: newTermId, part: "label" } } };
     }
     if (state.navigation?.part === "type") {
       const termData = store.get(source, state.navigation.termId);
@@ -350,23 +353,21 @@ export function keyboardAction<Source>({
   if (event.key === "Escape") {
     return { state: {} };
   }
-  const [newSourceWithTerm, newTermId] = insert.create(source);
-  const newSourceWithLabel = insert.setLabel(newSourceWithTerm, newTermId, state.text ?? "");
   if (event.key === ":") {
     if (!state.navigation) {
-      return { source: newSourceWithLabel, state: { navigation: { termId: newTermId, part: "annotation" } } };
+      return { source: newSourceWithLabelAndOrdering, state: { navigation: { termId: newTermId, part: "annotation" } } };
     }
     if (state.navigation.part === "label") {
       return { state: { navigation: { termId: state.navigation.termId, part: "annotation" } } };
     }
     if (state.navigation.part === "parameters") {
-      const newSourceWithPlacement = insert.addParameter(newSourceWithLabel, state.navigation.termId, newTermId);
+      const newSourceWithPlacement = insert.addParameter(newSourceWithLabelAndOrdering, state.navigation.termId, newTermId);
       return { source: newSourceWithPlacement, state: { navigation: { termId: newTermId, part: "annotation" } } };
     }
   }
   if (event.key === "(") {
     if (!state.navigation) {
-      return { source: newSourceWithLabel, state: { navigation: { termId: newTermId, part: "parameters" } } };
+      return { source: newSourceWithLabelAndOrdering, state: { navigation: { termId: newTermId, part: "parameters" } } };
     }
     if (state.navigation.part === "label") {
       return { state: { navigation: { termId: state.navigation.termId, part: "parameters" } } };
@@ -421,14 +422,14 @@ export function keyboardAction<Source>({
   }
   if (event.key === "=") {
     if (!state.navigation) {
-      return { source: newSourceWithLabel, state: { navigation: { termId: newTermId, part: "reference" } } };
+      return { source: newSourceWithLabelAndOrdering, state: { navigation: { termId: newTermId, part: "reference" } } };
     }
     if (state.navigation.part === "label") {
       return { state: { navigation: { termId: state.navigation.termId, part: "reference" } } };
     }
     if (state.navigation.part === "parameters") {
       if (state.text) {
-        const newSourceWithPlacement = insert.addParameter(newSourceWithLabel, state.navigation.termId, newTermId);
+        const newSourceWithPlacement = insert.addParameter(newSourceWithLabelAndOrdering, state.navigation.termId, newTermId);
         return { source: newSourceWithPlacement, state: { navigation: { termId: state.navigation.termId, part: "reference" } } };
       } else {
         return { state: { navigation: { termId: state.navigation.termId, part: "reference" } } };
@@ -449,7 +450,7 @@ export function keyboardAction<Source>({
   }
   if (event.key === ",") {
     if (state.navigation?.part === "parameters") {
-      const newSourceWithPlacement = insert.addParameter(newSourceWithLabel, state.navigation.termId, newTermId);
+      const newSourceWithPlacement = insert.addParameter(newSourceWithLabelAndOrdering, state.navigation.termId, newTermId);
       return { source: newSourceWithPlacement, state: { navigation: { termId: state.navigation.termId, part: "parameters" } } };
     }
     if (state.navigation?.part === "parameter") {

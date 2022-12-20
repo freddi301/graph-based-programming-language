@@ -19,6 +19,8 @@ export type SourceStore<Source> = {
   get(source: Source, termId: TermId): TermData;
   set(source: Source, termId: TermId, termData: TermData): Source;
   rem(source: Source, termId: TermId): Source;
+  getOrdering(source: Source): Array<TermId>;
+  setOrdering(source: Source, ordering: Array<TermId>): Source;
 };
 
 // TODO recursively remove embedded terms
@@ -34,6 +36,7 @@ export type SourceInsert<Source> = {
   setReference(source: Source, termId: TermId, referenceTermId: TermId | null): Source;
   setBinding(source: Source, termId: TermId, keyTermId: TermId, valueTermId: TermId | null): Source;
   removeBinding(source: Source, termId: TermId, keyTermId: TermId): Source;
+  unsetOrdering(source: Source, termId: TermId): Source;
 };
 
 export type SourceFormatting<Source> = {
@@ -42,6 +45,7 @@ export type SourceFormatting<Source> = {
   getReferences(source: Source, termId: TermId): References;
   getTermParameters(source: Source, termId: TermId): Array<TermId>;
   getTermBindings(source: Source, termId: TermId): Array<{ key: TermId; value: TermId | null }>;
+  getOrdering(source: Source, termId: TermId): number | undefined;
 };
 
 type References = {
@@ -179,6 +183,12 @@ export function createSourceInsertFromSourceStoreAndFormatting<Source>(
       }
       return store.set(source, termId, { ...termData, bindings });
     },
+    unsetOrdering(source, termId) {
+      return store.setOrdering(
+        source,
+        store.getOrdering(source).filter((ti) => ti !== termId)
+      );
+    },
   };
 }
 
@@ -188,9 +198,9 @@ export function createJsonValueSerializationFromSourceStore<Source>(
 ): SerializationInterface<Source, JsonValue> {
   return {
     serialize(source) {
-      const result: JsonValue = {};
+      const terms: JsonValue = {};
       for (const [termId, termData] of store.all(source)) {
-        result[termId] = {
+        terms[termId] = {
           label: termData.label,
           annotation: termData.annotation && termData.annotation,
           parameters: Object.fromEntries([...termData.parameters.entries()].map(([k]) => [k, null])),
@@ -200,11 +210,18 @@ export function createJsonValueSerializationFromSourceStore<Source>(
           bindings: Object.fromEntries([...termData.bindings.entries()].map(([k, v]) => [k, v])),
         };
       }
-      return result;
+      const ordering = store.getOrdering(source);
+      return { terms, ordering };
     },
     deserialize(jsonValue) {
       if (!guard.isObject(jsonValue)) throw new Error();
-      return Object.entries(jsonValue).reduce((source, [termId, termDataJsonValue]) => {
+      if (!("ordering" in jsonValue && guard.isArray(jsonValue.ordering))) throw new Error();
+      const ordering = jsonValue.ordering.map((termId) => {
+        if (!TermId.isValid(termId)) throw new Error();
+        return termId;
+      });
+      if (!("terms" in jsonValue && guard.isObject(jsonValue.terms))) throw new Error();
+      const source = Object.entries(jsonValue.terms).reduce((source, [termId, termDataJsonValue]) => {
         if (!TermId.isValid(termId)) throw new Error();
         if (!guard.isObject(termDataJsonValue)) throw new Error();
         if (!("label" in termDataJsonValue && guard.isString(termDataJsonValue.label))) throw new Error();
@@ -238,36 +255,49 @@ export function createJsonValueSerializationFromSourceStore<Source>(
         };
         return store.set(source, termId, termData);
       }, sourceHasEmptyIntance.empty());
+      return store.setOrdering(source, ordering);
     },
   };
 }
 
-export function createJsMapSourceStore(): SourceStore<Map<TermId, TermData>> {
+export type JsMapSource = { terms: Map<TermId, TermData>; ordering: Array<TermId> };
+
+export function createJsMapSourceStore(): SourceStore<JsMapSource> {
   return {
     *all(source) {
-      for (const [key, value] of source) {
+      for (const [key, value] of source.terms) {
         yield [key, value] as [TermId, TermData];
       }
     },
     get(source, termId) {
-      return source.get(termId) ?? createEmptyTermData();
+      return source.terms.get(termId) ?? createEmptyTermData();
     },
     set(source, termId, termData) {
-      const newMap = new Map(source);
-      newMap.set(termId, termData);
-      return newMap;
+      const terms = new Map(source.terms);
+      terms.set(termId, termData);
+      return { terms, ordering: source.ordering };
     },
     rem(source, termId) {
-      const newMap = new Map(source);
-      newMap.delete(termId);
-      return newMap;
+      const terms = new Map(source.terms);
+      terms.delete(termId);
+      const ordering = source.ordering.filter((ti) => ti !== termId);
+      return { terms, ordering };
+    },
+    getOrdering(source) {
+      return source.ordering;
+    },
+    setOrdering(source, ordering) {
+      return { terms: source.terms, ordering };
     },
   };
 }
-export function createJsMapHasEmptyInstance<K, V>(): HasEmptyIntance<Map<K, V>> {
+export function createJsMapSourceHasEmptyInstance(): HasEmptyIntance<JsMapSource> {
   return {
     empty() {
-      return new Map();
+      return {
+        terms: new Map(),
+        ordering: [],
+      };
     },
   };
 }
@@ -318,6 +348,41 @@ export function createSourceFormmattingFromSourceStore<Source>(store: SourceStor
     }
     return referencesById;
   }
+  function getTopDown(source: Source): Array<TermId> {
+    const remaining = new Set<TermId>();
+    const except = new Set<TermId>();
+    const orderedRoots: Array<TermId> = [];
+    for (const [termId] of store.all(source)) {
+      if (implementation.isRoot(source, termId)) {
+        remaining.add(termId);
+      } else {
+        except.add(termId);
+      }
+    }
+    while (true) {
+      const startRemainingSize = remaining.size;
+      const references = getReferences(source, new Set(except));
+      for (const termId of Array.from(remaining)) {
+        if (references.get(termId)!.all.size === 0) {
+          orderedRoots.push(termId);
+          remaining.delete(termId);
+          except.add(termId);
+        }
+      }
+      const endReminingSize = remaining.size;
+      if (startRemainingSize === endReminingSize) break;
+    }
+    for (const termId of remaining) {
+      orderedRoots.unshift(termId);
+    }
+    orderedRoots.reverse();
+    orderedRoots.sort((a, b) => {
+      const aOrdering = implementation.getOrdering(source, a) ?? -1;
+      const bOrdering = implementation.getOrdering(source, b) ?? -1;
+      return aOrdering - bOrdering;
+    });
+    return orderedRoots;
+  }
   const implementation: SourceFormatting<Source> = {
     isRoot(source, termId) {
       const termData = store.get(source, termId);
@@ -343,33 +408,7 @@ export function createSourceFormmattingFromSourceStore<Source>(store: SourceStor
       return true;
     },
     getRoots(source) {
-      const remainingRoots = new Set<TermId>();
-      const except = new Set<TermId>();
-      const orderedRoots: Array<TermId> = [];
-      for (const [termId] of store.all(source)) {
-        if (this.isRoot(source, termId)) {
-          remainingRoots.add(termId);
-        } else {
-          except.add(termId);
-        }
-      }
-      while (true) {
-        const startRemainingSize = remainingRoots.size;
-        const references = getReferences(source, new Set(except));
-        for (const termId of Array.from(remainingRoots)) {
-          if (references.get(termId)!.all.size === 0) {
-            orderedRoots.push(termId);
-            remainingRoots.delete(termId);
-            except.add(termId);
-          }
-        }
-        const endReminingSize = remainingRoots.size;
-        if (startRemainingSize === endReminingSize) break;
-      }
-      for (const termId of remainingRoots) {
-        orderedRoots.unshift(termId);
-      }
-      return orderedRoots.reverse();
+      return getTopDown(source).filter((termId) => this.isRoot(source, termId));
     },
     getReferences(source, termId) {
       return getReferences(source, new Set()).get(termId) ?? createEmptyReferences();
@@ -381,6 +420,10 @@ export function createSourceFormmattingFromSourceStore<Source>(store: SourceStor
     getTermBindings(source, termId) {
       // TODO order by (decide what)
       return Array.from(store.get(source, termId).bindings.entries()).map(([key, value]) => ({ key, value }));
+    },
+    getOrdering(source, termId) {
+      const index = store.getOrdering(source).indexOf(termId);
+      if (index >= 0) return index;
     },
   };
   return implementation;

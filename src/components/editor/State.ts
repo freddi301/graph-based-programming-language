@@ -68,13 +68,7 @@ export const navigationEquals = (a: Navigation, b: Navigation) => {
 // - most recently used terms
 export function getOptions<Source>({ state, source, store }: { state: State; source: Source; store: SourceStore<Source> }) {
   return Array.from(store.all(source))
-    .filter(([termId, termData]) => {
-      const isSearching = Boolean(state.text);
-      const matchesTermId = termId.includes(state.text?.toLowerCase() ?? "");
-      const matchesTermLabel = termData.label.toLowerCase().includes(state.text?.toLowerCase() ?? "");
-      if (isSearching && !(matchesTermId || matchesTermLabel)) return false;
-      return true;
-    })
+    .filter(([termId, termData]) => (state.text?.trim() ? termData.label.includes(state.text) : true))
     .sort(([x, a], [y, b]) => a.label.localeCompare(b.label))
     .map(([termId]) => termId);
 }

@@ -4,7 +4,7 @@ import { library } from "@fortawesome/fontawesome-svg-core";
 import { fas } from "@fortawesome/free-solid-svg-icons";
 import { AppLayout } from "./components/AppLayout";
 import {
-  createJsMapHasEmptyInstance,
+  createJsMapSourceHasEmptyInstance,
   createJsMapSourceStore,
   createJsonValueSerializationFromSourceStore,
   createSourceInsertFromSourceStoreAndFormatting,
@@ -12,8 +12,8 @@ import {
   SourceInsert,
   SourceFormatting,
   SourceStore,
-  TermData,
   TermId,
+  JsMapSource,
 } from "./components/Source";
 import { HasEmptyIntance, JsonValue, SerializationInterface } from "./components/utils";
 import { HistoryGraph, useHistory } from "./components/version-control/HistoryGraph";
@@ -34,7 +34,7 @@ import { LeftBar } from "./components/LeftBar";
 import { State } from "./components/editor/State";
 import { Editor } from "./components/editor/Editor";
 import { reactPrinterFactory } from "./components/editor/Rendering";
-import { KeyboardHelp } from "./components/editor/KeyboardHelp";
+import { Help } from "./components/editor/Help";
 
 library.add(fas);
 
@@ -114,6 +114,7 @@ function GenericApp<Source, CommitId, Repository>({
                           onClick={() => {
                             const input = document.createElement("input");
                             input.type = "file";
+                            input.accept = ".json";
                             input.onchange = () => {
                               const file = input.files?.[0];
                               if (file) {
@@ -236,7 +237,7 @@ function GenericApp<Source, CommitId, Repository>({
           />
         }
         bottom={null}
-        right={<KeyboardHelp />}
+        right={<Help />}
       />
     </React.Fragment>
   );
@@ -245,12 +246,12 @@ function GenericApp<Source, CommitId, Repository>({
 /** choose implementations */
 export default function App() {
   type CommitId = HexSHA256;
-  type Source = Map<string, TermData>;
+  type Source = JsMapSource;
   type Info = null;
   const store = createJsMapSourceStore();
   const formatting = createSourceFormmattingFromSourceStore(store);
   const insert = createSourceInsertFromSourceStoreAndFormatting(store, formatting);
-  const sourceHasEmptyInstance = createJsMapHasEmptyInstance<TermId, TermData>();
+  const sourceHasEmptyInstance = createJsMapSourceHasEmptyInstance();
   const sourceJsonValueSerialization = createJsonValueSerializationFromSourceStore(store, sourceHasEmptyInstance);
   const commitIdStringSerialization = hexSHA256StringSerialization;
   const infoJsonValueSerialization: SerializationInterface<Info, JsonValue> = {

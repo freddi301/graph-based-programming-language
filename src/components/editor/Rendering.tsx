@@ -225,7 +225,23 @@ export function reactPrinterFactory<Source>({
   return {
     indentation(level) {
       return {
-        content: <span className={navigationClassNames}>{print.indentation(level)}</span>,
+        content: (
+          <React.Fragment>
+            {new Array(Number.isFinite(level) ? level : 0).fill(null).map((_, level) => {
+              return (
+                <span
+                  key={level}
+                  className={navigationClassNames}
+                  css={css`
+                    box-shadow: inset 1px 0px 0px 0px var(--indent-guide-color);
+                  `}
+                >
+                  {print.indentation(1)}
+                </span>
+              );
+            })}
+          </React.Fragment>
+        ),
         width: print.indentation(level).length,
       };
     },
@@ -520,7 +536,9 @@ function LabelInput<Source>({
         font-size: inherit;
         padding: 0;
         width: ${labelText.length ? `${labelText.length}ch` : `1px`};
+        margin-left: ${labelText.length ? `0px` : `-1px`};
         color: inherit;
+        height: var(--code-line-height);
       `}
       onBlur={() => {
         updateLabel();
@@ -609,6 +627,7 @@ export function Options<Source>({
                     background-color: var(--hover-background-color);
                     user-select: none;
                   }
+                  padding: 0px 0.5ch;
                 `}
               >
                 {termData.label || (
@@ -641,6 +660,8 @@ export function Options<Source>({
             padding: 0;
             color: var(--text-color);
             width: ${state.text?.length ? `${state.text.length}ch` : `1px`};
+            margin-left: ${state.text?.length ? `0px` : `-1px`};
+            height: var(--code-line-height);
           `}
         />
       )}

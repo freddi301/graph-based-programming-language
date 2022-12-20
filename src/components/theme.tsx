@@ -18,6 +18,8 @@ const darkTheme = css`
     --text-color-constructor: #d19a66;
     --text-color-comment: #7f848e;
     --text-color-keyword: #c678dd;
+    --indent-guide-color: #3b4048;
+    --code-line-height: 1.2em;
   }
 `;
 

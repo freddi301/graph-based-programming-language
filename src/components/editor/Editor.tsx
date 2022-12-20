@@ -79,6 +79,8 @@ export function Editor<Source>({
   const options = getOptions<Source>({ store, source, state });
   const evaluated = evaluate({ source, store, formatting });
   const [running, setRunning] = React.useState<Record<TermId, boolean>>({});
+  const orderingWidth = store.getOrdering(source).length.toString().length;
+  const [collapsed, setCollapsed] = React.useState<Record<TermId, boolean>>({});
   return (
     <div
       ref={containerRef}
@@ -124,33 +126,134 @@ export function Editor<Source>({
         {formatting.getRoots(source).map((termId) => {
           const evaluatedTermId = evaluated.results.get(termId);
           const isRunning = running[termId];
+          const isCollapsed = collapsed[termId];
+          const ordering = formatting.getOrdering(source, termId);
+          const displayOrdering = ordering !== undefined ? ordering + 1 : undefined;
           return (
             <div
               key={termId}
               css={css`
                 display: grid;
-                grid-template-columns: 3ch 1fr;
+                grid-template-columns: 2ch ${orderingWidth + 1}ch 3ch 1fr;
                 grid-template-rows: max-content max-content;
-                grid-template-areas: "control source" "result result";
+                grid-template-areas: "control ordering collapse source" "control ordering collapse result";
+                :hover {
+                  .highlight {
+                    background-color: var(--hover-background-color);
+                  }
+                }
+                :hover {
+                  .action {
+                    opacity: 1;
+                  }
+                }
+                .action {
+                  cursor: pointer;
+                }
               `}
             >
               <div
+                className="highlight"
                 css={css`
                   grid-area: control;
-                  padding: 0px 1ch;
+                  padding-left: 1ch;
+                  .action {
+                    opacity: ${isRunning ? 1 : 0};
+                    transition: 0.2s;
+                  }
                 `}
               >
                 {isRunning ? (
-                  <FontAwesomeIcon icon="pause" onClick={() => setRunning({ ...running, [termId]: false })} />
+                  <FontAwesomeIcon
+                    className="action"
+                    icon="pause"
+                    onClick={() => setRunning({ ...running, [termId]: false })}
+                    style={{ width: "1ch" }}
+                  />
                 ) : (
-                  <FontAwesomeIcon icon="play" onClick={() => setRunning({ ...running, [termId]: true })} />
+                  <FontAwesomeIcon
+                    className="action"
+                    icon="play"
+                    onClick={() => setRunning({ ...running, [termId]: true })}
+                    style={{ width: "1ch" }}
+                  />
+                )}
+              </div>
+              <div
+                className="highlight"
+                css={css`
+                  grid-area: ordering;
+                  text-align: right;
+                  color: var(--text-color-comment);
+                  user-select: none;
+                  padding-left: 1ch;
+                `}
+                onClick={() => {
+                  if (ordering !== undefined) {
+                    onSourceChange(insert.unsetOrdering(source, termId));
+                  } else {
+                    onSourceChange(store.setOrdering(source, [...store.getOrdering(source), termId]));
+                  }
+                }}
+                draggable={true}
+                onDragStart={(event) => {
+                  event.dataTransfer.effectAllowed = "move";
+                  event.dataTransfer.setData("text/plain", termId);
+                }}
+                onDragOver={(event) => {
+                  if (ordering !== undefined) {
+                    event.preventDefault();
+                  }
+                }}
+                onDrop={(event) => {
+                  if (ordering !== undefined) {
+                    const arrivingTermId = event.dataTransfer.getData("text/plain") as TermId;
+                    const arrivingOrdering = formatting.getOrdering(source, arrivingTermId);
+                    if (arrivingOrdering !== undefined) {
+                      onSourceChange(store.setOrdering(source, moveItem(arrivingOrdering, ordering, store.getOrdering(source))));
+                    } else {
+                      onSourceChange(store.setOrdering(source, moveItem(0, ordering + 1, [arrivingTermId, ...store.getOrdering(source)])));
+                    }
+                  }
+                }}
+              >
+                {displayOrdering}
+              </div>
+              <div
+                className="highlight"
+                css={css`
+                  grid-area: collapse;
+                  .action {
+                    opacity: ${isCollapsed ? 1 : 0};
+                    transition: 0.2s;
+                  }
+                  padding-left: 1ch;
+                  padding-right: 1ch;
+                `}
+              >
+                {isCollapsed ? (
+                  <FontAwesomeIcon
+                    className="action"
+                    icon="chevron-right"
+                    onClick={() => setCollapsed({ ...collapsed, [termId]: false })}
+                    style={{ width: "1ch" }}
+                  />
+                ) : (
+                  <FontAwesomeIcon
+                    className="action"
+                    icon="chevron-down"
+                    onClick={() => setCollapsed({ ...collapsed, [termId]: true })}
+                    style={{ width: "1ch" }}
+                  />
                 )}
               </div>
               <div
                 css={css`
                   grid-area: source;
                   white-space: pre;
-                  padding: 0px 0px;
+                  line-height: var(--code-line-height);
+                  height: ${isCollapsed ? "var(--code-line-height)" : ""};
+                  overflow: ${isCollapsed ? "hidden" : ""};
                 `}
                 onClick={(event) => {
                   if (event.target === event.currentTarget) {
@@ -185,14 +288,12 @@ export function Editor<Source>({
                   }).result().content
                 }
               </div>
-              {evaluatedTermId && running[termId] && (
+              {evaluatedTermId && isRunning && !isCollapsed && (
                 <div
                   css={css`
                     grid-area: result;
+                    white-space: pre;
                     border: 2px dashed var(--border-color-secondary);
-                    padding-left: 2ch;
-                    margin-bottom: 1ch;
-                    margin-left: 1ch;
                   `}
                 >
                   {
@@ -228,7 +329,7 @@ export function Editor<Source>({
         })}
         <div
           css={css`
-            padding: 0px 1ch;
+            padding: 0px 1ch 0px ${6 + orderingWidth}ch;
           `}
         >
           <Options
@@ -268,4 +369,14 @@ export function navigationToCssClass(navigation: Navigation | null | undefined) 
       }
   }
   return "";
+}
+
+function moveItem<T>(fromIndex: number, toIndex: number, array: Array<T>): Array<T> {
+  if (fromIndex < toIndex) {
+    return [...array.slice(0, fromIndex), ...array.slice(fromIndex + 1, toIndex + 1), array[fromIndex], ...array.slice(toIndex + 1)];
+  }
+  if (fromIndex > toIndex) {
+    return [...array.slice(0, toIndex), array[fromIndex], ...array.slice(toIndex, fromIndex), ...array.slice(fromIndex + 1)];
+  }
+  return array;
 }

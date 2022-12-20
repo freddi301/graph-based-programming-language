@@ -1,9 +1,8 @@
 Show start end of terms (especially for embedded empty)
-Normalize values
 Results not editable
+Normalize values
 Positional arguments
 Binary operator (with relative precedence, left-right associativity)
-Prevent code jump cased by reordering and results
 
 Filesystem api (current directory)
 
