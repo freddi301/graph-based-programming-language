@@ -23,10 +23,9 @@ export type SourceStore<Source> = {
   setOrdering(source: Source, ordering: Array<TermId>): Source;
 };
 
-// TODO recursively remove embedded terms
 export type SourceInsert<Source> = {
   create(source: Source): [Source, TermId];
-  remove(source: Source, termId: TermId): Source;
+  delete(source: Source, termId: TermId): Source;
   setLabel(source: Source, termId: TermId, label: string): Source;
   setAnnotation(source: Source, termId: TermId, annotationTermId: TermId | null): Source;
   addParameter(source: Source, termId: TermId, parameterTermId: TermId): Source;
@@ -86,10 +85,37 @@ export function createSourceInsertFromSourceStoreAndFormatting<Source>(
   store: SourceStore<Source>,
   formatting: SourceFormatting<Source>
 ): SourceInsert<Source> {
+  function deleteEverywhere(source: Source, termId: TermId) {
+    const refs = formatting.getReferences(source, termId).all;
+    refs.delete(termId);
+    for (const otherTermId of refs) {
+      const otherTermData = store.get(source, otherTermId);
+      const annotation = otherTermData.annotation === termId ? null : otherTermData.annotation;
+      const parameters = new Map(otherTermData.parameters);
+      parameters.delete(termId);
+      const reference = otherTermData.reference === termId ? null : otherTermData.reference;
+      const bindings = new Map(otherTermData.bindings);
+      for (const bindingKey of bindings.keys()) {
+        if (bindings.get(bindingKey) === termId) {
+          bindings.set(bindingKey, null);
+        }
+      }
+      bindings.delete(termId);
+      source = store.set(source, otherTermId, {
+        ...otherTermData,
+        annotation,
+        parameters,
+        reference,
+        bindings,
+      });
+    }
+    return source;
+  }
   function unset(source: Source, termId: TermId) {
     const termData = store.get(source, termId);
     const references = formatting.getReferences(source, termId);
-    if (references.all.size <= 1) {
+    references.all.delete(termId);
+    if (references.all.size === 0) {
       source = store.rem(source, termId);
       if (termData.annotation) {
         source = unset(source, termData.annotation);
@@ -114,18 +140,9 @@ export function createSourceInsertFromSourceStoreAndFormatting<Source>(
       const newTermId = TermId.create();
       return [store.set(source, newTermId, createEmptyTermData()), newTermId] as [Source, TermId];
     },
-    remove(source, termId) {
-      // TODO fix, use unset too
-      source = store.rem(source, termId);
-      for (const [id, termData] of store.all(source)) {
-        if (termData.annotation === termId) source = this.setAnnotation(source, id, null);
-        if (termData.parameters.has(termId)) source = this.removeParameter(source, id, termId);
-        if (termData.reference === termId) source = this.setReference(source, id, null);
-        if (termData.bindings.has(termId)) source = this.removeBinding(source, id, termId);
-        for (const [bindingKey, bindingValue] of termData.bindings.entries()) {
-          if (bindingValue === termId) source = this.setBinding(source, id, bindingKey, null);
-        }
-      }
+    delete(source, termId) {
+      source = deleteEverywhere(source, termId);
+      source = unset(source, termId);
       return source;
     },
     setLabel(source, termId, label) {
@@ -133,10 +150,11 @@ export function createSourceInsertFromSourceStoreAndFormatting<Source>(
     },
     setAnnotation(source, termId, annotationTermId) {
       const termData = store.get(source, termId);
+      source = store.set(source, termId, { ...termData, annotation: annotationTermId });
       if (termData.annotation) {
         source = unset(source, termData.annotation);
       }
-      return store.set(source, termId, { ...termData, annotation: annotationTermId });
+      return source;
     },
     addParameter(source, termId, parameterTermId) {
       const termData = store.get(source, termId);
@@ -148,8 +166,9 @@ export function createSourceInsertFromSourceStoreAndFormatting<Source>(
       const termData = store.get(source, termId);
       const parameters = new Map(termData.parameters);
       parameters.delete(parameterTermId);
+      source = store.set(source, termId, { ...termData, parameters });
       source = unset(source, parameterTermId);
-      return store.set(source, termId, { ...termData, parameters });
+      return source;
     },
     setType(source, termId, type) {
       return store.set(source, termId, { ...store.get(source, termId), type });
@@ -159,29 +178,32 @@ export function createSourceInsertFromSourceStoreAndFormatting<Source>(
     },
     setReference(source, termId, referenceTermId) {
       const termData = store.get(source, termId);
+      source = store.set(source, termId, { ...termData, reference: referenceTermId });
       if (termData.reference) {
         source = unset(source, termData.reference);
       }
-      return store.set(source, termId, { ...termData, reference: referenceTermId });
+      return source;
     },
     setBinding(source, termId, keyTermId, valueTermId) {
       const termData = store.get(source, termId);
       const bindings = new Map(termData.bindings);
       bindings.set(keyTermId, valueTermId);
+      source = store.set(source, termId, { ...termData, bindings });
       if (termData.bindings.get(keyTermId)) {
         source = unset(source, termData.bindings.get(keyTermId)!);
       }
-      return store.set(source, termId, { ...termData, bindings });
+      return source;
     },
     removeBinding(source, termId, keyTermId) {
       const termData = store.get(source, termId);
       const bindings = new Map(termData.bindings);
       bindings.delete(keyTermId);
+      source = store.set(source, termId, { ...termData, bindings });
       source = unset(source, keyTermId);
       if (termData.bindings.get(keyTermId)) {
         source = unset(source, termData.bindings.get(keyTermId)!);
       }
-      return store.set(source, termId, { ...termData, bindings });
+      return source;
     },
     unsetOrdering(source, termId) {
       return store.setOrdering(
@@ -351,7 +373,7 @@ export function createSourceFormmattingFromSourceStore<Source>(store: SourceStor
   function getTopDown(source: Source): Array<TermId> {
     const remaining = new Set<TermId>();
     const except = new Set<TermId>();
-    const orderedRoots: Array<TermId> = [];
+    const ordered: Array<TermId> = [];
     for (const [termId] of store.all(source)) {
       if (implementation.isRoot(source, termId)) {
         remaining.add(termId);
@@ -364,7 +386,7 @@ export function createSourceFormmattingFromSourceStore<Source>(store: SourceStor
       const references = getReferences(source, new Set(except));
       for (const termId of Array.from(remaining)) {
         if (references.get(termId)!.all.size === 0) {
-          orderedRoots.push(termId);
+          ordered.push(termId);
           remaining.delete(termId);
           except.add(termId);
         }
@@ -373,15 +395,15 @@ export function createSourceFormmattingFromSourceStore<Source>(store: SourceStor
       if (startRemainingSize === endReminingSize) break;
     }
     for (const termId of remaining) {
-      orderedRoots.unshift(termId);
+      ordered.unshift(termId);
     }
-    orderedRoots.reverse();
-    orderedRoots.sort((a, b) => {
+    ordered.reverse();
+    ordered.sort((a, b) => {
       const aOrdering = implementation.getOrdering(source, a) ?? -1;
       const bOrdering = implementation.getOrdering(source, b) ?? -1;
       return aOrdering - bOrdering;
     });
-    return orderedRoots;
+    return ordered;
   }
   const implementation: SourceFormatting<Source> = {
     isRoot(source, termId) {

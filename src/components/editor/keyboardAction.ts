@@ -489,7 +489,7 @@ export function keyboardAction<Source>({
   if (event.key === "Backspace" && !state.text && state.navigation && termParameters && termBindings) {
     if (state.navigation.part === "label") {
       return {
-        source: insert.remove(source, state.navigation.termId),
+        source: insert.delete(source, state.navigation.termId),
         state: rootIndex >= 0 ? {} : { navigation: state.navigation },
       };
     }

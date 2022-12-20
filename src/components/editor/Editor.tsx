@@ -77,7 +77,9 @@ export function Editor<Source>({
   };
   // #endregion
   const options = getOptions<Source>({ store, source, state });
-  const evaluated = evaluate({ source, store, formatting });
+  const evaluated = React.useMemo(() => {
+    return evaluate({ source, store, formatting });
+  }, [source, formatting, store]);
   const [running, setRunning] = React.useState<Record<TermId, boolean>>({});
   const orderingWidth = store.getOrdering(source).length.toString().length;
   const [collapsed, setCollapsed] = React.useState<Record<TermId, boolean>>({});
