@@ -23,15 +23,16 @@ export function AppLayout({
         grid-template-areas:
           "top top top"
           "left center right"
-          "left bottom right";
-        grid-template-columns: 340px 1fr 400px;
-        grid-template-rows: 20px 1fr 1fr;
+          "bottom bottom bottom";
+        grid-template-columns: 350px 1fr 350px;
+        grid-template-rows: 20px 1fr 20px;
       `}
     >
       <div
         css={css`
           grid-area: top;
           background-color: var(--background-color-secondary);
+          border-bottom: 1px solid var(--border-color-secondary);
         `}
       >
         {top}
@@ -48,19 +49,9 @@ export function AppLayout({
         css={css`
           grid-area: center;
           background-color: var(--background-color);
-          border-top: 1px solid var(--border-color-secondary);
         `}
       >
         {center}
-      </div>
-      <div
-        css={css`
-          grid-area: bottom;
-          background-color: var(--background-color);
-          border-top: 1px solid var(--border-color-secondary);
-        `}
-      >
-        {bottom}
       </div>
       <div
         css={css`
@@ -69,6 +60,15 @@ export function AppLayout({
         `}
       >
         {right}
+      </div>
+      <div
+        css={css`
+          grid-area: bottom;
+          background-color: var(--background-color-secondary);
+          border-top: 1px solid var(--border-color-secondary);
+        `}
+      >
+        {bottom}
       </div>
     </div>
   );

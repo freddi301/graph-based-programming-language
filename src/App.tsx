@@ -7,7 +7,7 @@ import {
   createJsMapHasEmptyInstance,
   createJsMapSourceStore,
   createJsonValueSerializationFromSourceStore,
-  createSourceInsertFromSourceStore,
+  createSourceInsertFromSourceStoreAndFormatting,
   createSourceFormmattingFromSourceStore,
   SourceInsert,
   SourceFormatting,
@@ -34,6 +34,7 @@ import { LeftBar } from "./components/LeftBar";
 import { State } from "./components/editor/State";
 import { Editor } from "./components/editor/Editor";
 import { reactPrinterFactory } from "./components/editor/Rendering";
+import { KeyboardHelp } from "./components/editor/KeyboardHelp";
 
 library.add(fas);
 
@@ -235,34 +236,7 @@ function GenericApp<Source, CommitId, Repository>({
           />
         }
         bottom={null}
-        right={
-          <div
-            css={css`
-              padding: 0px 2ch;
-            `}
-          >
-            Navigate with arrows
-            <br />
-            Esc to escape any action
-            <br />
-            Enter to select options
-            <br />
-            Ctrl + click to go to definition
-            <br />
-            Tab next option
-            <br />
-            Shift + Tab previous option
-            <br />
-            : to set annotation
-            <br />
-            ( to declare or set parameters
-            <br />= to asign
-            <br />) to close current parentheses
-            <br /> Ctrl + z to undo
-            <br /> Ctrl + Shift + z to redo
-            {/* <pre>{JSON.stringify(state, null, 2)}</pre> */}
-          </div>
-        }
+        right={<KeyboardHelp />}
       />
     </React.Fragment>
   );
@@ -274,8 +248,8 @@ export default function App() {
   type Source = Map<string, TermData>;
   type Info = null;
   const store = createJsMapSourceStore();
-  const insert = createSourceInsertFromSourceStore(store);
   const formatting = createSourceFormmattingFromSourceStore(store);
+  const insert = createSourceInsertFromSourceStoreAndFormatting(store, formatting);
   const sourceHasEmptyInstance = createJsMapHasEmptyInstance<TermId, TermData>();
   const sourceJsonValueSerialization = createJsonValueSerializationFromSourceStore(store, sourceHasEmptyInstance);
   const commitIdStringSerialization = hexSHA256StringSerialization;

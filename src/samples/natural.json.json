@@ -1,0 +1,56 @@
+{
+  "22073d6e10bb0d3f8073861675d07d497731db2fd5b9247489541d4a874f9291": {
+    "label": "Natural",
+    "annotation": "68c0299a89a6f4294119a86420d29b7dfc74369c3288a412002342d8768e643e",
+    "parameters": {},
+    "type": "lambda",
+    "mode": "call",
+    "reference": null,
+    "bindings": {}
+  },
+  "68c0299a89a6f4294119a86420d29b7dfc74369c3288a412002342d8768e643e": {
+    "label": "Type",
+    "annotation": null,
+    "parameters": {},
+    "type": "lambda",
+    "mode": "call",
+    "reference": null,
+    "bindings": {}
+  },
+  "bd4ef4434d139efe28b7a3d5f56d32d4b56397154cbccea0f6e25cb703dd73fb": {
+    "label": "Zero",
+    "annotation": "22073d6e10bb0d3f8073861675d07d497731db2fd5b9247489541d4a874f9291",
+    "parameters": {},
+    "type": "lambda",
+    "mode": "call",
+    "reference": null,
+    "bindings": {}
+  },
+  "4d1eb2b0dc972db3437b003419efc3420e81f6049760dcbe6ad18a616716318d": {
+    "label": "Successive",
+    "annotation": "f1acc5b076f182b8c2ccdc9ad006d1f509c710b9dba8008db3a08660a0704864",
+    "parameters": {},
+    "type": "lambda",
+    "mode": "call",
+    "reference": null,
+    "bindings": {}
+  },
+  "f1acc5b076f182b8c2ccdc9ad006d1f509c710b9dba8008db3a08660a0704864": {
+    "label": "",
+    "annotation": null,
+    "parameters": { "66e05a8ec33b94e5cc50efc79b46253b759cd9a6ae3282a1c8ff2c451cebfaef": null },
+    "type": "pi",
+    "mode": "call",
+    "reference": "22073d6e10bb0d3f8073861675d07d497731db2fd5b9247489541d4a874f9291",
+    "bindings": {}
+  },
+  "66e05a8ec33b94e5cc50efc79b46253b759cd9a6ae3282a1c8ff2c451cebfaef": {
+    "label": "predecessor",
+    "annotation": "22073d6e10bb0d3f8073861675d07d497731db2fd5b9247489541d4a874f9291",
+    "parameters": {},
+    "type": "lambda",
+    "mode": "call",
+    "reference": null,
+    "bindings": {}
+  }
+}

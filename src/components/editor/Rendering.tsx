@@ -204,15 +204,21 @@ export function reactPrinterFactory<Source>({
   const baseProps = { options, state, onStateChange, source, store, formatting, onKeyDownWithState };
   const showAnnotationStart = termData.annotation || (state.navigation?.part === "annotation" && termId === state.navigation.termId);
   const showRightHandStart =
-    termData.label &&
-    (termParameters.length > 0 ||
-      termData.reference ||
-      termBindings.length > 0 ||
-      (state.navigation?.part === "parameters" && termId === state.navigation.termId) ||
-      (state.navigation?.part === "reference" && termId === state.navigation.termId) ||
-      (state.navigation?.part === "bindings" && termId === state.navigation.termId));
+    (termData.parameters.size > 0 && termData.label) ||
+    (termData.reference && termData.label) ||
+    (termData.bindings.size > 0 && termData.label) ||
+    (state.navigation?.part === "parameters" && termId === state.navigation.termId && termData.label) ||
+    (state.navigation?.part === "reference" && termId === state.navigation.termId && termData.label) ||
+    (state.navigation?.part === "bindings" && termId === state.navigation.termId && termData.label) ||
+    (state.navigation?.part === "annotation" && termId === state.navigation.termId && (termData.reference || termData.bindings.size > 0)) ||
+    (state.navigation?.part === "label" &&
+      termId === state.navigation.termId &&
+      (termData.parameters.size > 0 || termData.reference || termData.bindings.size > 0));
   const showParameters = termData.parameters.size > 0 || (state.navigation?.part === "parameters" && termId === state.navigation.termId);
-  const showTermType = termData.parameters.size > 0 || (state.navigation?.part === "parameters" && termId === state.navigation.termId);
+  const showTermType =
+    termData.parameters.size > 0 ||
+    (state.navigation?.part === "parameters" && termId === state.navigation.termId) ||
+    (state.navigation?.part === "type" && termId === state.navigation.termId);
   const showTermMode = termData.mode === "match" || (state.navigation?.part === "mode" && termId === state.navigation.termId);
   const showBindings = termData.bindings.size > 0 || (state.navigation?.part === "bindings" && termId === state.navigation.termId);
   const navigationClassNames = [...navigationPaths, navigation].map(navigationToCssClass).join(" ");
@@ -531,6 +537,10 @@ function LabelInput<Source>({
         }
         if (event.key === "Backspace" && event.currentTarget.value) {
           event.stopPropagation();
+        }
+        if (event.key === "Enter") {
+          event.stopPropagation();
+          updateLabel();
         }
       }}
     />

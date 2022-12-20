@@ -40,7 +40,7 @@ map = (list, mapper) => list(onNil = nil, onCons = (head, tail) => cons(head = m
 ```
 Natural : Type
 Zero : Natural
-Successive : (previous: Natural) => Natural
+Successive : (previous: Natural) -> Natural
 ```
 
 ## Vector definition
@@ -57,10 +57,6 @@ Cons : (item: Type, head: item, tail: Vector(item = item, length = tailLenght)) 
 FunctorInterface : (functor: (value: Type) -> Type) -> Type
 FunctorImplementation : (map: (fromItem : Type, toItem : Type, mapper: (item: fromItem) -> toItem, fromContainer: functor(item = fromItem)) -> toItem) -> FunctorInterface(functor = functor)
 ```
-
-## Navigation
-
-In every preceeding example, navigate to every part end remove. (with arrows, left right for siblings, up down for deepness)
 
 ## Functor brief definition
 

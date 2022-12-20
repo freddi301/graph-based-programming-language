@@ -109,7 +109,7 @@ export function Editor<Source>({
           min-width: 100%;
           min-height: 100%;
           outline: none;
-          padding-top: calc(${height}px - 2ch);
+          padding-top: 1ch;
           padding-bottom: calc(${height}px - 4ch);
           box-sizing: border-box;
         `}
@@ -131,7 +131,7 @@ export function Editor<Source>({
                 display: grid;
                 grid-template-columns: 3ch 1fr;
                 grid-template-rows: max-content max-content;
-                grid-template-areas: "control source" "white result";
+                grid-template-areas: "control source" "result result";
               `}
             >
               <div
@@ -190,7 +190,9 @@ export function Editor<Source>({
                   css={css`
                     grid-area: result;
                     border: 2px dashed var(--border-color-secondary);
-                    padding: 0px 0px;
+                    padding-left: 2ch;
+                    margin-bottom: 1ch;
+                    margin-left: 1ch;
                   `}
                 >
                   {

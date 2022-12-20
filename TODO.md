@@ -1,4 +1,4 @@
-Remove Term -> delete if no more occurences, and recursively for children
+Show start end of terms (especially for embedded empty)
 Normalize values
 Results not editable
 Positional arguments

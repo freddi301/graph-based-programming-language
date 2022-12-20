@@ -314,36 +314,38 @@ export function keyboardAction<Source>({
   // #region Shorcuts
   const references = state.navigation && formatting.getReferences(source, state.navigation.termId);
 
-  if (!state.navigation && event.key === "Enter" && state.text) {
-    const [newSource, newTermId] = insert.create(source);
-    const newSourceWithLabel = insert.setLabel(newSource, newTermId, state.text);
-    return { source: newSourceWithLabel, state: { navigation: { termId: newTermId, part: "label" } } };
-  }
-  if (state.navigation?.part === "type" && event.key === "Enter") {
-    const termData = store.get(source, state.navigation.termId);
-    const newType = (() => {
-      switch (termData.type) {
-        case "lambda":
-          return "pi";
-        case "pi":
-          return "lambda";
-      }
-    })();
-    const newSource = insert.setType(source, state.navigation.termId, newType);
-    return { source: newSource };
-  }
-  if (state.navigation?.part === "mode" && event.key === "Enter") {
-    const termData = store.get(source, state.navigation.termId);
-    const newMode = (() => {
-      switch (termData.mode) {
-        case "call":
-          return "match";
-        case "match":
-          return "call";
-      }
-    })();
-    const newSource = insert.setMode(source, state.navigation.termId, newMode);
-    return { source: newSource };
+  if (event.key === "Enter") {
+    if (!state.navigation && state.text) {
+      const [newSource, newTermId] = insert.create(source);
+      const newSourceWithLabel = insert.setLabel(newSource, newTermId, state.text);
+      return { source: newSourceWithLabel, state: { navigation: { termId: newTermId, part: "label" } } };
+    }
+    if (state.navigation?.part === "type") {
+      const termData = store.get(source, state.navigation.termId);
+      const newType = (() => {
+        switch (termData.type) {
+          case "lambda":
+            return "pi";
+          case "pi":
+            return "lambda";
+        }
+      })();
+      const newSource = insert.setType(source, state.navigation.termId, newType);
+      return { source: newSource };
+    }
+    if (state.navigation?.part === "mode") {
+      const termData = store.get(source, state.navigation.termId);
+      const newMode = (() => {
+        switch (termData.mode) {
+          case "call":
+            return "match";
+          case "match":
+            return "call";
+        }
+      })();
+      const newSource = insert.setMode(source, state.navigation.termId, newMode);
+      return { source: newSource };
+    }
   }
   if (event.key === "Escape") {
     return { state: {} };
@@ -372,9 +374,38 @@ export function keyboardAction<Source>({
     if (state.navigation.part === "reference") {
       return { state: { navigation: { termId: state.navigation.termId, part: "bindings" } } };
     }
+  }
+  if (event.key === "(" && event.ctrlKey && state.navigation) {
+    if (state.navigation.part === "annotation") {
+      const newSourceWithPlacement = insert.setAnnotation(newSourceWithTerm, state.navigation.termId, newTermId);
+      return { source: newSourceWithPlacement, state: { navigation: { termId: newTermId, part: "reference" } } };
+    }
     if (state.navigation.part === "bindings") {
       const newSourceWithPlacement = insert.setBinding(newSourceWithTerm, state.navigation.termId, newTermId, null);
-      return { source: newSourceWithPlacement, state: { navigation: { termId: newTermId, part: "label" } } };
+      return { source: newSourceWithPlacement, state: { navigation: { termId: newTermId, part: "reference" } } };
+    }
+    if (state.navigation.part === "binding" && state.navigation.subPart === "key" && termBindings?.[state.navigation.bindingIndex]) {
+      const newSourceWithPlacement = insert.setBinding(
+        newSourceWithTerm,
+        state.navigation.termId,
+        newTermId,
+        termBindings[state.navigation.bindingIndex].value
+      );
+      const newSourceWithoutOld = insert.removeParameter(
+        newSourceWithPlacement,
+        state.navigation.termId,
+        termBindings[state.navigation.bindingIndex].key
+      );
+      return { source: newSourceWithoutOld, state: { navigation: { termId: newTermId, part: "reference" } } };
+    }
+    if (state.navigation.part === "binding" && state.navigation.subPart === "value" && termBindings?.[state.navigation.bindingIndex]) {
+      const newSourceWithPlacement = insert.setBinding(
+        newSourceWithTerm,
+        state.navigation.termId,
+        termBindings[state.navigation.bindingIndex].key,
+        newTermId
+      );
+      return { source: newSourceWithPlacement, state: { navigation: { termId: newTermId, part: "reference" } } };
     }
   }
   if (event.key === ")") {

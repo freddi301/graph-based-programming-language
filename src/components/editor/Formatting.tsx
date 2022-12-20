@@ -42,6 +42,7 @@ export function format<Source, Chunk>({
       builder.append(printer.label());
       return builder.result;
     }
+    // builder.append(printer.termStart());
     builder.append(printer.label());
     builder.append(printer.annotationStart());
     if (termData.annotation) {
@@ -155,6 +156,7 @@ export function format<Source, Chunk>({
       }
     }
     builder.append(printer.bindingsEnd());
+    // builder.append(printer.termEnd());
   };
   const builder = builderFactory();
   multiline(0, null, termId, maxWidth, builder, []);
