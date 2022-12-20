@@ -427,6 +427,7 @@ export function createSourceFormmattingFromSourceStore<Source>(store: SourceStor
         !termData.label
       )
         return false;
+      if (references.asBindingKey.size === 1 && termData.label) return false;
       return true;
     },
     getRoots(source) {

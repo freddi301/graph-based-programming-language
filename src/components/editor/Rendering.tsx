@@ -204,24 +204,43 @@ export function reactPrinterFactory<Source>({
   const baseProps = { options, state, onStateChange, source, store, formatting, onKeyDownWithState };
   const showAnnotationStart = termData.annotation || (state.navigation?.part === "annotation" && termId === state.navigation.termId);
   const showRightHandStart =
-    (termData.parameters.size > 0 && termData.label) ||
-    (termData.reference && termData.label) ||
-    (termData.bindings.size > 0 && termData.label) ||
-    (state.navigation?.part === "parameters" && termId === state.navigation.termId && termData.label) ||
-    (state.navigation?.part === "reference" && termId === state.navigation.termId && termData.label) ||
-    (state.navigation?.part === "bindings" && termId === state.navigation.termId && termData.label) ||
+    (termData.parameters.size > 0 && (termData.label || termData.annotation)) ||
+    (termData.reference && (termData.label || termData.annotation)) ||
+    (termData.bindings.size > 0 && (termData.label || termData.annotation)) ||
+    (state.navigation?.part === "parameters" && termId === state.navigation.termId && (termData.label || termData.annotation)) ||
+    (state.navigation?.part === "reference" && termId === state.navigation.termId && (termData.label || termData.annotation)) ||
+    (state.navigation?.part === "bindings" && termId === state.navigation.termId && (termData.label || termData.annotation)) ||
     (state.navigation?.part === "annotation" && termId === state.navigation.termId && (termData.reference || termData.bindings.size > 0)) ||
+    (state.navigation?.part === "type" && termId === state.navigation.termId && (termData.label || termData.annotation)) ||
+    (state.navigation?.part === "mode" && termId === state.navigation.termId && (termData.label || termData.annotation)) ||
     (state.navigation?.part === "label" &&
       termId === state.navigation.termId &&
       (termData.parameters.size > 0 || termData.reference || termData.bindings.size > 0));
-  const showParameters = termData.parameters.size > 0 || (state.navigation?.part === "parameters" && termId === state.navigation.termId);
+  const showParameters =
+    termData.parameters.size > 0 ||
+    (state.navigation?.part === "parameters" && termId === state.navigation.termId) ||
+    (state.navigation?.part === "type" && termId === state.navigation.termId && (termData.label || termData.annotation));
   const showTermType =
     termData.parameters.size > 0 ||
     (state.navigation?.part === "parameters" && termId === state.navigation.termId) ||
     (state.navigation?.part === "type" && termId === state.navigation.termId);
   const showTermMode = termData.mode === "match" || (state.navigation?.part === "mode" && termId === state.navigation.termId);
   const showBindings = termData.bindings.size > 0 || (state.navigation?.part === "bindings" && termId === state.navigation.termId);
-  const navigationClassNames = [...navigationPaths, navigation].map(navigationToCssClass).join(" ");
+  const showTermStartEnd = (() => {
+    if (navigation?.part === "parameter" && termData.label) return false;
+    if (
+      navigation?.part === "binding" &&
+      !termData.label &&
+      !termData.annotation &&
+      termData.parameters.size === 0 &&
+      termData.mode === "call" &&
+      (termData.reference || termData.bindings.size > 0) &&
+      !(state.navigation?.termId === termId)
+    )
+      return false;
+    return true;
+  })();
+  const navigationClassNames = navigationPaths.map(navigationToCssClass).join(" ");
   return {
     indentation(level) {
       return {
@@ -247,12 +266,12 @@ export function reactPrinterFactory<Source>({
     },
     termStart() {
       return {
-        content: (
+        content: showTermStartEnd && (
           <span onClick={onClickSelectTerm} className={navigationClassNames}>
             {print.termStart()}
           </span>
         ),
-        width: print.termStart().length,
+        width: showTermStartEnd ? print.termStart().length : 0,
       };
     },
     label() {
@@ -380,7 +399,7 @@ export function reactPrinterFactory<Source>({
               onKeyDownWithState({ navigation: { termId, part: "type" } }, { key: "Enter" } as any);
               onStateChange({ navigation: { termId, part: "type" } });
             }}
-            className={navigationClassNames}
+            className={[...navigationPaths, { termId, part: "type" } as Navigation].map(navigationToCssClass).join(" ")}
           >
             {print.termType()}
           </span>
@@ -395,7 +414,7 @@ export function reactPrinterFactory<Source>({
             css={css`
               color: var(--text-color-keyword);
             `}
-            className={navigationClassNames}
+            className={[...navigationPaths, { termId, part: "mode" } as Navigation].map(navigationToCssClass).join(" ")}
             onClick={() => {
               onKeyDownWithState({ navigation: { termId, part: "mode" } }, { key: "Enter" } as any);
               onStateChange({ navigation: { termId, part: "mode" } });
@@ -471,12 +490,12 @@ export function reactPrinterFactory<Source>({
     },
     termEnd() {
       return {
-        content: (
+        content: showTermStartEnd && (
           <span onClick={onClickSelectTerm} className={navigationClassNames}>
             {print.termEnd()}
           </span>
         ),
-        width: print.termEnd().length,
+        width: showTermStartEnd ? print.termEnd().length : 0,
       };
     },
   };
@@ -539,6 +558,7 @@ function LabelInput<Source>({
         margin-left: ${labelText.length ? `0px` : `-1px`};
         color: inherit;
         height: var(--code-line-height);
+        margin: -1px 0px;
       `}
       onBlur={() => {
         updateLabel();
@@ -662,6 +682,7 @@ export function Options<Source>({
             width: ${state.text?.length ? `${state.text.length}ch` : `1px`};
             margin-left: ${state.text?.length ? `0px` : `-1px`};
             height: var(--code-line-height);
+            margin: -1px 0px;
           `}
         />
       )}

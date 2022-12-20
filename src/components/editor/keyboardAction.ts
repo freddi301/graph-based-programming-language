@@ -52,7 +52,7 @@ export function keyboardAction<Source>({
     }
     if (state.navigation?.part === "label" && event.key === "ArrowLeft") {
       if (!parentPosition) return navigate(state.navigation);
-      return onceMore(parentPosition, event);
+      return navigate(parentPosition);
     }
     if (state.navigation?.part === "label" && event.key === "ArrowUp") {
       if (rootIndex === 0) return navigate(state.navigation);
@@ -136,7 +136,7 @@ export function keyboardAction<Source>({
     }
     if (state.navigation?.part === "bindings" && event.key === "ArrowRight") {
       if (!parentPosition) return navigate(state.navigation);
-      return onceMore(parentPosition, event);
+      return navigate(parentPosition);
     }
     if (state.navigation?.part === "bindings" && event.key === "ArrowLeft" && termBindings) {
       if (termBindings.length === 0) return navigate({ termId: state.navigation.termId, part: "reference" });

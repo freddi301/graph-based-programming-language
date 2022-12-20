@@ -31,7 +31,8 @@ export function format<Source, Chunk>({
     termId: TermId,
     maxWidth: number,
     builder: Builder<Chunk>,
-    navigationPaths: Array<Navigation>
+    navigationPaths: Array<Navigation>,
+    skipStartEnd: boolean
   ) => {
     navigationPaths = navigation ? [...navigationPaths, navigation] : navigationPaths;
     const printer = printerFactory({ navigation, termId, source, store, formatting, navigationPaths });
@@ -42,7 +43,7 @@ export function format<Source, Chunk>({
       builder.append(printer.label());
       return builder.result;
     }
-    // builder.append(printer.termStart());
+    if (!skipStartEnd) builder.append(printer.termStart());
     builder.append(printer.label());
     builder.append(printer.annotationStart());
     if (termData.annotation) {
@@ -55,14 +56,14 @@ export function format<Source, Chunk>({
         navigationPaths: [...navigationPaths, { termId, part: "annotation" }],
       });
       const inlineAnnotation = builderFactory();
-      multiline(NaN, { termId, part: "annotation" }, termData.annotation, Infinity, inlineAnnotation, navigationPaths);
+      multiline(NaN, { termId, part: "annotation" }, termData.annotation, Infinity, inlineAnnotation, navigationPaths, false);
       if (builder.x() + inlineAnnotation.width() <= maxWidth && inlineAnnotation.height() === 1) {
         builder.append(inlineAnnotation.result());
       } else {
         builder.append(annotationPrinter.termStart());
         builder.newLine();
         builder.append(annotationPrinter.indentation(level + 1));
-        multiline(level + 1, { termId, part: "annotation" }, termData.annotation, maxWidth, builder, navigationPaths);
+        multiline(level + 1, { termId, part: "annotation" }, termData.annotation, maxWidth, builder, navigationPaths, true);
         builder.newLine();
         builder.append(annotationPrinter.indentation(level));
         builder.append(annotationPrinter.termEnd());
@@ -73,7 +74,7 @@ export function format<Source, Chunk>({
     if (termParameters.length > 0) {
       const inlineParameters = builderFactory();
       termParameters.forEach((parameterTermId, parameterIndex) => {
-        multiline(NaN, { termId, part: "parameter", parameterIndex }, parameterTermId, Infinity, inlineParameters, navigationPaths);
+        multiline(NaN, { termId, part: "parameter", parameterIndex }, parameterTermId, Infinity, inlineParameters, navigationPaths, false);
         inlineParameters.append(printer.parametersSeparator(parameterIndex));
       });
       if (builder.x() + inlineParameters.width() <= maxWidth && inlineParameters.height() === 1) {
@@ -82,7 +83,7 @@ export function format<Source, Chunk>({
         builder.newLine();
         termParameters.forEach((parameterTermId, parameterIndex) => {
           builder.append(printer.indentation(level + 1));
-          multiline(level + 1, { termId, part: "parameter", parameterIndex }, parameterTermId, maxWidth, builder, navigationPaths);
+          multiline(level + 1, { termId, part: "parameter", parameterIndex }, parameterTermId, maxWidth, builder, navigationPaths, false);
           builder.append(printer.parametersSeparator(parameterIndex));
           builder.newLine();
         });
@@ -102,14 +103,14 @@ export function format<Source, Chunk>({
         navigationPaths: [...navigationPaths, { termId, part: "reference" }],
       });
       const inlineReference = builderFactory();
-      multiline(NaN, { termId, part: "reference" }, termData.reference, Infinity, inlineReference, navigationPaths);
+      multiline(NaN, { termId, part: "reference" }, termData.reference, Infinity, inlineReference, navigationPaths, false);
       if (builder.x() + inlineReference.width() <= maxWidth && inlineReference.height() === 1) {
         builder.append(inlineReference.result());
       } else {
         builder.append(referencePrinter.termStart());
         builder.newLine();
         builder.append(referencePrinter.indentation(level + 1));
-        multiline(level + 1, { termId, part: "reference" }, termData.reference, maxWidth, builder, navigationPaths);
+        multiline(level + 1, { termId, part: "reference" }, termData.reference, maxWidth, builder, navigationPaths, true);
         builder.newLine();
         builder.append(referencePrinter.indentation(level));
         builder.append(referencePrinter.termEnd());
@@ -119,7 +120,15 @@ export function format<Source, Chunk>({
     if (termBindings.length > 0) {
       const inlineBindings = builderFactory();
       termBindings.forEach((binding, bindingIndex) => {
-        multiline(NaN, { termId, part: "binding", bindingIndex, subPart: "key" }, binding.key, Infinity, inlineBindings, navigationPaths);
+        multiline(
+          NaN,
+          { termId, part: "binding", bindingIndex, subPart: "key" },
+          binding.key,
+          Infinity,
+          inlineBindings,
+          navigationPaths,
+          false
+        );
         inlineBindings.append(printer.bindingAssignment(bindingIndex));
         if (binding.value)
           multiline(
@@ -128,7 +137,8 @@ export function format<Source, Chunk>({
             binding.value,
             Infinity,
             inlineBindings,
-            navigationPaths
+            navigationPaths,
+            false
           );
         inlineBindings.append(printer.bindingSeparator(bindingIndex));
       });
@@ -138,7 +148,15 @@ export function format<Source, Chunk>({
         builder.newLine();
         termBindings.forEach((binding, bindingIndex) => {
           builder.append(printer.indentation(level + 1));
-          multiline(level + 1, { termId, part: "binding", bindingIndex, subPart: "key" }, binding.key, maxWidth, builder, navigationPaths);
+          multiline(
+            level + 1,
+            { termId, part: "binding", bindingIndex, subPart: "key" },
+            binding.key,
+            maxWidth,
+            builder,
+            navigationPaths,
+            false
+          );
           builder.append(printer.bindingAssignment(bindingIndex));
           if (binding.value)
             multiline(
@@ -147,7 +165,8 @@ export function format<Source, Chunk>({
               binding.value,
               maxWidth,
               builder,
-              navigationPaths
+              navigationPaths,
+              false
             );
           builder.append(printer.bindingSeparator(bindingIndex));
           builder.newLine();
@@ -156,10 +175,10 @@ export function format<Source, Chunk>({
       }
     }
     builder.append(printer.bindingsEnd());
-    // builder.append(printer.termEnd());
+    if (!skipStartEnd) builder.append(printer.termEnd());
   };
   const builder = builderFactory();
-  multiline(0, null, termId, maxWidth, builder, []);
+  multiline(0, null, termId, maxWidth, builder, [], true);
   return builder;
 }
 

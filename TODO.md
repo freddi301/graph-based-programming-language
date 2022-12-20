@@ -1,4 +1,3 @@
-Show start end of terms (especially for embedded empty)
 Results not editable
 Normalize values
 Positional arguments
