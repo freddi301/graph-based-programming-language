@@ -202,12 +202,12 @@ export function keyboardAction<Source>({
     };
   };
   if (state.text !== undefined && state.navigation && termData && termParameters && termBindings) {
-    if (event.key === "ArrowDown" || (event.key === "Tab" && !event.shiftKey)) {
+    if (event.key === "ArrowDown") {
       if (state.optionIndex === options.length - 1) return setIndex(undefined);
       if (state.optionIndex === undefined) return setIndex(0);
       return setIndex(state.optionIndex + 1);
     }
-    if (event.key === "ArrowUp" || (event.key === "Tab" && event.shiftKey)) {
+    if (event.key === "ArrowUp") {
       if (state.optionIndex === undefined) return setIndex(options.length - 1);
       if (state.optionIndex === 0) return setIndex(undefined);
       return setIndex(state.optionIndex - 1);

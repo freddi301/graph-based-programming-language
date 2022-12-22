@@ -41,18 +41,6 @@ export function Help() {
       </tr>
       <tr>
         <td>
-          <Key>Tab</Key>
-        </td>
-        <td>next option</td>
-      </tr>
-      <tr>
-        <td>
-          <Key>Shift</Key> + <Key>Tab</Key>
-        </td>
-        <td>previous option</td>
-      </tr>
-      <tr>
-        <td>
           <Key>:</Key>
         </td>
         <td>to set annotation</td>
