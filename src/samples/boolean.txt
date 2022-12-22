@@ -2,27 +2,27 @@ Boolean : Type
 True : Boolean
 False : Boolean
 
-not = (x) => match x {
-  True = False;
-  False = True;
-}
+not = (x) => match x (
+  True = False,
+  False = True,
+)
 
-and = (x, y) => match x {
-  True = y;
-  False = False;
-}
+and = (x, y) => match x (
+  True = y,
+  False = False,
+)
 
-or = (x, y) => match x {
-  True = True;
-  False = y;
-}
+or = (x, y) => match x (
+  True = True,
+  False = y,
+)
 
-xor = (x, y) => match {
-  (x = True, y = False) = False;
-  (x = True, y = False) = True;
-  (x = False, y = True) = True;
-  (x = False, y = False) = False;
-}
+xor = (x, y) => match (
+  (x = True, y = True) = False,
+  (x = True, y = False) = True,
+  (x = False, y = True) = True,
+  (x = False, y = False) = False,
+)
 
 nand = (x, y) = not(x = and(x = x, y = y))
 

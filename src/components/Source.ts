@@ -112,28 +112,34 @@ export function createSourceInsertFromSourceStoreAndFormatting<Source>(
     return source;
   }
   function unset(source: Source, termId: TermId) {
-    const termData = store.get(source, termId);
-    const references = formatting.getReferences(source, termId);
-    references.all.delete(termId);
-    if (references.all.size === 0) {
-      source = store.rem(source, termId);
-      if (termData.annotation) {
-        source = unset(source, termData.annotation);
-      }
-      for (const [parameterTermId] of termData.parameters) {
-        source = unset(source, parameterTermId);
-      }
-      if (termData.reference) {
-        source = unset(source, termData.reference);
-      }
-      for (const [keyTermId, valueTermId] of termData.bindings) {
-        source = unset(source, keyTermId);
-        if (valueTermId) {
-          source = unset(source, keyTermId);
+    const except = new Set(formatting.getRoots(source));
+    except.delete(termId);
+    function rec(source: Source, termId: TermId) {
+      if (except.has(termId)) return source;
+      const termData = store.get(source, termId);
+      const references = formatting.getReferences(source, termId);
+      references.all.delete(termId);
+      if (references.all.size === 0) {
+        source = store.rem(source, termId);
+        if (termData.annotation) {
+          source = rec(source, termData.annotation);
+        }
+        for (const [parameterTermId] of termData.parameters) {
+          source = rec(source, parameterTermId);
+        }
+        if (termData.reference) {
+          source = rec(source, termData.reference);
+        }
+        for (const [keyTermId, valueTermId] of termData.bindings) {
+          source = rec(source, keyTermId);
+          if (valueTermId) {
+            source = rec(source, keyTermId);
+          }
         }
       }
+      return source;
     }
-    return source;
+    return rec(source, termId);
   }
   return {
     create(source) {
@@ -409,6 +415,7 @@ export function createSourceFormmattingFromSourceStore<Source>(store: SourceStor
     isRoot(source, termId) {
       const termData = store.get(source, termId);
       const references = this.getReferences(source, termId);
+      if (this.getOrdering(source, termId) !== undefined) return true;
       if (references.asParameter.size === 1) return false;
       if (
         references.asAnnotation.size === 1 &&
@@ -427,7 +434,6 @@ export function createSourceFormmattingFromSourceStore<Source>(store: SourceStor
         !termData.label
       )
         return false;
-      if (references.asBindingKey.size === 1 && termData.label) return false;
       return true;
     },
     getRoots(source) {

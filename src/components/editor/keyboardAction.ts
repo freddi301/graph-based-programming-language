@@ -490,7 +490,10 @@ export function keyboardAction<Source>({
     if (state.navigation.part === "label") {
       return {
         source: insert.delete(source, state.navigation.termId),
-        state: rootIndex >= 0 ? {} : { navigation: state.navigation },
+        state:
+          rootIndex >= 0
+            ? { navigation: { termId: rootIndex > 0 ? roots[rootIndex - 1] : roots[rootIndex + 1], part: "label" } }
+            : { navigation: state.navigation },
       };
     }
     if (state.navigation.part === "annotation") {

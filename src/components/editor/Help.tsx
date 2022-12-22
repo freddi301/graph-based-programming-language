@@ -31,7 +31,7 @@ export function Help() {
         <td>
           <Key>Enter</Key>
         </td>
-        <td>to select options</td>
+        <td>to select options or confirm rename or creation</td>
       </tr>
       <tr>
         <td>
