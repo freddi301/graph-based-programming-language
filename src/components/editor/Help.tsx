@@ -23,6 +23,12 @@ export function Help() {
       </tr>
       <tr>
         <td>
+          <Key>Ctrl</Key> + (<Key>←</Key> / <Key>↑</Key> / <Key>→</Key> / <Key>↓</Key>)
+        </td>
+        <td>to reorder</td>
+      </tr>
+      <tr>
+        <td>
           <Key>Esc</Key>
         </td>
         <td>to escape any action</td>

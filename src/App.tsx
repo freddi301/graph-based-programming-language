@@ -79,14 +79,12 @@ function GenericApp<Source, CommitId, Repository>({
     if (historyCurrent) {
       const restored = stateByCommitId.current.get(commitIdStringSerialization.serialize(historyCurrent));
       if (restored) {
-        console.log("restored", restored);
         setState(restored);
       }
     }
   }, [commitIdStringSerialization, historyCurrent]);
   React.useLayoutEffect(() => {
     if (historyCurrent) {
-      console.log("stored", state);
       stateByCommitId.current.set(commitIdStringSerialization.serialize(historyCurrent), state);
     }
   }, [commitIdStringSerialization, historyCurrent, state]);

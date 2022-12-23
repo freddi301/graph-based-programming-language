@@ -54,15 +54,15 @@ export function keyboardAction<Source>({
       if (!parentPosition) return navigate(state.navigation);
       return navigate(parentPosition);
     }
-    if (state.navigation?.part === "label" && event.key === "ArrowUp") {
+    if (state.navigation?.part === "label" && event.key === "ArrowUp" && !event.altKey) {
       if (rootIndex === 0) return navigate(state.navigation);
       if (rootIndex >= 0) return navigate({ termId: roots[rootIndex - 1], part: "label" });
       if (parentPosition) return navigate(parentPosition);
     }
-    if (state.navigation?.part === "label" && event.key === "ArrowDown") {
+    if (state.navigation?.part === "label" && event.key === "ArrowDown" && !event.altKey) {
       if (rootIndex >= 0 && roots[0] && !state.navigation) return navigate({ termId: roots[0], part: "label" });
       if (rootIndex >= 0 && rootIndex < roots.length - 1) return navigate({ termId: roots[rootIndex + 1], part: "label" });
-      if (rootIndex >= roots.length - 1) return {};
+      if (rootIndex >= roots.length - 1) return { state: {} };
     }
     if (state.navigation?.part === "annotation" && event.key === "ArrowRight") {
       if (termParameters?.length === 0) return navigate({ termId: state.navigation.termId, part: "parameters" });
@@ -186,6 +186,29 @@ export function keyboardAction<Source>({
       if (termBindings?.[state.navigation.bindingIndex]?.value)
         return navigate({ termId: termBindings[state.navigation.bindingIndex].value!, part: "label" });
     }
+  }
+  // #endregion
+
+  // #region ordering
+  if (event.key === "ArrowUp" && event.altKey && rootIndex >= 0 && state.navigation) {
+    const ordering = store.getOrdering(source);
+    const currentOrdering = formatting.getOrdering(source, state.navigation.termId);
+    const newOrdering = [...ordering];
+    if (currentOrdering !== undefined && currentOrdering > 0) {
+      newOrdering[currentOrdering] = ordering[currentOrdering - 1];
+      newOrdering[currentOrdering - 1] = ordering[currentOrdering];
+    }
+    return { source: store.setOrdering(source, newOrdering) };
+  }
+  if (event.key === "ArrowDown" && event.altKey && rootIndex >= 0 && state.navigation) {
+    const ordering = store.getOrdering(source);
+    const currentOrdering = formatting.getOrdering(source, state.navigation.termId);
+    const newOrdering = [...ordering];
+    if (currentOrdering !== undefined && currentOrdering < roots.length - 1) {
+      newOrdering[currentOrdering] = ordering[currentOrdering + 1];
+      newOrdering[currentOrdering + 1] = ordering[currentOrdering];
+    }
+    return { source: store.setOrdering(source, newOrdering) };
   }
   // #endregion
 
@@ -321,7 +344,7 @@ export function keyboardAction<Source>({
 
   if (event.key === "Enter") {
     if (!state.navigation && state.text) {
-      return { source: newSourceWithLabelAndOrdering, state: { navigation: { termId: newTermId, part: "label" } } };
+      return { source: newSourceWithLabelAndOrdering, state: {} };
     }
     if (state.navigation?.part === "type") {
       const termData = store.get(source, state.navigation.termId);
