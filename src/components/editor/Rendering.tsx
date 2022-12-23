@@ -181,7 +181,7 @@ export function reactPrinterFactory<Source>({
   store: SourceStore<Source>;
   insert: SourceInsert<Source>;
   formatting: SourceFormatting<Source>;
-  onKeyDownWithState(state: State, event: React.KeyboardEvent): void;
+  onKeyDownWithState(state: State, event: { key: string; ctrlKey?: boolean; shitKey?: boolean; altKey?: boolean }): void;
   options: Array<TermId>;
 }): Printer<{ content: React.ReactNode; width: number }> {
   const termData = store.get(source, termId);
@@ -396,7 +396,7 @@ export function reactPrinterFactory<Source>({
         content: showTermType && (
           <span
             onClick={() => {
-              onKeyDownWithState({ navigation: { termId, part: "type" } }, { key: "Enter" } as any);
+              onKeyDownWithState({ navigation: { termId, part: "type" } }, { key: "Enter" });
               onStateChange({ navigation: { termId, part: "type" } });
             }}
             className={[...navigationPaths, { termId, part: "type" } as Navigation].map(navigationToCssClass).join(" ")}
@@ -416,7 +416,7 @@ export function reactPrinterFactory<Source>({
             `}
             className={[...navigationPaths, { termId, part: "mode" } as Navigation].map(navigationToCssClass).join(" ")}
             onClick={() => {
-              onKeyDownWithState({ navigation: { termId, part: "mode" } }, { key: "Enter" } as any);
+              onKeyDownWithState({ navigation: { termId, part: "mode" } }, { key: "Enter" });
               onStateChange({ navigation: { termId, part: "mode" } });
             }}
           >
@@ -602,7 +602,7 @@ export function Options<Source>({
   source: Source;
   store: SourceStore<Source>;
   formatting: SourceFormatting<Source>;
-  onKeyDownWithState(state: State, event: React.KeyboardEvent): void;
+  onKeyDownWithState(state: State, event: { key: string; ctrlKey?: boolean; shitKey?: boolean; altKey?: boolean }): void;
 }) {
   const isAtPosition =
     navigation === state.navigation || (state.navigation && navigation && navigationEquals(navigation, state.navigation));
@@ -639,7 +639,7 @@ export function Options<Source>({
               <div
                 key={termId}
                 onClick={() => {
-                  onKeyDownWithState({ navigation, text: state.text, optionIndex: index }, { key: "Enter" } as any);
+                  onKeyDownWithState({ navigation, text: state.text, optionIndex: index }, { key: "Enter" });
                 }}
                 css={css`
                   background-color: ${index === state.optionIndex ? "var(--hover-background-color)" : ""};

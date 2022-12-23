@@ -17,7 +17,7 @@ export function Help() {
     >
       <tr>
         <td>
-          <Key>←</Key> / <Key>↑</Key> / <Key>→</Key> / <Key>↓</Key>
+          <Key>Ctrl</Key> +/- (<Key>←</Key> / <Key>↑</Key> / <Key>→</Key> / <Key>↓</Key>)
         </td>
         <td>to navigate</td>
       </tr>
