@@ -71,6 +71,26 @@ function GenericApp<Source, CommitId, Repository>({
     repositoryJsonValueSerialization,
   });
   const [state, setState] = React.useState<State>({});
+  // #region restore state
+  // TODO better
+  const stateByCommitId = React.useRef(new Map<string, State>());
+  const historyCurrent = history.current;
+  React.useLayoutEffect(() => {
+    if (historyCurrent) {
+      const restored = stateByCommitId.current.get(commitIdStringSerialization.serialize(historyCurrent));
+      if (restored) {
+        console.log("restored", restored);
+        setState(restored);
+      }
+    }
+  }, [commitIdStringSerialization, historyCurrent]);
+  React.useLayoutEffect(() => {
+    if (historyCurrent) {
+      console.log("stored", state);
+      stateByCommitId.current.set(commitIdStringSerialization.serialize(historyCurrent), state);
+    }
+  }, [commitIdStringSerialization, historyCurrent, state]);
+  // #endregion
   return (
     <React.Fragment>
       <GlobalStyle />
