@@ -234,10 +234,10 @@ export function reactPrinterFactory<Source>({
       !termData.annotation &&
       termData.parameters.size === 0 &&
       termData.mode === "call" &&
-      (termData.reference || termData.bindings.size > 0) &&
-      !(state.navigation?.termId === termId)
+      (termData.reference || termData.bindings.size > 0)
     )
       return false;
+    if (navigation?.part === "annotation") return false;
     return true;
   })();
   const navigationClassNames = navigationPaths.map(navigationToCssClass).join(" ");
@@ -301,7 +301,8 @@ export function reactPrinterFactory<Source>({
             className={navigationClassNames}
             css={css`
               color: ${labelColor};
-              background-color: ${state.highlighted === termId ? "var(--hover-background-color)" : ""};
+              background-color: ${state.highlighted === termId ? "var(--highlighted-label-background-color)" : ""};
+              box-shadow: ${state.highlighted === termId ? "inset 0px 0px 0px 1px  var(--highlighted-label-border-color)" : ""};
             `}
           >
             {showInput ? (
@@ -644,7 +645,7 @@ export function Options<Source>({
                 css={css`
                   background-color: ${index === state.optionIndex ? "var(--hover-background-color)" : ""};
                   :hover {
-                    background-color: var(--hover-background-color);
+                    background-color: ${state.optionIndex === undefined ? "var(--hover-background-color)" : ""};
                     user-select: none;
                   }
                   padding: 0px 0.5ch;

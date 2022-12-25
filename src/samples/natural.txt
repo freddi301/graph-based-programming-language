@@ -3,7 +3,6 @@ Type
 Natural: Type
 Zero: Natural
 Successive: (predecessor: Natural) -> Natural
-
 add = (x: Natural, y: Natural) => match x(
   Zero = y, 
   Successive = add(x = x.predecessor, y = Successive(predecessor = y))

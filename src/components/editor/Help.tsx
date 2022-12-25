@@ -15,90 +15,98 @@ export function Help() {
         }
       `}
     >
-      <tr>
-        <td>
-          <Key>Ctrl</Key> +/- (<Key>←</Key> / <Key>↑</Key> / <Key>→</Key> / <Key>↓</Key>)
-        </td>
-        <td>to navigate</td>
-      </tr>
-      <tr>
-        <td>
-          <Key>Ctrl</Key> + (<Key>←</Key> / <Key>↑</Key> / <Key>→</Key> / <Key>↓</Key>)
-        </td>
-        <td>to reorder</td>
-      </tr>
-      <tr>
-        <td>
-          <Key>Esc</Key>
-        </td>
-        <td>to escape any action</td>
-      </tr>
-      <tr>
-        <td>
-          <Key>Enter</Key>
-        </td>
-        <td>to select options or confirm rename or creation</td>
-      </tr>
-      <tr>
-        <td>
-          <Key>Ctrl</Key> + <Key>Click</Key>
-        </td>
-        <td>to go to definition</td>
-      </tr>
-      <tr>
-        <td>
-          <Key>:</Key>
-        </td>
-        <td>to set annotation</td>
-      </tr>
-      <tr>
-        <td>
-          <Key>(</Key>
-        </td>
-        <td>to declare or set parameters</td>
-      </tr>
-      <tr>
-        <td>
-          <Key>Ctrl</Key> + <Key>(</Key>
-        </td>
-        <td>to create new variables in place</td>
-      </tr>
-      <tr>
-        <td>
-          <Key>=</Key>
-        </td>
-        <td>to assign</td>
-      </tr>
-      <tr>
-        <td>
-          <Key>)</Key>
-        </td>
-        <td>to close current parentheses</td>
-      </tr>
-      <tr>
-        <td>
-          <Key>Ctrl</Key> + <Key>z</Key>
-        </td>
-        <td>to undo</td>
-      </tr>
-      <tr>
-        <td>
-          <Key>Ctrl</Key> + <Key>Shift</Key> + <Key>z</Key>
-        </td>
-        <td>to redo</td>
-      </tr>
-      <tr>
-        <td>
-          <Key>Drag & Drop</Key>
-        </td>
-        <td>line numbers to reorder</td>
-      </tr>
-      <tr>
-        <td>
-          <Key>Click</Key>
-        </td>
-        <td>on line numbers to toggle ordering</td>
-      </tr>
+      <tbody>
+        <tr>
+          <td>
+            (<Key>←</Key> / <Key>↑</Key> / <Key>→</Key> / <Key>↓</Key>)
+          </td>
+          <td>to navigate inside visible expression parts</td>
+        </tr>
+        <tr>
+          <td>
+            <Key>Ctrl</Key> +/- (<Key>←</Key> / <Key>↑</Key> / <Key>→</Key> / <Key>↓</Key>)
+          </td>
+          <td>to navigate outside visible expression parts</td>
+        </tr>
+        <tr>
+          <td>
+            <Key>Shift</Key> +/- (<Key>←</Key> / <Key>↑</Key> / <Key>→</Key> / <Key>↓</Key>)
+          </td>
+          <td>to navigate missing expression parts</td>
+        </tr>
+        <tr>
+          <td>
+            <Key>Alt</Key> + (<Key>←</Key> / <Key>↑</Key> / <Key>→</Key> / <Key>↓</Key>)
+          </td>
+          <td>to reorder</td>
+        </tr>
+        <tr>
+          <td>
+            <Key>Esc</Key>
+          </td>
+          <td>to escape any action</td>
+        </tr>
+        <tr>
+          <td>
+            <Key>Enter</Key>
+          </td>
+          <td>to select options or confirm rename or creation</td>
+        </tr>
+        <tr>
+          <td>
+            <Key>Ctrl</Key> + <Key>Click</Key>
+          </td>
+          <td>to go to definition</td>
+        </tr>
+        <tr>
+          <td>
+            <Key>:</Key>
+          </td>
+          <td>to set annotation</td>
+        </tr>
+        <tr>
+          <td>
+            <Key>(</Key>
+          </td>
+          <td>to declare or set parameters or to create new variables in place</td>
+        </tr>
+        <tr>
+          <td>
+            <Key>=</Key>
+          </td>
+          <td>to assign</td>
+        </tr>
+        <tr>
+          <td>
+            <Key>)</Key>
+          </td>
+          <td>to close current parentheses</td>
+        </tr>
+        <tr>
+          <td>
+            <Key>Ctrl</Key> + <Key>z</Key>
+          </td>
+          <td>to undo</td>
+        </tr>
+        <tr>
+          <td>
+            <Key>Ctrl</Key> + <Key>Shift</Key> + <Key>z</Key>
+          </td>
+          <td>to redo</td>
+        </tr>
+        <tr>
+          <td>
+            <Key>Drag & Drop</Key>
+          </td>
+          <td>line numbers to reorder</td>
+        </tr>
+        <tr>
+          <td>
+            <Key>Click</Key>
+          </td>
+          <td>on line numbers to toggle ordering</td>
+        </tr>
+      </tbody>
     </table>
   );
 }

@@ -33,7 +33,7 @@ export function Editor<Source>({
   React.useLayoutEffect(() => {
     const onResize = () => {
       if (containerRef.current) {
-        setMaxWidth(Math.trunc(containerRef.current.offsetWidth / 9));
+        setMaxWidth(Math.trunc(containerRef.current.offsetWidth / 9 - 6));
         setHeight(containerRef.current.offsetHeight);
       }
     };
@@ -58,6 +58,9 @@ export function Editor<Source>({
   // #endregion
   // #region keyboard control
   const onKeyDownWithState = (state: State, event: React.KeyboardEvent) => {
+    if (event.key === "Tab") {
+      event.preventDefault();
+    }
     setTimeout(() => {
       if (!contentRef.current?.contains(document.activeElement)) contentRef.current?.focus();
     });
@@ -136,7 +139,7 @@ export function Editor<Source>({
               key={termId}
               css={css`
                 display: grid;
-                grid-template-columns: 2ch ${orderingWidth + 1}ch 3ch 1fr;
+                grid-template-columns: 2ch ${orderingWidth + 1}ch 2ch 1fr;
                 grid-template-rows: max-content max-content;
                 grid-template-areas: "control ordering collapse source" "control ordering collapse result";
                 :hover {
@@ -229,8 +232,8 @@ export function Editor<Source>({
                     opacity: ${isCollapsed ? 1 : 0};
                     transition: 0.2s;
                   }
-                  padding-left: 1ch;
-                  padding-right: 1ch;
+                  padding-left: 0.5ch;
+                  padding-right: 0.5ch;
                 `}
               >
                 {isCollapsed ? (
@@ -331,7 +334,7 @@ export function Editor<Source>({
         })}
         <div
           css={css`
-            padding: 0px 1ch 0px ${6 + orderingWidth}ch;
+            padding: 0px 1ch 0px ${5 + orderingWidth}ch;
           `}
         >
           <Options

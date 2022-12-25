@@ -1,0 +1,2 @@
+Equality: (left, right) -> Type
+Reflection: Equality(value, value)

@@ -29,15 +29,22 @@ export function Button({ label, onClick, icon, showLabel = true, showIcon = true
         cursor: pointer;
         border-radius: 4px;
         padding: 0px 4px;
+        overflow: hidden;
+        white-space: nowrap;
+        text-align: left;
+        text-overflow: ellipsis;
+        max-width: 100%;
       `}
     >
       {showIcon && icon}
-      <span
-        css={css`
-          display: inline-block;
-          width: 4px;
-        `}
-      />
+      {showLabel && (
+        <span
+          css={css`
+            display: inline-block;
+            width: 4px;
+          `}
+        />
+      )}
       {showLabel && label}
     </button>
   );

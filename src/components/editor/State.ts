@@ -118,8 +118,22 @@ export function isInline<Source>({
   store: SourceStore<Source>;
   formatting: SourceFormatting<Source>;
 }): boolean {
+  const termData = store.get(source, termId);
   const references = formatting.getReferences(source, termId);
   if (formatting.isRoot(source, termId)) return false;
+  if (
+    references.asAnnotation.size +
+      references.asParameter.size +
+      references.asReference.size +
+      references.asBindingKey.size +
+      references.asBindingValue.size >
+      0 &&
+    !termData.annotation &&
+    !termData.bindings.size &&
+    !termData.parameters.size &&
+    !termData.reference
+  )
+    return false;
   if (navigation.part !== "parameter" && references.asParameter.size === 1) return false;
   return true;
 }

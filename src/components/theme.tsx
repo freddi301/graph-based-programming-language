@@ -20,6 +20,8 @@ const darkTheme = css`
     --text-color-keyword: #c678dd;
     --indent-guide-color: #3b4048;
     --code-line-height: 1.2em;
+    --highlighted-label-background-color: #42454e;
+    --highlighted-label-border-color: #696e77;
   }
 `;
 

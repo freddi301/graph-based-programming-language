@@ -341,12 +341,11 @@ export function createSourceFormmattingFromSourceStore<Source>(store: SourceStor
       asBindingValue: new Map(),
     };
   }
-  function getReferences(source: Source, except: Set<TermId>) {
+  function getReferencesUncached(source: Source) {
     const referencesById = new Map<TermId, References>();
     for (const [termId] of store.all(source)) {
       const references = createEmptyReferences();
       for (const [parentTermId, { annotation, parameters, reference, bindings }] of store.all(source)) {
-        if (except.has(parentTermId)) continue;
         if (annotation && annotation === termId) {
           references.asAnnotation.add(parentTermId);
           references.all.add(parentTermId);
@@ -376,22 +375,27 @@ export function createSourceFormmattingFromSourceStore<Source>(store: SourceStor
     }
     return referencesById;
   }
+  // @ts-ignore
+  const getReferencesCache = new WeakMap<Source, Map<TermId, References>>();
+  const getReferences = (source: Source) => {
+    const cached = getReferencesCache.get(source);
+    if (cached) return cached;
+    const computed = getReferencesUncached(source);
+    getReferencesCache.set(source, computed);
+    return computed;
+  };
   function getTopDown(source: Source): Array<TermId> {
     const remaining = new Set<TermId>();
     const except = new Set<TermId>();
     const ordered: Array<TermId> = [];
     for (const [termId] of store.all(source)) {
-      if (implementation.isRoot(source, termId)) {
-        remaining.add(termId);
-      } else {
-        except.add(termId);
-      }
+      remaining.add(termId);
     }
     while (true) {
       const startRemainingSize = remaining.size;
-      const references = getReferences(source, new Set(except));
+      const references = getReferences(source);
       for (const termId of Array.from(remaining)) {
-        if (references.get(termId)!.all.size === 0) {
+        if ([...references.get(termId)!.all].filter((item) => !except.has(item)).length === 0) {
           ordered.push(termId);
           remaining.delete(termId);
           except.add(termId);
@@ -418,13 +422,6 @@ export function createSourceFormmattingFromSourceStore<Source>(store: SourceStor
       if (this.getOrdering(source, termId) !== undefined) return true;
       if (references.asParameter.size === 1) return false;
       if (
-        references.asAnnotation.size === 1 &&
-        references.asBindingKey.size + references.asBindingValue.size + references.asParameter.size + references.asReference.size === 0 &&
-        !termData.annotation &&
-        !termData.label
-      )
-        return false;
-      if (
         references.asAnnotation.size +
           references.asParameter.size +
           references.asReference.size +
@@ -434,13 +431,26 @@ export function createSourceFormmattingFromSourceStore<Source>(store: SourceStor
         !termData.label
       )
         return false;
+      if (
+        references.asAnnotation.size +
+          references.asParameter.size +
+          references.asReference.size +
+          references.asBindingKey.size +
+          references.asBindingValue.size >
+          0 &&
+        !termData.annotation &&
+        !termData.bindings.size &&
+        !termData.parameters.size &&
+        !termData.reference
+      )
+        return false;
       return true;
     },
     getRoots(source) {
       return getTopDown(source).filter((termId) => this.isRoot(source, termId));
     },
     getReferences(source, termId) {
-      return getReferences(source, new Set()).get(termId) ?? createEmptyReferences();
+      return getReferences(source).get(termId) ?? createEmptyReferences();
     },
     getTermParameters(source, termId) {
       // TODO order by bottom-up usage
