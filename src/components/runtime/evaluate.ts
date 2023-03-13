@@ -1,37 +1,13 @@
-import { SourceFormatting, SourceStore, TermId } from "../Source";
+import { SourceStore, TermId } from "../Source";
 
-export function evaluate<Source>({
-  source,
-  store,
-  formatting,
-}: {
-  source: Source;
-  store: SourceStore<Source>;
-  formatting: SourceFormatting<Source>;
-}): {
-  results: Map<TermId, TermId>;
+export function evaluate<Source>({ termId, source, store }: { termId: TermId; source: Source; store: SourceStore<Source> }): {
+  result: TermId | undefined;
   source: Source;
 } {
-  let credit = 0;
-  const results = new Map<TermId, TermId>();
-  for (const termId of formatting.getRoots(source)) {
-    try {
-      credit = 100;
-      const result = recu(termId, new Map());
-      if (result && result !== termId) {
-        results.set(termId, result);
-      }
-    } catch (error) {
-      if (error instanceof Error && error.message === "infinite-loop") {
-        console.error(error);
-      } else {
-        throw new Error("evaluation error", { cause: error as any });
-      }
-    }
-  }
+  let credit = 100;
   function recu(termId: TermId, scope: Map<TermId, TermId>): TermId | undefined {
     if (credit-- <= 0) {
-      throw new Error("infinite-loop");
+      return undefined;
     }
     const termData = store.get(source, termId);
     if (termData.mode === "call" && termData.reference) {
@@ -50,7 +26,7 @@ export function evaluate<Source>({
     return scope.get(termId) ?? termId;
   }
   return {
-    results,
+    result: recu(termId, new Map()),
     source,
   };
 }

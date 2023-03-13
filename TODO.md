@@ -1,3 +1,4 @@
+Highlihgt row when ordering with Alt + Up Down
 Results not editable
 Normalize values
 Positional arguments (as they are typed)

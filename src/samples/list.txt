@@ -1,0 +1,3 @@
+list: (item: type) -> type
+nil: list
+cons: (head: item, tail: list) -> type

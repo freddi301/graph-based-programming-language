@@ -80,9 +80,6 @@ export function Editor<Source>({
   };
   // #endregion
   const options = getOptions<Source>({ store, source, state });
-  const evaluated = React.useMemo(() => {
-    return evaluate({ source, store, formatting });
-  }, [source, formatting, store]);
   const [running, setRunning] = React.useState<Record<TermId, boolean>>({});
   const orderingWidth = store.getOrdering(source).length.toString().length;
   const [collapsed, setCollapsed] = React.useState<Record<TermId, boolean>>({});
@@ -129,8 +126,8 @@ export function Editor<Source>({
         }}
       >
         {formatting.getRoots(source).map((termId) => {
-          const evaluatedTermId = evaluated.results.get(termId);
           const isRunning = running[termId];
+          const evaluatedTermId = isRunning ? evaluate({ termId, source, store }).result : undefined;
           const isCollapsed = collapsed[termId];
           const ordering = formatting.getOrdering(source, termId);
           const displayOrdering = ordering !== undefined ? ordering + 1 : undefined;
